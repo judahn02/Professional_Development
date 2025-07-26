@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Professional Development
+Plugin Name: Professional Development - Old
 Plugin URI: 
 Description: Integration Plugin for Professional Development tracking and logging.
 Version: 0.1
