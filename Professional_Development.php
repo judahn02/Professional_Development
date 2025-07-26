@@ -15,6 +15,7 @@ defined('ABSPATH') || exit ;
 
 require_once plugin_dir_path( __FILE__) . 'includes/functions.php' ;
 require_once plugin_dir_path( __FILE__) . 'includes/short_code_metaData.php' ;
+require_once plugin_dir_path(__FILE__) . 'includes/ar_member_usrID.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
 
 function Professional_Development_admin_menu_page() {
@@ -30,7 +31,8 @@ function Professional_Development_admin_menu_page() {
 }
 
 add_action( 'admin_menu', 'Professional_Development_admin_menu_page') ;
-add_shortcode( 'PD_metaData', 'show_all_meta_variables' ) ;
+add_shortcode( 'PD_metaData', 'Professional_Development_show_all_meta_variables' ) ;
+add_shortcode('PD_metaData_nonAdmin', 'Professional_Development_show_user_id') ;
 
 
 // activation, deactivation, and uninstall hooks
