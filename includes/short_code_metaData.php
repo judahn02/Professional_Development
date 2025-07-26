@@ -1,0 +1,30 @@
+<?php
+
+if (!defined('ABSPATH')) {
+    exit ;
+}
+
+// for debugging only, show all meta varabiles the plugin in using.
+function show_all_meta_variables ($atts = [], $content= null, $tag = '') {
+
+    if (!current_user_can('manage_options')) {
+    return 'Access denied'; // or return 'Access denied';
+    }
+
+    $host = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_host', ''));
+    $name = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_name', ''));
+    $user = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_user', ''));
+    $pass = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_pass', ''));
+
+
+    ob_start(); // Start output buffering
+    ?>
+    <div class="pd-metaData-box">
+        <p>host: <?php echo esc_html($host); ?></p>
+        <p>name: <?php echo esc_html($name); ?></p>
+        <p>user: <?php echo esc_html($user); ?></p>
+        <p>pass: <?php echo esc_html($pass); ?></p>
+    </div>
+    <?php
+    return ob_get_clean(); // Return the buffered content
+}

@@ -47,7 +47,7 @@ function ProfessionalDevelopment_DB_save_password($password) {
         return false;
     }
 
-    $encrypted_password = ps_encrypt_password($password);
+    $encrypted_password = ProfessionalDevelopment_encrypt($password);
     return update_option('ProfessionalDevelopment_DB_password', $encrypted_password);
 }
 
@@ -58,7 +58,7 @@ function ProfessionalDevelopment_DB_save_password($password) {
  */
 function ProfessionalDevelopment_DB_get_password() {
     $encrypted = get_option('ProfessionalDevelopment_DB_password', false);
-    return $encrypted ? ps_decrypt_password($encrypted) : false;
+    return $encrypted ? ProfessionalDevelopment_decrypt($encrypted) : false;
 }
 
 /**
@@ -72,16 +72,16 @@ function ProfessionalDevelopment_DB_delete_password() {
 
 
 
-// NOT FOR PUBLIC USE – Consider these private helpers
-function ps_encrypt_password($password) {
+
+function ProfessionalDevelopment_encrypt($data) {
     $key = defined('PS_ENCRYPTION_KEY') ? PS_ENCRYPTION_KEY : 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm'; // fallback for dev
 
     $iv = openssl_random_pseudo_bytes(16);
-    $encrypted = openssl_encrypt($password, 'AES-256-CBC', $key, 0, $iv);
+    $encrypted = openssl_encrypt($data, 'AES-256-CBC', $key, 0, $iv);
     return base64_encode($iv . $encrypted);
 }
 
-function ps_decrypt_password($encrypted) {
+function ProfessionalDevelopment_decrypt($encrypted) {
     $key = defined('PS_ENCRYPTION_KEY') ? PS_ENCRYPTION_KEY : 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm'; // fallback for dev
 
     $data = base64_decode($encrypted);
