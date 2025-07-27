@@ -66,7 +66,7 @@ function PD_main_admin_page() {
                             </tr>
                             <tr>
                                 <th><label for="db_pass">DB Password</label></th>
-                                <td><input type="password" name="db_pass" value="<?php echo esc_attr($pass); ?>"
+                                <td><input type="password" name="db_pass" value="no...stoop :("
                                         class="regular-text" /></td>
                             </tr>
                         </table>
