@@ -17,20 +17,45 @@ function initializeDashboard() {
 function checkDatabaseStatus() {
     const statusIndicator = document.getElementById('dbStatus');
 
-    // Simulate database status check
-    setTimeout(() => {
-        // This would be replaced with actual database status check
-        const isConnected = Math.random() > 0.2; // 80% chance of being connected
+    console.log("Checking database status...");
 
-        if (isConnected) {
+    // Show loading status while the request is being made
+    statusIndicator.className = 'status-indicator loading';
+    statusIndicator.title = 'Checking database connection...';
+
+    fetch(ajaxurl + '?action=check_db_connection', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => {
+        console.log("Response received:", res);
+        return res.json();
+    })
+    .then(data => {
+        console.log("Parsed JSON:", data);
+
+        if (data.success) {
             statusIndicator.className = 'status-indicator';
             statusIndicator.title = 'Database Connected';
         } else {
             statusIndicator.className = 'status-indicator error';
-            statusIndicator.title = 'Database Connection Error';
+            statusIndicator.title = 'Database Connection Error: ' + (data.error || 'Unknown error');
         }
-    }, 1000);
+
+        console.log("Status updated:", statusIndicator.className, statusIndicator.title);
+    })
+    .catch(err => {
+        console.error("Fetch error:", err);
+        statusIndicator.className = 'status-indicator error';
+        statusIndicator.title = 'Fetch Error: ' + err.message;
+
+        console.log("Status updated:", statusIndicator.className, statusIndicator.title);
+    });
 }
+
 
 function setupNavigationHandlers() {
     const buttons = document.querySelectorAll('.nav-button');

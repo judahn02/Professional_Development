@@ -39,29 +39,41 @@ function slug_specific_admin_css_loader($hook) {
             'PD-admin-home-css',
             plugin_dir_url(__FILE__) . 'css/PD-admin-home.css',
             array(),
-            '0.3',
+            '0.6',
             'all'
         );
     }
 }
 add_action('admin_enqueue_scripts', 'slug_specific_admin_css_loader');
 
-function splug_specific_admin_js_loader($hook) {
+// Custom !ADMIN! JS slug control
+function slug_specific_admin_js_loader($hook) {
     if (isset($_GET['page']) && $_GET['page'] === 'ProfDef home') {
         wp_enqueue_script(
             'PD-admin-home-js',
             plugin_dir_url( __FILE__). 'js/PD-admin-home.js',
             array('jquery'),
-            '0.2',
+            '0.5',
             true
         );
     }
+    wp_localize_script('PD-admin-home-js', 'ajaxurl', admin_url('admin-ajax.php'));
+
 }
+add_action('admin_enqueue_scripts', 'slug_specific_admin_js_loader');
 
+//JS related action controls
+add_action('wp_ajax_check_db_connection', function () {
+    include plugin_dir_path(__FILE__) . 'includes/check_connection.php';
+    exit; // Required to end AJAX call
+});
 
+// ShortCode
 add_shortcode( 'PD_metaData', 'Professional_Development_show_all_meta_variables' ) ;
 add_shortcode('PD_metaData_nonAdmin', 'Professional_Development_show_user_id') ;
 
+
+// 
 
 // activation, deactivation, and uninstall hooks
 register_activation_hook( __FILE__, function () {

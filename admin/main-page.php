@@ -51,22 +51,22 @@ function PD_main_admin_page() {
                         <table class="form-table">
                             <tr>
                                 <th><label for="db_host">DB Host</label></th>
-                                <td><input type="text" name="db_host" value="ddd"
+                                <td><input type="text" name="db_host" value="<?php echo esc_attr($host); ?>"
                                         class="regular-text" /></td>
                             </tr>
                             <tr>
                                 <th><label for="db_name">DB Name</label></th>
-                                <td><input type="text" name="db_name" value="ddd"
+                                <td><input type="text" name="db_name" value="<?php echo esc_attr($name); ?>"
                                         class="regular-text" /></td>
                             </tr>
                             <tr>
                                 <th><label for="db_user">DB User</label></th>
-                                <td><input type="text" name="db_user" value="ddd"
+                                <td><input type="text" name="db_user" value="<?php echo esc_attr($user); ?>"
                                         class="regular-text" /></td>
                             </tr>
                             <tr>
                                 <th><label for="db_pass">DB Password</label></th>
-                                <td><input type="password" name="db_pass" value="ddd"
+                                <td><input type="password" name="db_pass" value="<?php echo esc_attr($pass); ?>"
                                         class="regular-text" /></td>
                             </tr>
                         </table>
