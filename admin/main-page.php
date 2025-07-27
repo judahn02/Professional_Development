@@ -23,10 +23,82 @@ function PD_main_admin_page() {
     $pass = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_pass', ''));
 
     ?>
-    <div class="wrap">
+    
+    <div class="container">
+        <div class="max-width">
+            <h1 class="main-title">Admin Home Dashboard</h1>
+
+            <!-- Main Navigation Buttons -->
+            <div class="nav-buttons">
+                <a href="session-table.html" class="nav-button" id="sessionTableBtn">
+                    SESSION TABLE
+                </a>
+                <a href="attendee-table.html" class="nav-button" id="attendeeTableBtn">
+                    ATTENDEE TABLE
+                </a>
+                <a href="presenter-table.html" class="nav-button" id="presenterTableBtn">
+                    PRESENTER TABLE
+                </a>
+            </div>
+            <div class="section">
+                <h2 class="section-title">DB Configuration Settings</h2>
+                <div class="content-area large">
+                    <div class="status-indicator" id="dbStatus"></div>
+
+                    <form method="post">
+                        <?php wp_nonce_field('ProfessionalDevelopment_save_db_config'); ?>
+
+                        <table class="form-table">
+                            <tr>
+                                <th><label for="db_host">DB Host</label></th>
+                                <td><input type="text" name="db_host" value="ddd"
+                                        class="regular-text" /></td>
+                            </tr>
+                            <tr>
+                                <th><label for="db_name">DB Name</label></th>
+                                <td><input type="text" name="db_name" value="ddd"
+                                        class="regular-text" /></td>
+                            </tr>
+                            <tr>
+                                <th><label for="db_user">DB User</label></th>
+                                <td><input type="text" name="db_user" value="ddd"
+                                        class="regular-text" /></td>
+                            </tr>
+                            <tr>
+                                <th><label for="db_pass">DB Password</label></th>
+                                <td><input type="password" name="db_pass" value="ddd"
+                                        class="regular-text" /></td>
+                            </tr>
+                        </table>
+
+                        <?php submit_button('Save Credentials', 'primary', 'ProfessionalDevelopment_save'); ?>
+                    </form>
+                </div>
+            </div>
+
+
+            <!-- Tutorial/Guide Section -->
+            <div class="section">
+                <h2 class="section-title">Short Tutorial / Guide</h2>
+                <div class="content-area large">
+                    <div class="placeholder-text">
+                        Quick start guide and tutorial content will be displayed here<br>
+                        <small>Step-by-step instructions for admin tasks</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <?php
+}
+
+/*
+
+<!-- <div class="wrap">
         <h1>Secure DataBase Configuration</h1>
         <form method="post">
-            <?php wp_nonce_field('ProfessionalDevelopment_save_db_config'); ?>
+            <?php //wp_nonce_field('ProfessionalDevelopment_save_db_config'); ?>
 
             <table class="form-table">
                 <tr><th><label for="db_host">DB Host</label></th>
@@ -39,8 +111,7 @@ function PD_main_admin_page() {
                     <td><input type="password" name="db_pass" value="<?php echo esc_attr($pass); ?>" class="regular-text" /></td></tr>
             </table>
 
-            <?php submit_button('Save Credentials', 'primary', 'ProfessionalDevelopment_save'); ?>
+            <?php //submit_button('Save Credentials', 'primary', 'ProfessionalDevelopment_save'); ?>
         </form>
-    </div>
-    <?php
-}
+    </div> -->
+*/
