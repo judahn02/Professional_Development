@@ -22,6 +22,8 @@ function PD_main_admin_page() {
     $user = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_user', ''));
     $pass = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_pass', ''));
 
+    $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
+
     ?>
     
     <div class="container">
@@ -33,7 +35,7 @@ function PD_main_admin_page() {
                 <a href="session-table.html" class="nav-button" id="sessionTableBtn">
                     SESSION TABLE
                 </a>
-                <a href="attendee-table.html" class="nav-button" id="attendeeTableBtn">
+                <a href="<?php echo esc_url($attendees_table_url); ?>" class="nav-button" id="attendeeTableBtn">
                     ATTENDEE TABLE
                 </a>
                 <a href="presenter-table.html" class="nav-button" id="presenterTableBtn">
@@ -93,25 +95,3 @@ function PD_main_admin_page() {
     <?php
 }
 
-/*
-
-<!-- <div class="wrap">
-        <h1>Secure DataBase Configuration</h1>
-        <form method="post">
-            <?php //wp_nonce_field('ProfessionalDevelopment_save_db_config'); ?>
-
-            <table class="form-table">
-                <tr><th><label for="db_host">DB Host</label></th>
-                    <td><input type="text" name="db_host" value="<?php echo esc_attr($host); ?>" class="regular-text" /></td></tr>
-                <tr><th><label for="db_name">DB Name</label></th>
-                    <td><input type="text" name="db_name" value="<?php echo esc_attr($name); ?>" class="regular-text" /></td></tr>
-                <tr><th><label for="db_user">DB User</label></th>
-                    <td><input type="text" name="db_user" value="<?php echo esc_attr($user); ?>" class="regular-text" /></td></tr>
-                <tr><th><label for="db_pass">DB Password</label></th>
-                    <td><input type="password" name="db_pass" value="<?php echo esc_attr($pass); ?>" class="regular-text" /></td></tr>
-            </table>
-
-            <?php //submit_button('Save Credentials', 'primary', 'ProfessionalDevelopment_save'); ?>
-        </form>
-    </div> -->
-*/
