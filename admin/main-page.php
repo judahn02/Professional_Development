@@ -22,8 +22,11 @@ function PD_main_admin_page() {
     $user = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_user', ''));
     $pass = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_pass', ''));
 
+    $PD_home_url = admin_url('admin.php?page=profdef_home') ;
     $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
-
+    $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
+    $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    
     ?>
     
     <div class="container">
@@ -32,13 +35,13 @@ function PD_main_admin_page() {
 
             <!-- Main Navigation Buttons -->
             <div class="nav-buttons">
-                <a href="session-table.html" class="nav-button" id="sessionTableBtn">
+                <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-button" id="sessionTableBtn">
                     SESSION TABLE
                 </a>
                 <a href="<?php echo esc_url($attendees_table_url); ?>" class="nav-button" id="attendeeTableBtn">
                     ATTENDEE TABLE
                 </a>
-                <a href="presenter-table.html" class="nav-button" id="presenterTableBtn">
+                <a href="<?php echo esc_url($presentors_table_url); ?>" class="nav-button" id="presenterTableBtn">
                     PRESENTER TABLE
                 </a>
             </div>

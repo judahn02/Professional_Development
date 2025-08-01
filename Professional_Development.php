@@ -3,7 +3,7 @@
 Plugin Name: Professional Development
 Plugin URI: 
 Description: Integration Plugin for Professional Development tracking and logging.
-Version: 0.3
+Version: 0.6
 Author: Parallel Solvit LLC
 Author URI: https://parallelsolvit.com/
 License: 
@@ -18,6 +18,8 @@ require_once plugin_dir_path( __FILE__) . 'includes/short_code_metaData.php' ;
 require_once plugin_dir_path(__FILE__) . 'includes/ar_member_usrID.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
 require_once plugin_dir_path(__FILE__) . 'admin/attendees-table.php' ;
+require_once plugin_dir_path( __FILE__) . 'admin/sessions-table.php' ;
+require_once plugin_dir_path( __FILE__) . 'admin/presentors-table.php' ;
 
 // section to add new admin pages to admin menu.
 function Professional_Development_admin_menu_page() {
@@ -39,6 +41,26 @@ function Professional_Development_admin_menu_page() {
         "profdef_attendees_table",
         "PD_attendees_table_admin_page",
         2
+    ) ;
+
+    add_submenu_page( 
+        'profdef_home', 
+        'Sessions Page',
+        'Sessions Page', 
+        'manage_options', 
+        'profdef_sessions_table', 
+        'PD_sessions_page', 
+        3
+    ) ;
+
+    add_submenu_page( 
+        'profdef_home', 
+        'Presentors Page', 
+        'Presentors Page', 
+        'manage_options', 
+        'profdef_presentors_table', 
+        'PD_presentors_table_page', 
+        4 
     ) ;
 }
 add_action( 'admin_menu', 'Professional_Development_admin_menu_page') ;
@@ -64,7 +86,27 @@ function slug_specific_admin_css_loader($hook) {
                 array(),
                 '0.2',
                 'all'
-            );
+            ) ;
+        }
+
+        if($_GET['page'] === 'profdef_sessions_table') {
+            wp_enqueue_style(
+                'PD-admin-sessions-table-css',
+                plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
+                array(),
+                '0.1',
+                'all'
+            ) ;
+        }
+
+        if($_GET['page'] === 'profdef_presentors_table') {
+            wp_enqueue_style(
+                'PD-admin-presentors-table-css',
+                plugin_dir_url( __FILE__ ) . 'css/PD-admin-presenter-table.css',
+                array(),
+                '0.3',
+                'all'
+            ) ;
         }
     }
 }
@@ -108,6 +150,47 @@ function slug_specific_admin_js_loader($hook) {
                 'nonce'   => wp_create_nonce('pd_attendees_nonce')
             )
         );
+    }
+
+    if (isset($_GET['page']) && $_GET['page'] === 'profdef_sessions_table') {
+        wp_enqueue_script(
+            'PD-admin-sessions-table-js',
+            plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
+            array('jquery'),
+            '0.2',
+            true
+        );
+
+        wp_localize_script(
+            'PD-admin-sessions-table-js',
+            'PDSessions',
+            array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('pd_sessions_nonce')
+            )
+        );
+
+    }
+
+    // if (($hook === 'profdef_home_page_profdef_presentors_table')) {
+    if (isset($_GET['page']) && $_GET['page'] === 'profdef_presentors_table') {
+        wp_enqueue_script(
+            'PD-admin-presentors-table-js',
+            plugin_dir_url(__FILE__) . 'js/PD-presenters-table.js',
+            array('jquery'),
+            '0.5',
+            true
+        );
+
+        wp_localize_script(
+            'PD-admin-presentors-table-js',
+            'PDPresentors',
+            array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('pd_presenters_nonce')
+            )
+        );
+
     }
 }
 add_action('admin_enqueue_scripts', 'slug_specific_admin_js_loader');

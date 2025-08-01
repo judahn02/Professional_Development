@@ -8,7 +8,11 @@ function PD_attendees_table_admin_page() {
 
 
     // add any variables needed for the html here
-    $home_url = admin_url('admin.php?page=profdef_home');
+    $PD_home_url = admin_url('admin.php?page=profdef_home') ;
+    $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
+    $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
+    $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    
 
     ?>
 
@@ -18,9 +22,9 @@ function PD_attendees_table_admin_page() {
 
             <!-- Navigation Links -->
             <div class="nav-links">
-                <a href="session-table.html" class="nav-link">Session Table</a>
-                <a href="presenter-table.html" class="nav-link">Presenter Table</a>
-                <a href="<?php echo esc_url($home_url); ?>" class="nav-link">Home</a>
+                <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Session Table</a>
+                <a href="<?php echo esc_url($presentors_table_url); ?>" class="nav-link">Presenter Table</a>
+                <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>
 
             <!-- Controls Section -->
