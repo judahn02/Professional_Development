@@ -3,7 +3,7 @@
 Plugin Name: Professional Development
 Plugin URI: 
 Description: Integration Plugin for Professional Development tracking and logging.
-Version: 0.6
+Version: 0.8
 Author: Parallel Solvit LLC
 Author URI: https://parallelsolvit.com/
 License: 
@@ -15,6 +15,7 @@ defined('ABSPATH') || exit ;
 
 require_once plugin_dir_path( __FILE__) . 'includes/functions.php' ;
 require_once plugin_dir_path( __FILE__) . 'includes/short_code_metaData.php' ;
+require_once plugin_dir_path( __FILE__) . 'includes/short_code_client.php' ;
 require_once plugin_dir_path(__FILE__) . 'includes/ar_member_usrID.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
 require_once plugin_dir_path(__FILE__) . 'admin/attendees-table.php' ;
@@ -112,6 +113,20 @@ function slug_specific_admin_css_loader($hook) {
 }
 add_action('admin_enqueue_scripts', 'slug_specific_admin_css_loader');
 
+// Custom public CSS slug control
+function slug_specific_shortcode_css_loader() {
+    if ( is_singular() && has_shortcode( get_post()->post_content, 'PD_Member_Info' ) ) {
+        wp_enqueue_style(
+            'PD-member-info-css',
+            plugin_dir_url(__FILE__) . 'css/PD-member-metainformation.css',
+            array(),
+            '0.1',
+            'all'
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'slug_specific_shortcode_css_loader');
+
 // Custom !ADMIN! JS slug control
 function slug_specific_admin_js_loader($hook) {
     if (isset($_GET['page']) && $_GET['page'] === 'profdef_home') {
@@ -195,6 +210,30 @@ function slug_specific_admin_js_loader($hook) {
 }
 add_action('admin_enqueue_scripts', 'slug_specific_admin_js_loader');
 
+// Custom public JS slug control
+function slug_specific_shortcode_js_loader() {
+    // Check if this is a singular page/post and contains the shortcode
+    if ( is_singular() && has_shortcode( get_post()->post_content, 'PD_Member_Info' ) ) {
+        wp_enqueue_script(
+            'PD-Member_Info-js',
+            plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
+            array('jquery'),
+            '0.1',
+            true
+        );
+
+        wp_localize_script(
+            'PD-Member_Info-js',
+            'PDMemberInfo',
+            array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('pd_MemberInfo_nonce')
+            )
+        );
+    }
+}
+add_action('wp_enqueue_scripts', 'slug_specific_shortcode_js_loader');
+
 
 //JS related action controls
 add_action('wp_ajax_check_db_connection', function () {
@@ -203,8 +242,14 @@ add_action('wp_ajax_check_db_connection', function () {
 });
 
 // ShortCode
-add_shortcode( 'PD_metaData', 'Professional_Development_show_all_meta_variables' ) ;
-add_shortcode('PD_metaData_nonAdmin', 'Professional_Development_show_user_id') ;
+function PD_shortcode_init() {
+
+    add_shortcode( 'PD_metaData', 'Professional_Development_show_all_meta_variables' ) ;
+    add_shortcode('PD_metaData_nonAdmin', 'Professional_Development_show_user_id') ;
+    add_shortcode('PD_Member_Info', 'Pofessional_Development_show_member_progress') ;
+
+}
+add_action( 'init', 'PD_shortcode_init') ;
 
 
 // 
@@ -219,10 +264,10 @@ register_deactivation_hook(__FILE__, function () {
 }) ;
 
 function ProfessionalDevelopment_uninstall_hook_function () {
-    delete_option( 'ProfessionalDevelopment_db_host') ;
-    delete_option( 'ProfessionalDevelopment_db_name') ;
-    delete_option( 'ProfessionalDevelopment_db_user') ;
-    delete_option( 'ProfessionalDevelopment_db_pass') ;
+    // delete_option( 'ProfessionalDevelopment_db_host') ;
+    // delete_option( 'ProfessionalDevelopment_db_name') ;
+    // delete_option( 'ProfessionalDevelopment_db_user') ;
+    // delete_option( 'ProfessionalDevelopment_db_pass') ;
 }
 register_uninstall_hook( __FILE__, 'PofessionalDevelopment_uninstall_hook_function') ;
 
