@@ -94,14 +94,15 @@ function renderAttendees() {
             <td>${getTotalHours(attendee)}</td>
         </tr>
     `).join('');
-    // <td>${attendee.certificationType || ''}</td>
 }
 
 // Go to attendee profile page
 function goToAttendeeProfile(index) {
     // Store attendees in localStorage for access in attendee-profile.html
     localStorage.setItem('attendees', JSON.stringify(attendees));
-    window.location.href = `attendee-profile.html?attendee=${index}`;
+    // window.location.href = `attendee-profile.html?attendee=${index}`;
+    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&attendee=' + index);
+
 }
 
 // Filter attendees based on search

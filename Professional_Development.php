@@ -19,6 +19,7 @@ require_once plugin_dir_path( __FILE__) . 'includes/short_code_client.php' ;
 require_once plugin_dir_path(__FILE__) . 'includes/ar_member_usrID.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
 require_once plugin_dir_path(__FILE__) . 'admin/attendees-table.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/attende-page.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/sessions-table.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/presentors-table.php' ;
 
@@ -62,6 +63,15 @@ function Professional_Development_admin_menu_page() {
         'profdef_presentors_table', 
         'PD_presentors_table_page', 
         4 
+    ) ;
+
+    add_submenu_page( 
+        null, 
+        'Member Page', 
+        'Member Page', 
+        'manage_options', 
+        'profdef_member_page', 
+        'PD_attendee_admin_page', 
     ) ;
 }
 add_action( 'admin_menu', 'Professional_Development_admin_menu_page') ;
@@ -109,6 +119,16 @@ function slug_specific_admin_css_loader($hook) {
                 'all'
             ) ;
         }
+
+        if($_GET['page'] === 'profdef_member_page') {
+            wp_enqueue_style(
+                'PD-admin-member-page-css',
+                plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
+                array(),
+                '0.1',
+                'all'
+            ) ;
+        }
     }
 }
 add_action('admin_enqueue_scripts', 'slug_specific_admin_css_loader');
@@ -153,7 +173,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-attendees-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-attendees-table.js',
             array('jquery'),
-            '0.2',
+            '0.3',
             true
         );
 
@@ -203,6 +223,27 @@ function slug_specific_admin_js_loader($hook) {
             array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce'   => wp_create_nonce('pd_presenters_nonce')
+            )
+        );
+
+    }
+
+    // if (($hook === 'profdef_home_page_profdef_member_page')) {
+    if (isset($_GET['page']) && $_GET['page'] === 'profdef_member_page') {
+        wp_enqueue_script(
+            'PD-admin-member-page-js',
+            plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
+            array('jquery'),
+            '0.1',
+            true
+        );
+
+        wp_localize_script(
+            'PD-admin-member-page-js',
+            'PDPresentorpage',
+            array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('pd_presenterpage_nonce')
             )
         );
 

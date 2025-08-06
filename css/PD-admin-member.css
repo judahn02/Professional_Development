@@ -1,0 +1,211 @@
+/* ...existing styles... */
+.profile-container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    background: #fff;
+    border: 2px solid #e11d48;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08);
+    padding: 2.5rem 2rem;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.profile-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #fef2f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: #e11d48;
+    font-weight: bold;
+    border: 2px solid #e11d48;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #e11d48;
+}
+
+.profile-email {
+    color: #6b7280;
+    font-size: 1.1rem;
+    margin-top: 0.25rem;
+}
+
+.profile-section {
+    margin-bottom: 2rem;
+}
+
+.profile-section-title {
+    color: #be123c;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.profile-details-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.profile-details-list li {
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #fef2f2;
+    color: #e11d48;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #e11d48;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: color 0.2s;
+}
+
+.back-link:hover {
+    color: #be123c;
+}
+
+/* Progress summary & table */
+.summary-card {
+    background: #fef2f2;
+    border: 1px solid #e11d48;
+    border-radius: 0.75rem;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+}
+
+.summary-title {
+    color: #e11d48;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-bottom: 1rem;
+}
+
+.summary-item {
+    font-size: 1.1rem;
+}
+
+.summary-label {
+    color: #be123c;
+    font-weight: 600;
+}
+
+.summary-value {
+    font-weight: 700;
+}
+
+.range-control {
+    margin: 1rem 0;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e11d48;
+    background: #e11d48;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn:hover {
+    background: #be123c;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.table th,
+.table td {
+    text-align: left;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.table th {
+    font-weight: 600;
+}
+
+.table tr:hover {
+    background: #fef2f2;
+}
+
+.search-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: 1px solid #e11d48;
+    border-radius: 0.375rem;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    color: #be123c;
+    margin: 2rem 0;
+}
+
+@media (max-width: 700px) {
+    .profile-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .summary-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

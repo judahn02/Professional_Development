@@ -38,12 +38,6 @@ function PD_attendees_table_admin_page() {
                         oninput="filterAttendees()"
                     >
                 </div>
-                <!-- <button class="add-attendee-btn" onclick="openAddAttendeeModal()">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
-                    </svg>
-                    Add Attendee
-                </button> -->
             </div>
 
             <!-- Attendees Table -->
@@ -54,7 +48,6 @@ function PD_attendees_table_admin_page() {
                             <th onclick="sortAttendees('firstname')" style="cursor:pointer;">First Name <span id="sort-arrow-firstname"></span></th>
                             <th onclick="sortAttendees('lastname')" style="cursor:pointer;">Last Name <span id="sort-arrow-lastname"></span></th>
                             <th onclick="sortAttendees('email')" style="cursor:pointer;">Email <span id="sort-arrow-email"></span></th>
-                            <!-- <th onclick="sortAttendees('certificationType')" style="cursor:pointer;">Certification Type <span id="sort-arrow-certificationType"></span></th> -->
                             <th onclick="sortAttendees('totalHours')" style="cursor:pointer;">Total Hours <span id="sort-arrow-totalHours"></span></th>
                         </tr>
                     </thead>
