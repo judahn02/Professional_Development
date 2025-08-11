@@ -227,10 +227,16 @@ function closeAddSessionModal() {
 }
 
 function goToSessionProfile(index) {
-    // Store sessions in localStorage for access in session-profile.html
+    // Store sessions in localStorage for access in the target page
     localStorage.setItem('sessions', JSON.stringify(sessions));
-    window.location.href = `session-profile.html?session=${index}`;
+
+    // Redirect to the admin page, replacing admin-ajax.php with your page slug + param
+    window.location.href = ajaxurl.replace(
+        'admin-ajax.php',
+        'admin.php?page=profdef_session_page&session=' + encodeURIComponent(index)
+    );
 }
+
 
 // Handle form submission
 document.getElementById('addSessionForm').addEventListener('submit', function(e) {

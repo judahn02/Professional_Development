@@ -21,6 +21,7 @@ require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
 require_once plugin_dir_path(__FILE__) . 'admin/attendees-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/attende-page.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/sessions-table.php' ;
+require_once plugin_dir_path(__FILE__) . 'admin/session-page.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/presentors-table.php' ;
 
 // section to add new admin pages to admin menu.
@@ -73,11 +74,22 @@ function Professional_Development_admin_menu_page() {
         'profdef_member_page', 
         'PD_attendee_admin_page', 
     ) ;
+
+    add_submenu_page( 
+        null, 
+        'Session Profile', 
+        'Session Profile', 
+        'manage_options', 
+        'profdef_session_page', 
+        'PD_session_individual_page'
+        
+    ) ;
 }
 add_action( 'admin_menu', 'Professional_Development_admin_menu_page') ;
 
 // Custom !ADMIN! CSS slug control
 function slug_specific_admin_css_loader($hook) {
+    error_log($hook) ;
     // Check the page slug via $_GET
     if (isset($_GET['page'])) {
         if ($_GET['page'] === 'profdef_home') {
@@ -124,6 +136,16 @@ function slug_specific_admin_css_loader($hook) {
             wp_enqueue_style(
                 'PD-admin-member-page-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
+                array(),
+                '0.1',
+                'all'
+            ) ;
+        }
+
+        if($_GET['page'] === 'profdef_session_page') {
+            wp_enqueue_style(
+                'PD-admin-session-page-css',
+                plugin_dir_url( __FILE__) . 'css/PD-admin-session-page.css',
                 array(),
                 '0.1',
                 'all'
@@ -192,7 +214,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery'),
-            '0.2',
+            '0.3',
             true
         );
 
@@ -244,6 +266,26 @@ function slug_specific_admin_js_loader($hook) {
             array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce'   => wp_create_nonce('pd_presenterpage_nonce')
+            )
+        );
+
+    }
+
+    if (isset($_GET['page']) && $_GET['page'] === 'profdef_session_page') {
+        wp_enqueue_script(
+            'PD-admin-session-page-js',
+            plugin_dir_url(__FILE__) . 'js/PD-session-page.js',
+            array('jquery'),
+            '0.1',
+            true
+        );
+
+        wp_localize_script(
+            'PD-admin-session-page-js',
+            'PDSessionpage',
+            array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('pd_sessionpage_nonce')
             )
         );
 
