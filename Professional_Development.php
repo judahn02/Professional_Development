@@ -17,12 +17,14 @@ require_once plugin_dir_path( __FILE__) . 'includes/functions.php' ;
 require_once plugin_dir_path( __FILE__) . 'includes/short_code_metaData.php' ;
 require_once plugin_dir_path( __FILE__) . 'includes/short_code_client.php' ;
 require_once plugin_dir_path(__FILE__) . 'includes/ar_member_usrID.php' ;
+require_once __DIR__ . '/includes/rest-presentors.php';
 require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
-require_once plugin_dir_path(__FILE__) . 'admin/attendees-table.php' ;
+require_once plugin_dir_path(__FILE__) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/attende-page.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/sessions-table.php' ;
 require_once plugin_dir_path(__FILE__) . 'admin/session-page.php' ;
 require_once plugin_dir_path( __FILE__) . 'admin/presentors-table.php' ;
+
 
 // section to add new admin pages to admin menu.
 function Professional_Development_admin_menu_page() {
@@ -38,11 +40,11 @@ function Professional_Development_admin_menu_page() {
 
     add_submenu_page(
         'profdef_home',
-        'Attendees Page',
-        'Attendees Page',
+        'Members Page',
+        'Members Page',
         "manage_options",
-        "profdef_attendees_table",
-        "PD_attendees_table_admin_page",
+        "profdef_members_table",
+        "PD_members_table_admin_page",
         2
     ) ;
 
@@ -102,12 +104,12 @@ function slug_specific_admin_css_loader($hook) {
             );
         }
 
-        if ($_GET['page'] === 'profdef_attendees_table') {
+        if ($_GET['page'] === 'profdef_members_table') {
             wp_enqueue_style(
-                'PD-admin-attendees-table-css',
-                plugin_dir_url(__FILE__) . 'css/PD-admin-attendees-table.css',
+                'PD-admin-members-table-css',
+                plugin_dir_url(__FILE__) . 'css/PD-admin-members-table.css',
                 array(),
-                '0.2',
+                '0.3',
                 'all'
             ) ;
         }
@@ -190,21 +192,21 @@ function slug_specific_admin_js_loader($hook) {
         );
     }
 
-    if (isset($_GET['page']) && $_GET['page'] === 'profdef_attendees_table') {
+    if (isset($_GET['page']) && $_GET['page'] === 'profdef_members_table') {
         wp_enqueue_script(
-            'PD-admin-attendees-table-js',
-            plugin_dir_url(__FILE__) . 'js/PD-attendees-table.js',
+            'PD-admin-members-table-js',
+            plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.3',
+            '0.12',
             true
         );
 
         wp_localize_script(
-            'PD-admin-attendees-table-js',
-            'PDAttendees',
+            'PD-admin-members-table-js',
+            'PDMembers',
             array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('pd_attendees_nonce')
+                'nonce'   => wp_create_nonce('pd_members_nonce')
             )
         );
     }
@@ -231,21 +233,39 @@ function slug_specific_admin_js_loader($hook) {
 
     // if (($hook === 'profdef_home_page_profdef_presentors_table')) {
     if (isset($_GET['page']) && $_GET['page'] === 'profdef_presentors_table') {
+        // wp_enqueue_script(
+        //     'PD-admin-presentors-table-js',
+        //     plugin_dir_url(__FILE__) . 'js/PD-presenters-table.js',
+        //     array('jquery'),
+        //     '0.7',
+        //     true
+        // );
+
+        // wp_localize_script(
+        //     'PD-admin-presentors-table-js',
+        //     'PDPresentors',
+        //     array(
+        //         'ajaxurl' => admin_url('admin-ajax.php'),
+        //         'nonce'   => wp_create_nonce('pd_presenters_nonce')
+        //     )
+        // );
+        // Enqueue script
         wp_enqueue_script(
             'PD-admin-presentors-table-js',
-            plugin_dir_url(__FILE__) . 'js/PD-presenters-table.js',
-            array('jquery'),
-            '0.5',
+            plugins_url('js/PD-presenters-table.js', __FILE__),
+            [], // no jquery needed
+            filemtime(plugin_dir_path(__FILE__) . 'js/PD-presenters-table.js'),
             true
         );
 
+        // Pass REST info + nonce for authenticated requests
         wp_localize_script(
             'PD-admin-presentors-table-js',
             'PDPresentors',
-            array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('pd_presenters_nonce')
-            )
+            [
+                'root'  => esc_url_raw( rest_url('profdev/v1/') ),
+                'nonce' => wp_create_nonce('wp_rest'),
+            ]
         );
 
     }

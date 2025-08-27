@@ -14,7 +14,8 @@ function PD_session_individual_page() {
 
     // hotlink variables here
     $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
-    $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
+    // $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
+    $members_table_url = admin_url("admin.php?page=profdef_members_table");
     $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
     $PD_home_url = admin_url('admin.php?page=profdef_home') ;
 
@@ -24,7 +25,7 @@ function PD_session_individual_page() {
         <div class="max-width">
             <div class="nav-links">
                 <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Back to Sessions</a>
-                <a href="<?php echo esc_url($attendees_table_url); ?>" class="nav-link">Attendee Table</a>
+                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Attendee Table</a>
                 <a href="<?php echo esc_url($presentors_table_url); ?>" class="nav-link">Presenter Table</a>
                 <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>
