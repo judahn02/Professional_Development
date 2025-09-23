@@ -13,17 +13,18 @@ defined('ABSPATH') || exit ;
 
 //Initialize
 
-require_once plugin_dir_path( __FILE__) . 'includes/functions.php' ;
-require_once plugin_dir_path( __FILE__) . 'includes/short_code_metaData.php' ;
-require_once plugin_dir_path( __FILE__) . 'includes/short_code_client.php' ;
-require_once plugin_dir_path(__FILE__) . 'includes/ar_member_usrID.php' ;
-require_once __DIR__ . '/includes/rest-presentors.php';
-require_once plugin_dir_path( __FILE__) . 'admin/main-page.php' ;
-require_once plugin_dir_path(__FILE__) . 'admin/members-table.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_metaData.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_client.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'includes/ar_member_usrID.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'includes/rest-presentors.php';
+require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/attende-page.php' ;
-require_once plugin_dir_path( __FILE__) . 'admin/sessions-table.php' ;
-require_once plugin_dir_path(__FILE__) . 'admin/session-page.php' ;
-require_once plugin_dir_path( __FILE__) . 'admin/presentors-table.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/sessions-table.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/session-page.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/presentors-table.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/presentor-page.php' ;
 
 
 // section to add new admin pages to admin menu.
@@ -85,6 +86,15 @@ function Professional_Development_admin_menu_page() {
         'profdef_session_page', 
         'PD_session_individual_page'
         
+    ) ;
+
+    add_submenu_page(
+        null,
+        'Presentor Page',
+        'Presentor Page',
+        'manage_options',
+        'profdef_presentor_page',
+        'PD_presenter_admin_page'
     ) ;
 }
 add_action( 'admin_menu', 'Professional_Development_admin_menu_page') ;
@@ -148,6 +158,16 @@ function slug_specific_admin_css_loader($hook) {
             wp_enqueue_style(
                 'PD-admin-session-page-css',
                 plugin_dir_url( __FILE__) . 'css/PD-admin-session-page.css',
+                array(),
+                '0.1',
+                'all'
+            ) ;
+        }
+
+        if($_GET['page'] === 'profdef_presentor_page') {
+            wp_enqueue_style(
+                'PD-admin-presentor-page-css',
+                plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
                 array(),
                 '0.1',
                 'all'
@@ -254,7 +274,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presentors-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            filemtime(plugin_dir_path(__FILE__) . 'js/PD-presenters-table.js'),
+            filemtime(plugin_dir_path( __FILE__ ) . 'js/PD-presenters-table.js'),
             true
         );
 
@@ -340,7 +360,7 @@ add_action('wp_enqueue_scripts', 'slug_specific_shortcode_js_loader');
 
 //JS related action controls
 add_action('wp_ajax_check_db_connection', function () {
-    include plugin_dir_path(__FILE__) . 'includes/check_connection.php';
+    include plugin_dir_path( __FILE__ ) . 'includes/check_connection.php';
     exit; // Required to end AJAX call
 });
 

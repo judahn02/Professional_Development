@@ -195,7 +195,8 @@ function renderPresenters() {
 function goToPresenterProfile(id) {
     // Store presenters in localStorage for access in presenter-profile.html
     localStorage.setItem('presenters', JSON.stringify(window.presenters));
-    window.location.href = `presenter-profile.html?presenter=${id}`;
+    // swindow.location.href = `presenter-profile.html?presenter=${id}`;
+    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_presentor_page&presentor=' + id);
 }
 
 // Filter presenters based on search
