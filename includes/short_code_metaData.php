@@ -7,6 +7,10 @@ if (!defined('ABSPATH')) {
 // for debugging only, show all meta varabiles the plugin in using.
 function Professional_Development_show_all_meta_variables ($atts = [], $content= null, $tag = '') {
 
+    if (!defined('PROFDEV_ENABLE_DEBUG_SHORTCODE') || !PROFDEV_ENABLE_DEBUG_SHORTCODE) {
+        return "<!-- PD_metaData shortcode disabled. Add define('PROFDEV_ENABLE_DEBUG_SHORTCODE', true); to wp-config.php to enable. -->";
+    }
+
     if (!current_user_can('manage_options')) {
     return 'Access denied'; // or return 'Access denied';
     }

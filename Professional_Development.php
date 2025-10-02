@@ -408,7 +408,7 @@ function pd_check_db_connection_callback() {
 // ShortCode
 function PD_shortcode_init() {
 
-    add_shortcode( 'PD_metaData', 'Professional_Development_show_all_meta_variables' ) ;
+    add_shortcode('PD_metaData', 'Professional_Development_show_all_meta_variables');
     add_shortcode('PD_metaData_nonAdmin', 'Professional_Development_show_user_id') ;
     add_shortcode('PD_Member_Info', 'Pofessional_Development_show_member_progress') ;
 
