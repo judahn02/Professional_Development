@@ -23,12 +23,25 @@ function checkDatabaseStatus() {
     statusIndicator.className = 'status-indicator loading';
     statusIndicator.title = 'Checking database connection...';
 
-    fetch(ajaxurl + '?action=check_db_connection', {
+    // Use localized ajaxurl if available
+    const endpoint = (typeof PDAdminHome !== 'undefined' && PDAdminHome.ajaxurl)
+        ? PDAdminHome.ajaxurl
+        : (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
+
+    // Build form-encoded body so PHP can read $_REQUEST for nonce
+    const params = new URLSearchParams();
+    params.set('action', 'check_db_connection');
+    if (typeof PDAdminHome !== 'undefined' && PDAdminHome.nonce) {
+        params.set('nonce', PDAdminHome.nonce);
+    }
+
+    fetch(endpoint, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
-            'Content-Type': 'application/json'
-        }
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        body: params.toString()
     })
     .then(res => {
         console.log("Response received:", res);

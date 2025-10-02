@@ -369,6 +369,11 @@ function pd_check_db_connection_callback() {
         wp_send_json_error(['error' => 'Access denied.'], 403);
     }
 
+    // Nonce verification (from PDAdminHome.nonce)
+    if (!check_ajax_referer('pd_home_nonce', 'nonce', false)) {
+        wp_send_json_error(['error' => 'Invalid request.'], 400);
+    }
+
     // Get encrypted credentials from options
     $host_encrypted = get_option('ProfessionalDevelopment_db_host', '');
     $name_encrypted = get_option('ProfessionalDevelopment_db_name', '');
