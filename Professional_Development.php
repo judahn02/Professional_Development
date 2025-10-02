@@ -435,6 +435,14 @@ register_uninstall_hook( __FILE__, 'PofessionalDevelopment_uninstall_hook_functi
 add_action('wp_ajax_get_attendees', 'get_attendees_callback');
 
 function get_attendees_callback() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Access denied.'], 403);
+    }
+
+    if (!check_ajax_referer('pd_members_nonce', 'nonce', false)) {
+        wp_send_json_error(['error' => 'Invalid request.'], 400);
+    }
+
     $args = array(
         'orderby'  => 'last_name',
         'order'    => 'ASC',

@@ -67,7 +67,19 @@ document.addEventListener('DOMContentLoaded', updateAttendeeSortArrows);
 
 // Fetch attendee data from the server
 function fetchAttendeesFromServer() {
-    jQuery.post(ajaxurl, { action: 'get_attendees' })
+    const endpoint = (typeof PDMembers !== 'undefined' && PDMembers.ajaxurl)
+        ? PDMembers.ajaxurl
+        : (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
+
+    const payload = {
+        action: 'get_attendees'
+    };
+
+    if (typeof PDMembers !== 'undefined' && PDMembers.nonce) {
+        payload.nonce = PDMembers.nonce;
+    }
+
+    jQuery.post(endpoint, payload)
         .done(function(response) {
             attendees = response;
             filteredAttendees = [...attendees];
