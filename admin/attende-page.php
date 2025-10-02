@@ -7,14 +7,13 @@ function PD_attendee_admin_page() {
     // add any post handles here.
 
 
-    // add any variables needed for the html here
-    // $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
+    // Variables for use inside HTML
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
 
     ?>
     <div class="container">
         <div class="max-width">
-            <a href="<?php echo esc_url($members_table_url); ?>" class="back-link">&larr; Back to Attendees</a>
+            <a href="<?php echo esc_url($members_table_url); ?>" class="back-link">&larr; Back to Members Table</a>
             <div class="profile-container">
                 <!-- Profile Header -->
                 <div class="profile-header">

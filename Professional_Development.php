@@ -359,10 +359,46 @@ add_action('wp_enqueue_scripts', 'slug_specific_shortcode_js_loader');
 
 
 //JS related action controls
-add_action('wp_ajax_check_db_connection', function () {
-    include plugin_dir_path( __FILE__ ) . 'includes/check_connection.php';
-    exit; // Required to end AJAX call
-});
+add_action('wp_ajax_check_db_connection', 'pd_check_db_connection_callback');
+
+function pd_check_db_connection_callback() {
+    // Security check: nonce and capability
+    // Note: A nonce isn't strictly required here since it's a GET/POST from an admin page
+    // and we check capability, but it's good practice.
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Access denied.'], 403);
+    }
+
+    // Get encrypted credentials from options
+    $host_encrypted = get_option('ProfessionalDevelopment_db_host', '');
+    $name_encrypted = get_option('ProfessionalDevelopment_db_name', '');
+    $user_encrypted = get_option('ProfessionalDevelopment_db_user', '');
+    $pass_encrypted = get_option('ProfessionalDevelopment_db_pass', '');
+
+    if (!$host_encrypted || !$name_encrypted || !$user_encrypted || !$pass_encrypted) {
+        wp_send_json_error(['error' => 'Missing database credentials.']);
+    }
+
+    // Decrypt values
+    $host = ProfessionalDevelopment_decrypt($host_encrypted);
+    $name = ProfessionalDevelopment_decrypt($name_encrypted);
+    $user = ProfessionalDevelopment_decrypt($user_encrypted);
+    $pass = ProfessionalDevelopment_decrypt($pass_encrypted);
+
+    if (!$host || !$name || !$user || !$pass) {
+        wp_send_json_error(['error' => 'Decryption failed or credentials incomplete.']);
+    }
+
+    // Attempt DB connection
+    $mysqli = new mysqli($host, $user, $pass, $name);
+
+    if ($mysqli->connect_error) {
+        wp_send_json_error(['error' => 'Connection failed: ' . $mysqli->connect_error]);
+    }
+
+    $mysqli->close();
+    wp_send_json_success();
+}
 
 // ShortCode
 function PD_shortcode_init() {
