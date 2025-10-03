@@ -60,13 +60,13 @@ async function fillPresenters({ debug = true } = {}) {
 
   try {
     // 1) Find REST config localized from PHP
-    const cfg =
+  const cfg =
       (typeof pdRest !== 'undefined' && pdRest) ||
-      (typeof PDPresentors !== 'undefined' && PDPresentors) ||
+      (typeof PDPresenters !== 'undefined' && PDPresenters) ||
       null;
 
     if (!cfg) {
-      errLog('No REST config found. Expected `pdRest` or `PDPresentors` from wp_localize_script.');
+      errLog('No REST config found. Expected `pdRest` or `PDPresenters` from wp_localize_script.');
       throw new Error('Missing REST config object');
     }
 
@@ -74,8 +74,8 @@ async function fillPresenters({ debug = true } = {}) {
     if (!cfg.nonce) warn('Config has no `nonce`. You may hit 401/403 if the route requires auth.');
 
     const base = String(cfg.root || '').replace(/\/+$/, ''); // trim trailing slashes
-    // NOTE: route is "presentors" (with 'o') per your PHP
-    const url = base + '/presentors';
+    const route = cfg.route || '/presenters';
+    const url = base + route;
 
     log('Using URL:', url);
     log('Nonce present?', !!cfg.nonce);
@@ -196,7 +196,7 @@ function goToPresenterProfile(id) {
     // Store presenters in localStorage for access in presenter-profile.html
     localStorage.setItem('presenters', JSON.stringify(window.presenters));
     // swindow.location.href = `presenter-profile.html?presenter=${id}`;
-    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_presentor_page&presentor=' + id);
+    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_presenter_page&presenter=' + id);
 }
 
 // Filter presenters based on search
@@ -267,11 +267,12 @@ document.getElementById('addPresenterForm').addEventListener('submit', async fun
 
     // REST config
     const cfg = (typeof pdRest !== 'undefined' && pdRest) ||
-                (typeof PDPresentors !== 'undefined' && PDPresentors) || null;
-    if (!cfg) throw new Error('Missing REST config (pdRest/PDPresentors).');
+                (typeof PDPresenters !== 'undefined' && PDPresenters) ||
+                (typeof PDPresenters !== 'undefined' && PDPresenters) || null;
+    if (!cfg) throw new Error('Missing REST config (pdRest/PDPresenters).');
 
     // POST to REST endpoint
-    const res = await fetch(cfg.root.replace(/\/+$/, '') + '/presentors', {
+    const res = await fetch(cfg.root.replace(/\/+$/, '') + (cfg.route || '/presenters'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

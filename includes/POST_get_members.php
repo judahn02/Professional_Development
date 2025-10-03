@@ -21,11 +21,11 @@ $args = array(
 
 $user_query = new WP_User_Query($args);
 
-$attendees = array();
+$members = array();
 
 if (!empty($user_query->get_results())) {
     foreach ($user_query->get_results() as $user) {
-        $attendees[] = array(
+        $members[] = array(
             'id'               => $user->ID,
             'firstname'        => get_user_meta($user->ID, 'first_name', true),
             'lastname'         => get_user_meta($user->ID, 'last_name', true),
@@ -36,5 +36,5 @@ if (!empty($user_query->get_results())) {
     }
 }
 
-echo json_encode($attendees);
+echo json_encode($members);
 exit;

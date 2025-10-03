@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit ;
 
-function PD_attendee_admin_page() {
+function PD_member_admin_page() {
     if (!current_user_can('manage_options')) return;
 
     // add any post handles here.
@@ -28,7 +28,7 @@ function PD_attendee_admin_page() {
                 <div class="profile-section">
                     <div class="profile-section-title">Contact</div>
                     <ul class="profile-details-list">
-                        <li><strong>Attendee Type:</strong> <span id="profileType" class="badge"></span></li>
+                        <li><strong>Member Type:</strong> <span id="profileType" class="badge"></span></li>
                     </ul>
                 </div>
 
@@ -37,7 +37,7 @@ function PD_attendee_admin_page() {
                     <div class="summary-title">Progress Summary</div>
                     <div class="summary-row">
                         <div class="summary-item"><span class="summary-label">Total Hours all-time:</span> <span class="summary-value" id="totalHours">0</span></div>
-                        <div class="summary-item"><span class="summary-label">Most recently attended:</span> <span class="summary-value" id="recentSession"></span></div>
+                        <div class="summary-item"><span class="summary-label">Most recent session:</span> <span class="summary-value" id="recentSession"></span></div>
                     </div>
                     <div class="range-control">
                         <label for="yearRange"><span class="summary-label">Total Hours in the last </span>

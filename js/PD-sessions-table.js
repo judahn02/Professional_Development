@@ -54,7 +54,7 @@ function updateSessionSortArrows() {
 
 // Show initial sort arrows on load
 document.addEventListener('DOMContentLoaded', updateSessionSortArrows);
-// Sample session data with attendees
+// Sample session data with members
 const sessions = [
     {
         date: "3/14/2025",
@@ -66,7 +66,7 @@ const sessions = [
         qualifyForCeus: "Yes",
         eventType: "Webinar",
         presenters: "Billy Bob Joe",
-        attendees: [
+        members: [
             { name: "Alice Smith", email: "alice@example.com" },
             { name: "Bob Lee", email: "bob@example.com" },
             { name: "Carlos Rivera", email: "carlos@example.com" }
@@ -82,7 +82,7 @@ const sessions = [
         qualifyForCeus: "Yes",
         eventType: "In-Person",
         presenters: "Sarah Johnson, Mike Chen",
-        attendees: [
+        members: [
             { name: "Diana Prince", email: "diana@example.com" },
             { name: "Evan Tran", email: "evan@example.com" }
         ]
@@ -97,7 +97,7 @@ const sessions = [
         qualifyForCeus: "Yes",
         eventType: "Hybrid",
         presenters: "Dr. Amanda Rodriguez",
-        attendees: [
+        members: [
             { name: "Fiona Zhang", email: "fiona@example.com" },
             { name: "George Patel", email: "george@example.com" },
             { name: "Hannah Kim", email: "hannah@example.com" },
@@ -114,7 +114,7 @@ const sessions = [
         qualifyForCeus: "Yes",
         eventType: "Webinar",
         presenters: "Jennifer Lee, David Kim",
-        attendees: []
+        members: []
     }
 ];
 
@@ -142,9 +142,9 @@ function renderSessions() {
 
     let html = '';
     filteredSessions.forEach((session, index) => {
-        const attendees = session.attendees && session.attendees.length > 0
-            ? session.attendees.map(a => `<li><span class="attendee-name">${a.name}</span><span class="attendee-email">${a.email}</span></li>`).join('')
-            : '<li class="no-attendees">No attendees yet.</li>';
+        const members = session.members && session.members.length > 0
+            ? session.members.map(a => `<li><span class="member-name">${a.name}</span><span class="member-email">${a.email}</span></li>`).join('')
+            : '<li class="no-members">No members yet.</li>';
         html += `
         <tr class="session-row" style="cursor:pointer;">
             <td onclick="goToSessionProfile(${index})">${session.date}</td>
@@ -157,16 +157,16 @@ function renderSessions() {
             <td onclick="goToSessionProfile(${index})">${session.eventType}</td>
             <td onclick="goToSessionProfile(${index})">${session.presenters}</td>
             <td>
-                <span class="details-dropdown" data-index="${index}" onclick="toggleAttendeeDropdown(event, ${index})">
+                <span class="details-dropdown" data-index="${index}" onclick="toggleMemberDropdown(event, ${index})">
                     <svg class="dropdown-icon" width="18" height="18" fill="none" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M6 9l6 6 6-6"/></svg>
                     Details
                 </span>
             </td>
         </tr>
-        <tr class="attendee-row" id="attendee-row-${index}" style="display:none;">
+        <tr class="member-row" id="member-row-${index}" style="display:none;">
             <td colspan="10" style="background:#fef2f2; padding:0; border-top:1px solid #fecaca;">
-                <div class="attendee-list-block">
-                    <ul>${attendees}</ul>
+                <div class="member-list-block">
+                    <ul>${members}</ul>
                 </div>
             </td>
         </tr>
@@ -191,24 +191,24 @@ function filterSessions() {
 }
 
 
-// Toggle attendee row below the session row
-function toggleAttendeeDropdown(event, sessionIndex) {
+// Toggle member row below the session row
+function toggleMemberDropdown(event, sessionIndex) {
     event.stopPropagation();
-    // Hide all attendee rows except this one
-    document.querySelectorAll('.attendee-row').forEach((el, idx) => {
+    // Hide all member rows except this one
+    document.querySelectorAll('.member-row').forEach((el, idx) => {
         if (idx !== sessionIndex) el.style.display = 'none';
     });
-    const row = document.getElementById(`attendee-row-${sessionIndex}`);
+    const row = document.getElementById(`member-row-${sessionIndex}`);
     if (row) {
         row.style.display = (row.style.display === 'none' || row.style.display === '') ? 'table-row' : 'none';
     }
 }
 
-// Close attendee rows when clicking outside the table
+// Close member rows when clicking outside the table
 document.addEventListener('click', function(e) {
-    const isDropdown = e.target.classList.contains('details-dropdown') || e.target.closest('.attendee-list-block');
+    const isDropdown = e.target.classList.contains('details-dropdown') || e.target.closest('.member-list-block');
     if (!isDropdown) {
-        document.querySelectorAll('.attendee-row').forEach(el => {
+        document.querySelectorAll('.member-row').forEach(el => {
             el.style.display = 'none';
         });
     }

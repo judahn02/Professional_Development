@@ -23,10 +23,9 @@ function PD_main_admin_page() {
     $pass = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_pass', ''));
 
     $PD_home_url = admin_url('admin.php?page=profdef_home') ;
-    // $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
     $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
-    $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    $presenters_table_url = admin_url("admin.php?page=profdef_presenters_table") ;
     
     ?>
     
@@ -39,10 +38,10 @@ function PD_main_admin_page() {
                 <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-button" id="sessionTableBtn">
                     SESSION TABLE
                 </a>
-                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-button" id="attendeeTableBtn">
-                    ATTENDEE TABLE
+                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-button" id="memberTableBtn">
+                    MEMBER TABLE
                 </a>
-                <a href="<?php echo esc_url($presentors_table_url); ?>" class="nav-button" id="presenterTableBtn">
+                <a href="<?php echo esc_url($presenters_table_url); ?>" class="nav-button" id="presenterTableBtn">
                     PRESENTER TABLE
                 </a>
             </div>
@@ -98,4 +97,3 @@ function PD_main_admin_page() {
 
     <?php
 }
-

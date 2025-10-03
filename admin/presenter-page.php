@@ -7,13 +7,13 @@ function PD_presenter_admin_page() {
     // add any post handles here.
 
     // add any variables needed for the html here
-    $presenters_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    $presenters_table_url = admin_url("admin.php?page=profdef_presenters_table") ;
 
     ?>
 
     <div class="container">
         <div class="max-width">
-            <a href="<?php echo esc_url($presenters_table_url); ?>" class="back-link">&larr; Back to Attendees</a>
+            <a href="<?php echo esc_url($presenters_table_url); ?>" class="back-link">&larr; Back to Presenters</a>
             <div class="profile-container">
                 <!-- Profile Header -->
                 <div class="profile-header">

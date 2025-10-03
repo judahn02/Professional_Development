@@ -14,9 +14,8 @@ function PD_session_individual_page() {
 
     // hotlink variables here
     $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
-    // $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
-    $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    $presenters_table_url = admin_url("admin.php?page=profdef_presenters_table") ;
     $PD_home_url = admin_url('admin.php?page=profdef_home') ;
 
     ?>
@@ -25,8 +24,8 @@ function PD_session_individual_page() {
         <div class="max-width">
             <div class="nav-links">
                 <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Back to Sessions</a>
-                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Attendee Table</a>
-                <a href="<?php echo esc_url($presentors_table_url); ?>" class="nav-link">Presenter Table</a>
+                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Member Table</a>
+                <a href="<?php echo esc_url($presenters_table_url); ?>" class="nav-link">Presenter Table</a>
                 <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>
             <h1 class="main-title">Session Profile</h1>
@@ -58,10 +57,10 @@ function PD_session_individual_page() {
                     <h3 style="color:#be123c; margin-bottom:0.5rem;">Presenter(s)</h3>
                     <p class="presenters"></p>
                 </div>
-                <!-- Attendees (placeholder) -->
+                <!-- Members (placeholder) -->
                 <div>
-                    <h3 style="color:#be123c; margin-bottom:0.5rem;">Attendees</h3>
-                    <p>List of attendees will be shown here (to be integrated with database).</p>
+                    <h3 style="color:#be123c; margin-bottom:0.5rem;">Members</h3>
+                    <p>List of members will be shown here (to be integrated with database).</p>
                 </div>
             </div>
 

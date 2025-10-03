@@ -10,7 +10,7 @@ function PD_members_table_admin_page() {
     $PD_home_url         = admin_url('admin.php?page=profdef_home');
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
     $sessions_table_url  = admin_url("admin.php?page=profdef_sessions_table");
-    $presentors_table_url= admin_url("admin.php?page=profdef_presentors_table");
+    $presenters_table_url= admin_url("admin.php?page=profdef_presenters_table");
     ?>
     <div class="container">
       <div class="max-width">
@@ -19,7 +19,7 @@ function PD_members_table_admin_page() {
         <!-- Navigation Links -->
         <div class="nav-links">
           <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Session Table</a>
-          <a href="<?php echo esc_url($presentors_table_url); ?>" class="nav-link">Presenter Table</a>
+          <a href="<?php echo esc_url($presenters_table_url); ?>" class="nav-link">Presenter Table</a>
           <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
         </div>
 
@@ -29,7 +29,7 @@ function PD_members_table_admin_page() {
             <input type="text" class="search-input" placeholder="Search by... name/title/type" id="searchInput"
                    oninput="filterMembers()">
           </div>
-          <button class="add-attendee-btn" onclick="downloadAllUsersCSV()">
+          <button class="add-member-btn" onclick="downloadAllUsersCSV()">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd"
                     d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"

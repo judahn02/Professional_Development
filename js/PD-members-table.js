@@ -1,18 +1,20 @@
-let attendeeSortKey = null;
-let attendeeSortAsc = true;
+let memberSortKey = null;
+let memberSortAsc = true;
+let members = [];
+let filteredMembers = [];
 
 
 function sortMembers(key) {
-  if (attendeeSortKey === key) {
-    attendeeSortAsc = !attendeeSortAsc;
+  if (memberSortKey === key) {
+    memberSortAsc = !memberSortAsc;
   } else {
-    attendeeSortKey = key;
-    attendeeSortAsc = true;
+    memberSortKey = key;
+    memberSortAsc = true;
   }
 
-  const dir = attendeeSortAsc ? 1 : -1;
+  const dir = memberSortAsc ? 1 : -1;
 
-  filteredAttendees.sort((a, b) => {
+  filteredMembers.sort((a, b) => {
     let valA, valB;
 
     if (key === 'totalHours') {
@@ -33,17 +35,17 @@ function sortMembers(key) {
     return valA.localeCompare(valB) * dir;
   });
 
-  updateAttendeeSortArrows();
-  renderAttendees();
+  updateMemberSortArrows();
+  renderMembers();
 }
 
-function updateAttendeeSortArrows() {
+function updateMemberSortArrows() {
     const keys = ['firstname','lastname','email','id','totalHours'];
     keys.forEach(k => {
         const el = document.getElementById('sort-arrow-' + k);
         if (el) {
-            if (attendeeSortKey === k) {
-                el.textContent = attendeeSortAsc ? '▲' : '▼';
+            if (memberSortKey === k) {
+                el.textContent = memberSortAsc ? '▲' : '▼';
                 el.style.color = '#e11d48';
                 el.style.fontSize = '1em';
                 el.style.marginLeft = '0.2em';
@@ -53,26 +55,26 @@ function updateAttendeeSortArrows() {
         }
     });
 }
-// Helper to calculate total hours for an attendee
-function getTotalHours(attendee) {
-    if (typeof attendee.totalHours !== "undefined") {
-        return Number(attendee.totalHours) || 0 ;
+// Helper to calculate total hours for an member
+function getTotalHours(member) {
+    if (typeof member.totalHours !== "undefined") {
+        return Number(member.totalHours) || 0 ;
     }
-    if (!attendee.sessionsData || !Array.isArray(attendee.sessionsData)) return 0;
-    return attendee.sessionsData.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0);
+    if (!member.sessionsData || !Array.isArray(member.sessionsData)) return 0;
+    return member.sessionsData.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0);
 }
 
 // Show initial sort arrows on load
-document.addEventListener('DOMContentLoaded', updateAttendeeSortArrows);
+document.addEventListener('DOMContentLoaded', updateMemberSortArrows);
 
-// Fetch attendee data from the server
-function fetchAttendeesFromServer() {
+// Fetch member data from the server
+function fetchMembersFromServer() {
     const endpoint = (typeof PDMembers !== 'undefined' && PDMembers.ajaxurl)
         ? PDMembers.ajaxurl
         : (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
 
     const payload = {
-        action: 'get_attendees'
+        action: 'get_members'
     };
 
     if (typeof PDMembers !== 'undefined' && PDMembers.nonce) {
@@ -81,81 +83,81 @@ function fetchAttendeesFromServer() {
 
     jQuery.post(endpoint, payload)
         .done(function(response) {
-            attendees = response;
-            filteredAttendees = [...attendees];
-            //renderAttendees();
+            members = response;
+            filteredMembers = [...members];
+            //renderMembers();
             sortMembers('id');
         })
         .fail(function() {
-            alert('Error fetching attendees. Please try again.');
+            alert('Error fetching members. Please try again.');
         });
 }
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchAttendeesFromServer();
+    fetchMembersFromServer();
 });
 
-// Render attendees table
-function renderAttendees() {
+// Render members table
+function renderMembers() {
     const tbody = document.getElementById('MembersTableBody');
     
-    if (filteredAttendees.length === 0) {
+    if (filteredMembers.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">
-                    No attendees found matching your criteria.
+                    No members found matching your criteria.
                 </td>
             </tr>
         `;
         return;
     }
 
-    tbody.innerHTML = filteredAttendees.map((attendee, index) => `
-        <tr class="attendee-row" style="cursor:pointer;" onclick="goToAttendeeProfile(${attendee.id})">
-            <td style="font-weight: 600;">${attendee.firstname}</td>
-            <td style="font-weight: 600;">${attendee.lastname}</td>
-            <td>${attendee.email || ''}</td>
-            <td>${attendee.id}</td>
-            <td>${getTotalHours(attendee)}</td>
+    tbody.innerHTML = filteredMembers.map((member, index) => `
+        <tr class="member-row" style="cursor:pointer;" onclick="goToMemberProfile(${member.id})">
+            <td style="font-weight: 600;">${member.firstname}</td>
+            <td style="font-weight: 600;">${member.lastname}</td>
+            <td>${member.email || ''}</td>
+            <td>${member.id}</td>
+            <td>${getTotalHours(member)}</td>
         </tr>
     `).join('');
 }
 
-// Go to attendee profile page
-function goToAttendeeProfile(id) {
-    // Store attendees in localStorage for access in attendee-profile.html
-    localStorage.setItem('attendees', JSON.stringify(attendees));
-    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&attendee=' + id);
+// Go to member profile page
+function goToMemberProfile(id) {
+    // Store members in localStorage for access in member-profile.html
+    localStorage.setItem('members', JSON.stringify(members));
+    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&member=' + id);
 }
 
-// Filter attendees based on search
+// Filter members based on search
 function filterMembers() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     
-    filteredAttendees = attendees.filter(attendee => {
+    filteredMembers = members.filter(member => {
         return (
-            (attendee.firstname && attendee.firstname.toLowerCase().includes(searchTerm)) ||
-            (attendee.lastname && attendee.lastname.toLowerCase().includes(searchTerm)) ||
-            (attendee.email && attendee.email.toLowerCase().includes(searchTerm)) ||
-            //(attendee.id)
-            (attendee.id != null && String(attendee.id).toLowerCase().includes(searchTerm))
-            // (attendee.certificationType && attendee.certificationType.toLowerCase().includes(searchTerm))
+            (member.firstname && member.firstname.toLowerCase().includes(searchTerm)) ||
+            (member.lastname && member.lastname.toLowerCase().includes(searchTerm)) ||
+            (member.email && member.email.toLowerCase().includes(searchTerm)) ||
+            //(member.id)
+            (member.id != null && String(member.id).toLowerCase().includes(searchTerm))
+            // (member.certificationType && member.certificationType.toLowerCase().includes(searchTerm))
         );
     });
     
-    renderAttendees();
+    renderMembers();
 }
 
 // Debugging functions
-function downloadAllUsersCSV(filename = 'attendees_with_metadata.csv') {
-  if (!Array.isArray(attendees) || attendees.length === 0) {
-    alert('No attendees to export.');
+function downloadAllUsersCSV(filename = 'members_with_metadata.csv') {
+  if (!Array.isArray(members) || members.length === 0) {
+    alert('No members to export.');
     return;
   }
 
-  // 1) Normalize + flatten metaData for each attendee
-  const flattenedMetaPerAttendee = attendees.map(a => {
+  // 1) Normalize + flatten metaData for each member
+  const flattenedMetaPerMember = members.map(a => {
     let m = a.metaData ?? a.metadata ?? a.meta ?? {};
     if (typeof m === 'string') { // handle serialized metadata
       try { m = JSON.parse(m); } catch { m = { metaData: m }; }
@@ -165,7 +167,7 @@ function downloadAllUsersCSV(filename = 'attendees_with_metadata.csv') {
 
   // 2) Build the union of all metadata keys (stable, sorted)
   const metaKeys = Array.from(
-    flattenedMetaPerAttendee.reduce((set, obj) => {
+    flattenedMetaPerMember.reduce((set, obj) => {
       Object.keys(obj).forEach(k => set.add(k));
       return set;
     }, new Set())
@@ -175,8 +177,8 @@ function downloadAllUsersCSV(filename = 'attendees_with_metadata.csv') {
   const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Total Hours', ...metaKeys];
 
   // 4) Build rows
-  const rows = attendees.map((a, i) => {
-    const meta = flattenedMetaPerAttendee[i];
+  const rows = members.map((a, i) => {
+    const meta = flattenedMetaPerMember[i];
     return [
       a.id ?? '',
       a.firstname ?? '',

@@ -54,7 +54,7 @@ function Pofessional_Development_show_member_progress ($atts = [], $content= nul
                             <span class="font-bold text-primary" id="filteredHours">0</span>
                             <input type="range" min="1" max="10" value="1" id="yearRange" style="width: 100%;">
                         </div>
-                        <p>Most recently attended: <span class="font-bold">3/14/2025 – ASL Conference 1</span></p>
+                        <p>Most recent session: <span class="font-bold">3/14/2025 – ASL Conference 1</span></p>
                         <button class="btn btn-sm mt-2" onclick="exportReport()">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>

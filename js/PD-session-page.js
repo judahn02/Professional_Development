@@ -73,7 +73,7 @@ document.getElementById('editSessionForm').addEventListener('submit', function(e
         qualifyForCeus: document.getElementById('editQualifyForCeus').value,
         ceuConsiderations: document.getElementById('editCeuConsiderations').value,
         presenters: document.getElementById('editPresenters').value,
-        attendees: sessions[sessionIndex].attendees || []
+        members: sessions[sessionIndex].members || []
     };
 
     // Update and save

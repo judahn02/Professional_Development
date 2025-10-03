@@ -17,14 +17,14 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_metaData.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_client.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/ar_member_usrID.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'includes/rest-presentors.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/rest-presenters.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/attende-page.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/sessions-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/session-page.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/presentors-table.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/presentor-page.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/presenters-table.php' ;
+require_once plugin_dir_path( __FILE__ ) . 'admin/presenter-page.php' ;
 
 
 // section to add new admin pages to admin menu.
@@ -61,11 +61,11 @@ function Professional_Development_admin_menu_page() {
 
     add_submenu_page( 
         'profdef_home', 
-        'Presentors Page', 
-        'Presentors Page', 
+        'Presenters Page', 
+        'Presenters Page', 
         'manage_options', 
-        'profdef_presentors_table', 
-        'PD_presentors_table_page', 
+        'profdef_presenters_table', 
+        'PD_presenters_table_page', 
         4 
     ) ;
 
@@ -75,7 +75,7 @@ function Professional_Development_admin_menu_page() {
         'Member Page', 
         'manage_options', 
         'profdef_member_page', 
-        'PD_attendee_admin_page', 
+        'PD_member_admin_page', 
     ) ;
 
     add_submenu_page( 
@@ -90,10 +90,10 @@ function Professional_Development_admin_menu_page() {
 
     add_submenu_page(
         null,
-        'Presentor Page',
-        'Presentor Page',
+        'Presenter Page',
+        'Presenter Page',
         'manage_options',
-        'profdef_presentor_page',
+        'profdef_presenter_page',
         'PD_presenter_admin_page'
     ) ;
 }
@@ -134,9 +134,9 @@ function slug_specific_admin_css_loader($hook) {
             ) ;
         }
 
-        if($_GET['page'] === 'profdef_presentors_table') {
+        if($_GET['page'] === 'profdef_presenters_table') {
             wp_enqueue_style(
-                'PD-admin-presentors-table-css',
+                'PD-admin-presenters-table-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-presenter-table.css',
                 array(),
                 '0.3',
@@ -164,9 +164,9 @@ function slug_specific_admin_css_loader($hook) {
             ) ;
         }
 
-        if($_GET['page'] === 'profdef_presentor_page') {
+        if($_GET['page'] === 'profdef_presenter_page') {
             wp_enqueue_style(
-                'PD-admin-presentor-page-css',
+                'PD-admin-presenter-page-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
                 array(),
                 '0.1',
@@ -251,27 +251,11 @@ function slug_specific_admin_js_loader($hook) {
 
     }
 
-    // if (($hook === 'profdef_home_page_profdef_presentors_table')) {
-    if (isset($_GET['page']) && $_GET['page'] === 'profdef_presentors_table') {
-        // wp_enqueue_script(
-        //     'PD-admin-presentors-table-js',
-        //     plugin_dir_url(__FILE__) . 'js/PD-presenters-table.js',
-        //     array('jquery'),
-        //     '0.7',
-        //     true
-        // );
+    if (isset($_GET['page']) && $_GET['page'] === 'profdef_presenters_table') {
 
-        // wp_localize_script(
-        //     'PD-admin-presentors-table-js',
-        //     'PDPresentors',
-        //     array(
-        //         'ajaxurl' => admin_url('admin-ajax.php'),
-        //         'nonce'   => wp_create_nonce('pd_presenters_nonce')
-        //     )
-        // );
         // Enqueue script
         wp_enqueue_script(
-            'PD-admin-presentors-table-js',
+            'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
             filemtime(plugin_dir_path( __FILE__ ) . 'js/PD-presenters-table.js'),
@@ -280,17 +264,17 @@ function slug_specific_admin_js_loader($hook) {
 
         // Pass REST info + nonce for authenticated requests
         wp_localize_script(
-            'PD-admin-presentors-table-js',
-            'PDPresentors',
+            'PD-admin-presenters-table-js',
+            'PDPresenters',
             [
                 'root'  => esc_url_raw( rest_url('profdev/v1/') ),
+                'route' => '/presenters',
                 'nonce' => wp_create_nonce('wp_rest'),
             ]
         );
 
     }
 
-    // if (($hook === 'profdef_home_page_profdef_member_page')) {
     if (isset($_GET['page']) && $_GET['page'] === 'profdef_member_page') {
         wp_enqueue_script(
             'PD-admin-member-page-js',
@@ -302,7 +286,7 @@ function slug_specific_admin_js_loader($hook) {
 
         wp_localize_script(
             'PD-admin-member-page-js',
-            'PDPresentorpage',
+            'PDMemberPage',
             array(
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce'   => wp_create_nonce('pd_presenterpage_nonce')
@@ -429,9 +413,9 @@ register_deactivation_hook(__FILE__, function () {
 
 
 // Ajax POST handlers for dynamic JS calls
-add_action('wp_ajax_get_attendees', 'get_attendees_callback');
+add_action('wp_ajax_get_members', 'get_members_callback');
 
-function get_attendees_callback() {
+function get_members_callback() {
     if (!current_user_can('manage_options')) {
         wp_send_json_error(['error' => 'Access denied.'], 403);
     }
@@ -447,10 +431,10 @@ function get_attendees_callback() {
 
     $user_query = new WP_User_Query($args);
 
-    $attendees = array();
+    $members = array();
 
     foreach ($user_query->get_results() as $user) {
-        $attendees[] = array(
+        $members[] = array(
             'id'               => $user->ID,
             'firstname'        => get_user_meta($user->ID, 'first_name', true),
             'lastname'         => get_user_meta($user->ID, 'last_name', true),
@@ -460,5 +444,5 @@ function get_attendees_callback() {
         );
     }
 
-    wp_send_json($attendees);
+    wp_send_json($members);
 }

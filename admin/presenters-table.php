@@ -1,7 +1,7 @@
 <?php
 defined('ABSPATH') || exit ;
 
-function PD_presentors_table_page() {
+function PD_presenters_table_page() {
     if (!current_user_can('manage_options')) return ;
 
     //PHP POST processing
@@ -17,10 +17,9 @@ function PD_presentors_table_page() {
 
     // hotlink variables here
     $PD_home_url = admin_url('admin.php?page=profdef_home') ;
-    // $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
     $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
-    $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    $presenters_table_url = admin_url("admin.php?page=profdef_presenters_table") ;
     
 
     ?>
@@ -31,7 +30,7 @@ function PD_presentors_table_page() {
             <!-- Navigation Links -->
             <div class="nav-links">
                 <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Session Table</a>
-                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Attendee Table</a>
+                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Member Table</a>
                 <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>
 
@@ -109,7 +108,7 @@ function PD_presentors_table_page() {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Registered Session(s)</label>
-                    <input type="text" class="form-input" id="presenterSessions" value="!--Add presentors to session in the sessions page--!" disabled aria-disabled="true"/>
+                    <input type="text" class="form-input" id="presenterSessions" value="!--Add presenters to session in the sessions page--!" disabled aria-disabled="true"/>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" onclick="closeAddPresenterModal()">Cancel</button>
@@ -148,7 +147,7 @@ function PD_presentors_table_page() {
                 <div class="form-group">
                     <label class="form-label" for="presenterSessions">Registered Session(s)</label>
                     <input type="text" class="form-input" id="presenterSessions"
-                        value="Add presentors to session in the sessions page"
+                        value="Add presenters to session in the sessions page"
                         disabled aria-disabled="true">
                 </div>
 

@@ -14,10 +14,9 @@ function PD_sessions_page() {
 
     // hotlink variables here
     $PD_home_url = admin_url('admin.php?page=profdef_home') ;
-    // $attendees_table_url = admin_url("admin.php?page=profdef_attendees_table") ;
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
     $sessions_table_url = admin_url("admin.php?page=profdef_sessions_table") ;
-    $presentors_table_url = admin_url("admin.php?page=profdef_presentors_table") ;
+    $presenters_table_url = admin_url("admin.php?page=profdef_presenters_table") ;
     
 
     ?>
@@ -28,8 +27,8 @@ function PD_sessions_page() {
 
             <!-- Navigation Links -->
             <div class="nav-links">
-                <a href="<?php echo esc_url($members_table_url) ; ?>" class="nav-link">Attendee Table</a>
-                <a href="<?php echo esc_url($presentors_table_url) ; ?>" class="nav-link">Presenter Table</a>
+                <a href="<?php echo esc_url($members_table_url) ; ?>" class="nav-link">Member Table</a>
+                <a href="<?php echo esc_url($presenters_table_url) ; ?>" class="nav-link">Presenter Table</a>
                 <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>
 
