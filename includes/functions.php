@@ -4,7 +4,8 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// !! BEFORE RELEASE: Change 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm' to a secure key, ideally stored in wp-config.php
+// Key derivation: uses PS_ENCRYPTION_KEY if defined, otherwise derives a per-site key
+// from WordPress salts and the site URL so no wp-config editing is required.
 
 /**
  * Plugin utility functions for storing and retrieving a third-party service password.
@@ -73,8 +74,25 @@ function ProfessionalDevelopment_DB_delete_password() {
 
 
 
+function ProfessionalDevelopment_derive_key() {
+    // Prefer explicit key if provided by the site owner
+    if (defined('PS_ENCRYPTION_KEY') && PS_ENCRYPTION_KEY) {
+        $material = (string) PS_ENCRYPTION_KEY;
+    } else {
+        // Derive per-site key material from salts and site URL
+        if (!function_exists('wp_salt')) {
+            require_once ABSPATH . 'wp-includes/pluggable.php';
+        }
+        $salt = function_exists('wp_salt') ? wp_salt('auth') : (defined('AUTH_KEY') ? AUTH_KEY : '');
+        $site = function_exists('site_url') ? site_url() : '';
+        $material = $salt . '|' . $site . '|Professional_Development';
+    }
+    // Produce a 32-byte key for AES-256
+    return hash('sha256', $material, true);
+}
+
 function ProfessionalDevelopment_encrypt($data) {
-    $key = defined('PS_ENCRYPTION_KEY') ? PS_ENCRYPTION_KEY : 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm'; // fallback for dev
+    $key = ProfessionalDevelopment_derive_key();
 
     $iv = openssl_random_pseudo_bytes(16);
     $encrypted = openssl_encrypt($data, 'AES-256-CBC', $key, 0, $iv);
@@ -82,12 +100,18 @@ function ProfessionalDevelopment_encrypt($data) {
 }
 
 function ProfessionalDevelopment_decrypt($encrypted) {
-    $key = defined('PS_ENCRYPTION_KEY') ? PS_ENCRYPTION_KEY : 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm'; // fallback for dev
-
     $data = base64_decode($encrypted);
     if ($data === false || strlen($data) <= 16) return false;
 
     $iv = substr($data, 0, 16);
     $ciphertext = substr($data, 16);
-    return openssl_decrypt($ciphertext, 'AES-256-CBC', $key, 0, $iv);
+
+    // Try current derived key first
+    $key = ProfessionalDevelopment_derive_key();
+    $plain = openssl_decrypt($ciphertext, 'AES-256-CBC', $key, 0, $iv);
+    if ($plain !== false && $plain !== null) return $plain;
+
+    // Backward-compat: attempt legacy dev key used in older versions
+    $legacy_key = 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm';
+    return openssl_decrypt($ciphertext, 'AES-256-CBC', $legacy_key, 0, $iv);
 }
