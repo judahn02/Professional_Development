@@ -418,7 +418,7 @@ add_action( 'init', 'PD_shortcode_init') ;
 
 // 
 
-// activation, deactivation, and uninstall hooks
+// activation and deactivation hooks
 register_activation_hook( __FILE__, function () {
 
 }) ;
@@ -426,14 +426,6 @@ register_activation_hook( __FILE__, function () {
 register_deactivation_hook(__FILE__, function () {
 
 }) ;
-
-function ProfessionalDevelopment_uninstall_hook_function () {
-    // delete_option( 'ProfessionalDevelopment_db_host') ;
-    // delete_option( 'ProfessionalDevelopment_db_name') ;
-    // delete_option( 'ProfessionalDevelopment_db_user') ;
-    // delete_option( 'ProfessionalDevelopment_db_pass') ;
-}
-register_uninstall_hook( __FILE__, 'PofessionalDevelopment_uninstall_hook_function') ;
 
 
 // Ajax POST handlers for dynamic JS calls
