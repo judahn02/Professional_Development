@@ -1,14 +1,79 @@
 <?php
 defined('ABSPATH') || exit ;
 
+/**
+ * Build a set of initials from a display name.
+ *
+ * @param string $name
+ * @return string
+ */
+if (!function_exists('pd_member_get_initials')) {
+    function pd_member_get_initials($name) {
+        $initials = '';
+        $parts = preg_split('/[\s\-]+/', trim($name));
+
+        if (empty($parts)) {
+            return '';
+        }
+
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+
+            $initials .= strtoupper(substr($part, 0, 1));
+        }
+
+        return $initials;
+    }
+}
+
 function PD_member_admin_page() {
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('manage_options')) {
+        return;
+    }
 
     // add any post handles here.
 
-
+    // https://aslta.judahsbase.com/wp-admin/admin.php?page=profdef_member_page&member=2
     // Variables for use inside HTML
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
+    $member_id = isset($_GET['member']) ? absint($_GET['member']) : 0;
+
+    if (!$member_id) {
+        printf(
+            '<div class="notice notice-error"><p>%s</p></div>',
+            esc_html__('Missing member ID.', 'professional-development')
+        );
+        return;
+    }
+
+    $member_user = get_userdata($member_id);
+
+    if (!$member_user) {
+        printf(
+            '<div class="notice notice-error"><p>%s</p></div>',
+            esc_html__('Member not found.', 'professional-development')
+        );
+        return;
+    }
+
+    $first_name = (string) $member_user->first_name;
+    $last_name = (string) $member_user->last_name;
+    $display_name = trim($first_name . ' ' . $last_name);
+
+    if ($display_name === '') {
+        $display_name = $member_user->display_name ?: $member_user->user_login;
+    }
+
+    $member_initials = pd_member_get_initials($display_name);
+
+    if ($member_initials === '') {
+        $member_initials = strtoupper(substr($member_user->user_login, 0, 1));
+    }
+
+    $member_email = $member_user->user_email;
 
     ?>
     <div class="container">
@@ -17,20 +82,20 @@ function PD_member_admin_page() {
             <div class="profile-container">
                 <!-- Profile Header -->
                 <div class="profile-header">
-                    <div class="profile-avatar" id="profileAvatar"></div>
+                    <div class="profile-avatar" id="profileAvatar"><?php echo esc_html($member_initials); ?></div>
                     <div class="profile-info">
-                        <div class="profile-name" id="profileName"></div>
-                        <div class="profile-email" id="profileEmail"></div>
+                        <div class="profile-name" id="profileName"><?php echo esc_html($display_name); ?></div>
+                        <div class="profile-email" id="profileEmail"><?php echo esc_html($member_email); ?></div>
                     </div>
                 </div>
 
-                <!-- Contact & Org -->
+                <!-- Contact & Org
                 <div class="profile-section">
                     <div class="profile-section-title">Contact</div>
                     <ul class="profile-details-list">
                         <li><strong>Member Type:</strong> <span id="profileType" class="badge"></span></li>
                     </ul>
-                </div>
+                </div> -->
 
                 <!-- Progress Summary -->
                 <div class="summary-card">

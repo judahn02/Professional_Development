@@ -18,6 +18,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_metaData.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_client.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/ar_member_usrID.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/rest-presenters.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/rest-sessions.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
@@ -119,7 +120,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-members-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-members-table.css',
                 array(),
-                '0.3',
+                '0.6',
                 'all'
             ) ;
         }
@@ -149,7 +150,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-member-page-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
                 array(),
-                '0.1',
+                '0.3',
                 'all'
             ) ;
         }
@@ -240,12 +241,15 @@ function slug_specific_admin_js_loader($hook) {
             true
         );
 
-        wp_localize_script(
+        
+                        wp_localize_script(
             'PD-admin-sessions-table-js',
             'PDSessions',
             array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('pd_sessions_nonce')
+                'restRoot'       => esc_url_raw( rest_url( 'profdev/v1/' ) ),
+                'sessionsRoute'  => 'sessions',
+                'nonce'          => wp_create_nonce( 'wp_rest' ),
+                'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' )
             )
         );
 
@@ -304,12 +308,15 @@ function slug_specific_admin_js_loader($hook) {
             true
         );
 
-        wp_localize_script(
+        
+                        wp_localize_script(
             'PD-admin-session-page-js',
             'PDSessionpage',
             array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('pd_sessionpage_nonce')
+                'restRoot'      => esc_url_raw( rest_url( 'profdev/v1/' ) ),
+                'sessionsRoute' => 'sessions',
+                'nonce'         => wp_create_nonce( 'wp_rest' ),
+                'listPageBase'  => admin_url( 'admin.php?page=profdef_sessions_table' )
             )
         );
 

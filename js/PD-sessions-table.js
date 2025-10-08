@@ -1,169 +1,260 @@
 let sessionSortKey = null;
 let sessionSortAsc = true;
 
-function sortSessions(key) {
-    if (sessionSortKey === key) {
-        sessionSortAsc = !sessionSortAsc;
+const PDSessionsConfig = window.PDSessions || {};
+const PD_SESSIONS_ENDPOINT = (() => {
+    const root = (PDSessionsConfig.restRoot || '').replace(/\/?$/, '/');
+    const route = (PDSessionsConfig.sessionsRoute || 'sessions').replace(/^\/?/, '');
+    return root + route;
+})();
+const PD_SESSIONS_DETAIL_BASE = PDSessionsConfig.detailPageBase || '';
+const PD_SESSIONS_NONCE = PDSessionsConfig.nonce || '';
+
+const sessionsState = {
+    list: [],
+    filtered: []
+};
+
+function normalizeSession(raw, index) {
+    const normalized = { ...raw };
+
+    const possibleId = raw.id ?? raw.session_id ?? raw.ID;
+    if (typeof possibleId === 'number') {
+        normalized.id = possibleId;
+    } else if (typeof possibleId === 'string' && possibleId.trim() !== '' && !Number.isNaN(parseInt(possibleId, 10))) {
+        normalized.id = parseInt(possibleId, 10);
     } else {
-        sessionSortKey = key;
-        sessionSortAsc = true;
+        normalized.id = null;
     }
-    filteredSessions.sort((a, b) => {
-        if (key === 'date') {
-            // Try to parse as date (MM/DD/YYYY or M/D/YYYY)
-            const parse = s => {
-                if (!s) return 0;
-                const parts = s.split('/');
-                if (parts.length === 3) {
-                    // new Date(year, monthIndex, day)
-                    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])).getTime();
-                }
-                return new Date(s).getTime();
-            };
-            const valA = parse(a[key]);
-            const valB = parse(b[key]);
-            return sessionSortAsc ? valA - valB : valB - valA;
-        } else {
-            let valA = (a[key] || '').toLowerCase();
-            let valB = (b[key] || '').toLowerCase();
-            if (valA < valB) return sessionSortAsc ? -1 : 1;
-            if (valA > valB) return sessionSortAsc ? 1 : -1;
-            return 0;
+
+    const isoDate = normalizeToISO(raw.isoDate || raw.date || raw.session_date || '');
+    normalized.isoDate = isoDate;
+    normalized.date = isoDate ? formatDateForDisplay(isoDate) : (raw.date || raw.session_date || '');
+
+    const lengthValue = raw.length ?? raw.length_minutes ?? raw.duration;
+    normalized.length = Number.isFinite(lengthValue) ? Number(lengthValue) : parseInt(lengthValue, 10) || 0;
+
+    normalized.title = (raw.title || raw.session_title || '').toString();
+    normalized.stype = (raw.stype || raw.session_type || raw.type || '').toString();
+    normalized.eventType = (raw.eventType || raw.event_type || '').toString();
+    normalized.ceuWeight = (raw.ceuWeight || raw.ceu_weight || '').toString();
+    normalized.ceuConsiderations = (raw.ceuConsiderations || raw.ceu_considerations || '').toString();
+    normalized.qualifyForCeus = (raw.qualifyForCeus || raw.qualify_for_ceus || raw.qualify || '').toString() || 'No';
+    normalized.presenters = (raw.presenters || raw.presenter_names || '').toString();
+
+    if (Array.isArray(raw.members)) {
+        normalized.members = raw.members;
+    } else if (typeof raw.members === 'string' && raw.members.trim() !== '') {
+        try {
+            const parsed = JSON.parse(raw.members);
+            normalized.members = Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            normalized.members = [];
         }
-    });
-    updateSessionSortArrows();
-    renderSessions();
+    } else if (typeof raw.members_json === 'string' && raw.members_json.trim() !== '') {
+        try {
+            const parsed = JSON.parse(raw.members_json);
+            normalized.members = Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            normalized.members = [];
+        }
+    } else {
+        normalized.members = [];
+    }
+
+    normalized.rowKey = normalized.id !== null && normalized.id !== undefined ? `id-${normalized.id}` : `idx-${index}`;
+
+    return normalized;
+}
+
+function normalizeToISO(value) {
+    const trimmed = (value || '').toString().trim();
+    if (trimmed === '') {
+        return '';
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+        const [month, day, year] = trimmed.split('/').map((part) => parseInt(part, 10));
+        return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+        const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
+        const day = parsed.getDate().toString().padStart(2, '0');
+        return `${parsed.getFullYear()}-${month}-${day}`;
+    }
+    return '';
+}
+
+function formatDateForDisplay(isoDate) {
+    if (!isoDate) {
+        return '';
+    }
+    const parts = isoDate.split('-');
+    if (parts.length === 3) {
+        const [year, month, day] = parts;
+        return `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+    }
+    const parsed = new Date(isoDate);
+    if (!Number.isNaN(parsed.getTime())) {
+        return `${parsed.getMonth() + 1}/${parsed.getDate()}/${parsed.getFullYear()}`;
+    }
+    return isoDate;
 }
 
 function updateSessionSortArrows() {
-    const keys = ['date','title','length','stype','ceuWeight','ceuConsiderations','qualifyForCeus','eventType','presenters'];
-    keys.forEach(k => {
-        const el = document.getElementById('sort-arrow-' + k);
-        if (el) {
-            if (sessionSortKey === k) {
-                el.textContent = sessionSortAsc ? '▲' : '▼';
-                el.style.color = '#e11d48';
-                el.style.fontSize = '1em';
-                el.style.marginLeft = '0.2em';
-            } else {
-                el.textContent = '';
-            }
+    const keys = ['date', 'title', 'length', 'stype', 'ceuWeight', 'ceuConsiderations', 'qualifyForCeus', 'eventType', 'presenters'];
+    keys.forEach((key) => {
+        const el = document.getElementById(`sort-arrow-${key}`);
+        if (!el) {
+            return;
+        }
+        if (sessionSortKey === key) {
+            el.textContent = sessionSortAsc ? '▲' : '▼';
+            el.style.color = '#e11d48';
+            el.style.fontSize = '1em';
+            el.style.marginLeft = '0.2em';
+        } else {
+            el.textContent = '';
         }
     });
 }
 
-// Show initial sort arrows on load
-document.addEventListener('DOMContentLoaded', updateSessionSortArrows);
-// Sample session data with members
-const sessions = [
-    {
-        date: "3/14/2025",
-        title: "ASL Conference 1",
-        length: "60",
-        stype: "Workshop",
-        ceuWeight: "6.0",
-        ceuConsiderations: "Standard workshop requirements",
-        qualifyForCeus: "Yes",
-        eventType: "Webinar",
-        presenters: "Billy Bob Joe",
-        members: [
-            { name: "Alice Smith", email: "alice@example.com" },
-            { name: "Bob Lee", email: "bob@example.com" },
-            { name: "Carlos Rivera", email: "carlos@example.com" }
-        ]
-    },
-    {
-        date: "2/15/2025",
-        title: "Advanced Fingerspelling Techniques",
-        length: "90",
-        stype: "Training",
-        ceuWeight: "4.0",
-        ceuConsiderations: "Requires completion certificate",
-        qualifyForCeus: "Yes",
-        eventType: "In-Person",
-        presenters: "Sarah Johnson, Mike Chen",
-        members: [
-            { name: "Diana Prince", email: "diana@example.com" },
-            { name: "Evan Tran", email: "evan@example.com" }
-        ]
-    },
-    {
-        date: "1/20/2025",
-        title: "Deaf Culture and Community",
-        length: "30",
-        stype: "Conference",
-        ceuWeight: "8.0",
-        ceuConsiderations: "Full day attendance required",
-        qualifyForCeus: "Yes",
-        eventType: "Hybrid",
-        presenters: "Dr. Amanda Rodriguez",
-        members: [
-            { name: "Fiona Zhang", email: "fiona@example.com" },
-            { name: "George Patel", email: "george@example.com" },
-            { name: "Hannah Kim", email: "hannah@example.com" },
-            { name: "Ivan Petrov", email: "ivan@example.com" }
-        ]
-    },
-    {
-        date: "12/10/2024",
-        title: "Teaching Methods for ASL",
-        length: "75",
-        stype: "Workshop",
-        ceuWeight: "5.0",
-        ceuConsiderations: "Interactive participation required",
-        qualifyForCeus: "Yes",
-        eventType: "Webinar",
-        presenters: "Jennifer Lee, David Kim",
-        members: []
+async function fetchSessions() {
+    setTableMessage('Loading sessions…');
+    try {
+        const response = await fetch(PD_SESSIONS_ENDPOINT, {
+            headers: buildHeaders(),
+            credentials: 'same-origin'
+        });
+        if (!response.ok) {
+            throw await toFetchError(response);
+        }
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : [];
+        sessionsState.list = list.map((item, index) => normalizeSession(item, index));
+        sessionsState.filtered = [...sessionsState.list];
+        if (sessionsState.list.length === 0) {
+            setTableMessage('No sessions found.');
+        } else {
+            updateSessionSortArrows();
+            renderSessions();
+        }
+    } catch (error) {
+        console.error('Failed to load sessions', error);
+        setTableMessage('Unable to load sessions. Check the database connection.');
     }
-];
+}
 
-let filteredSessions = [...sessions];
+function buildHeaders() {
+    const headers = {
+        'X-WP-Nonce': PD_SESSIONS_NONCE
+    };
+    return headers;
+}
 
-// Initialize the page
-document.addEventListener('DOMContentLoaded', function() {
-    renderSessions();
-});
+async function toFetchError(response) {
+    let detail = '';
+    try {
+        const data = await response.json();
+        if (data && data.message) {
+            detail = data.message;
+        }
+    } catch (error) {
+        detail = response.statusText;
+    }
+    const err = new Error(detail || 'Request failed');
+    err.status = response.status;
+    return err;
+}
 
-// Render sessions table
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    const map = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    };
+    return value.toString().replace(/[&<"']/g, (char) => map[char] || char);
+}
+
+
+function setTableMessage(message) {
+    const tbody = document.getElementById('sessionsTableBody');
+    if (!tbody) {
+        return;
+    }
+    const safeMessage = escapeHtml(message || '');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="10" style="text-align:center; padding:2rem; color:#6b7280;">${safeMessage}</td>
+        </tr>
+    `;
+}
+
+
+
 function renderSessions() {
     const tbody = document.getElementById('sessionsTableBody');
-    
-    if (filteredSessions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="text-align: center; padding: 2rem; color: #6b7280;">
-                    No sessions found matching your criteria.
-                </td>
-            </tr>
-        `;
+    if (!tbody) {
+        return;
+    }
+    if (sessionsState.filtered.length === 0) {
+        setTableMessage('No sessions found matching your criteria.');
         return;
     }
 
-    let html = '';
-    filteredSessions.forEach((session, index) => {
-        const members = session.members && session.members.length > 0
-            ? session.members.map(a => `<li><span class="member-name">${a.name}</span><span class="member-email">${a.email}</span></li>`).join('')
+    const rows = sessionsState.filtered.map((session) => {
+        const displayLength = session.length ? `${session.length}m` : '';
+        const safeValues = {
+            date: escapeHtml(session.date || ''),
+            title: escapeHtml(session.title || ''),
+            length: escapeHtml(displayLength),
+            stype: escapeHtml(session.stype || ''),
+            ceuWeight: escapeHtml(session.ceuWeight || ''),
+            ceuConsiderations: escapeHtml(session.ceuConsiderations || ''),
+            qualifyForCeus: escapeHtml(session.qualifyForCeus || ''),
+            eventType: escapeHtml(session.eventType || ''),
+            presenters: escapeHtml(session.presenters || '')
+        };
+
+        const members = Array.isArray(session.members) && session.members.length > 0
+            ? session.members.map((member) => {
+                const name = escapeHtml(member.name ? member.name.toString() : '');
+                const email = escapeHtml(member.email ? member.email.toString() : '');
+                return `<li><span class="member-name">${name}</span><span class="member-email">${email}</span></li>`;
+            }).join('')
             : '<li class="no-members">No members yet.</li>';
-        html += `
+
+        const memberRowId = `member-row-${session.rowKey}`;
+        const rowClick = session.id ? `goToSessionProfile(${session.id})` : '';
+        const cellAttr = session.id ? `onclick="${rowClick}"` : '';
+
+        return `
         <tr class="session-row" style="cursor:pointer;">
-            <td onclick="goToSessionProfile(${index})">${session.date}</td>
-            <td onclick="goToSessionProfile(${index})" style="font-weight: 600;">${session.title}</td>
-            <td onclick="goToSessionProfile(${index})">${session.length}m</td>
-            <td onclick="goToSessionProfile(${index})">${session.stype}</td>
-            <td onclick="goToSessionProfile(${index})">${session.ceuWeight}</td>
-            <td onclick="goToSessionProfile(${index})">${session.ceuConsiderations}</td>
-            <td onclick="goToSessionProfile(${index})">${session.qualifyForCeus}</td>
-            <td onclick="goToSessionProfile(${index})">${session.eventType}</td>
-            <td onclick="goToSessionProfile(${index})">${session.presenters}</td>
+            <td ${cellAttr}>${safeValues.date}</td>
+            <td ${cellAttr} style="font-weight:600;">${safeValues.title}</td>
+            <td ${cellAttr}>${safeValues.length}</td>
+            <td ${cellAttr}>${safeValues.stype}</td>
+            <td ${cellAttr}>${safeValues.ceuWeight}</td>
+            <td ${cellAttr}>${safeValues.ceuConsiderations}</td>
+            <td ${cellAttr}>${safeValues.qualifyForCeus}</td>
+            <td ${cellAttr}>${safeValues.eventType}</td>
+            <td ${cellAttr}>${safeValues.presenters}</td>
             <td>
-                <span class="details-dropdown" data-index="${index}" onclick="toggleMemberDropdown(event, ${index})">
+                <span class="details-dropdown" data-row-key="${session.rowKey}" onclick="toggleMemberDropdown(event, '${session.rowKey}')">
                     <svg class="dropdown-icon" width="18" height="18" fill="none" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M6 9l6 6 6-6"/></svg>
                     Details
                 </span>
             </td>
         </tr>
-        <tr class="member-row" id="member-row-${index}" style="display:none;">
+        <tr class="member-row" id="${memberRowId}" style="display:none;">
             <td colspan="10" style="background:#fef2f2; padding:0; border-top:1px solid #fecaca;">
                 <div class="member-list-block">
                     <ul>${members}</ul>
@@ -171,139 +262,238 @@ function renderSessions() {
             </td>
         </tr>
         `;
-    });
-    tbody.innerHTML = html;
+    }).join('');
+
+    tbody.innerHTML = rows;
 }
 
-// Filter sessions based on search
-function filterSessions() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    
-    filteredSessions = sessions.filter(session => {
-        return session.date.toLowerCase().includes(searchTerm) ||
-                session.title.toLowerCase().includes(searchTerm) ||
-                session.stype.toLowerCase().includes(searchTerm) ||
-                session.presenters.toLowerCase().includes(searchTerm) ||
-                session.eventType.toLowerCase().includes(searchTerm);
-    });
-    
+
+
+
+function sortSessions(key) {
+    if (sessionSortKey === key) {
+        sessionSortAsc = !sessionSortAsc;
+    } else {
+        sessionSortKey = key;
+        sessionSortAsc = true;
+    }
+
+    sessionsState.filtered.sort((a, b) => compareSessions(a, b, key, sessionSortAsc));
+    updateSessionSortArrows();
     renderSessions();
 }
 
-
-// Toggle member row below the session row
-function toggleMemberDropdown(event, sessionIndex) {
-    event.stopPropagation();
-    // Hide all member rows except this one
-    document.querySelectorAll('.member-row').forEach((el, idx) => {
-        if (idx !== sessionIndex) el.style.display = 'none';
-    });
-    const row = document.getElementById(`member-row-${sessionIndex}`);
-    if (row) {
-        row.style.display = (row.style.display === 'none' || row.style.display === '') ? 'table-row' : 'none';
+function compareSessions(a, b, key, asc) {
+    const direction = asc ? 1 : -1;
+    if (key === 'date') {
+        const valA = a.isoDate ? new Date(a.isoDate).getTime() : 0;
+        const valB = b.isoDate ? new Date(b.isoDate).getTime() : 0;
+        return direction * (valA - valB);
     }
+    if (key === 'length') {
+        return direction * ((a.length || 0) - (b.length || 0));
+    }
+    const valueA = (a[key] || '').toString().toLowerCase();
+    const valueB = (b[key] || '').toString().toLowerCase();
+    if (valueA < valueB) {
+        return -1 * direction;
+    }
+    if (valueA > valueB) {
+        return 1 * direction;
+    }
+    return 0;
 }
 
-// Close member rows when clicking outside the table
-document.addEventListener('click', function(e) {
-    const isDropdown = e.target.classList.contains('details-dropdown') || e.target.closest('.member-list-block');
-    if (!isDropdown) {
-        document.querySelectorAll('.member-row').forEach(el => {
-            el.style.display = 'none';
-        });
+function filterSessions() {
+    const searchInput = document.getElementById('searchInput');
+    const term = searchInput ? searchInput.value.toLowerCase() : '';
+    if (!term) {
+        sessionsState.filtered = [...sessionsState.list];
+        renderSessions();
+        return;
     }
-});
+    sessionsState.filtered = sessionsState.list.filter((session) => {
+        return [
+            session.date,
+            session.title,
+            session.stype,
+            session.presenters,
+            session.eventType
+        ].some((value) => (value || '').toString().toLowerCase().includes(term));
+    });
+    renderSessions();
+}
 
-// Modal functions
 function openAddSessionModal() {
-    document.getElementById('addSessionModal').classList.add('active');
+    const modal = document.getElementById('addSessionModal');
+    if (!modal) {
+        return;
+    }
+    modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
 function closeAddSessionModal() {
-    document.getElementById('addSessionModal').classList.remove('active');
+    const modal = document.getElementById('addSessionModal');
+    const form = document.getElementById('addSessionForm');
+    if (modal) {
+        modal.classList.remove('active');
+    }
     document.body.style.overflow = 'auto';
-    document.getElementById('addSessionForm').reset();
+    if (form) {
+        form.reset();
+        clearFormNotice(form);
+    }
 }
 
-function goToSessionProfile(index) {
-    // Store sessions in localStorage for access in the target page
-    localStorage.setItem('sessions', JSON.stringify(sessions));
+async function handleAddSession(event) {
+    event.preventDefault();
+    const form = event.target;
+    const submitBtn = form.querySelector('.btn-save');
+    const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.innerHTML = '<span class="loading"></span> Saving...';
+        submitBtn.disabled = true;
+    }
+    clearFormNotice(form);
 
-    // Redirect to the admin page, replacing admin-ajax.php with your page slug + param
-    window.location.href = ajaxurl.replace(
-        'admin-ajax.php',
-        'admin.php?page=profdef_session_page&session=' + encodeURIComponent(index)
-    );
-}
+    const payload = collectSessionPayload(form);
 
-
-// Handle form submission
-document.getElementById('addSessionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Show loading state
-    const submitBtn = document.querySelector('.btn-save');
-    const originalText = submitBtn.textContent;
-    submitBtn.innerHTML = '<span class="loading"></span> Saving...';
-    submitBtn.disabled = true;
-    
-    // Simulate API call delay
-    setTimeout(() => {
-        // Get form data
-        const formData = {
-            date: document.getElementById('sessionDate').value,
-            title: document.getElementById('sessionTitle').value,
-            length: document.getElementById('sessionLength').value,
-            stype: document.getElementById('sessionType').value,
-            ceuWeight: document.getElementById('ceuWeight').value,
-            ceuConsiderations: document.getElementById('ceuConsiderations').value,
-            qualifyForCeus: document.getElementById('qualifyForCeus').value,
-            eventType: document.getElementById('eventType').value,
-            presenters: document.getElementById('presenters').value
-        };
-        
-        // Add to sessions array (in real app, this would be sent to backend)
-        sessions.unshift(formData);
-        filteredSessions = [...sessions];
-        
-        // Show success message
-        const modal = document.querySelector('.modal');
-        const successMsg = document.createElement('div');
-        successMsg.className = 'success-message';
-        successMsg.textContent = 'Session added successfully!';
-        modal.insertBefore(successMsg, modal.firstChild);
-        
-        // Re-render table
+    try {
+        const response = await fetch(PD_SESSIONS_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                ...buildHeaders(),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            throw await toFetchError(response);
+        }
+        const data = await response.json();
+        const normalized = normalizeSession(data, -1);
+        sessionsState.list.unshift(normalized);
+        sessionsState.filtered = [...sessionsState.list];
         renderSessions();
-        
-        // Reset form and close modal after delay
-        setTimeout(() => {
-            closeAddSessionModal();
-            submitBtn.textContent = originalText;
+        closeAddSessionModal();
+        showFormNotice(form, 'Session added successfully.');
+    } catch (error) {
+        console.error('Failed to add session', error);
+        showFormNotice(form, error.message || 'Unable to save the session.', true);
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerHTML = originalHtml;
             submitBtn.disabled = false;
-        }, 1500);
-        
-    }, 2000);
-});
+        }
+    }
+}
 
-// Close modal when clicking outside
-document.getElementById('addSessionModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeAddSessionModal();
+function collectSessionPayload(form) {
+    const getValue = (selector) => {
+        const field = form.querySelector(selector);
+        return field ? field.value : '';
+    };
+    const dateValue = getValue('#sessionDate');
+    return {
+        date: dateValue,
+        title: getValue('#sessionTitle'),
+        length: parseInt(getValue('#sessionLength'), 10) || 0,
+        stype: getValue('#sessionType'),
+        ceuWeight: getValue('#ceuWeight'),
+        ceuConsiderations: getValue('#ceuConsiderations'),
+        qualifyForCeus: getValue('#qualifyForCeus'),
+        eventType: getValue('#eventType'),
+        presenters: getValue('#presenters')
+    };
+}
+
+function showFormNotice(form, message, isError = false) {
+    if (!form) {
+        return;
+    }
+    let note = form.querySelector('.session-form-notice');
+    if (!note) {
+        note = document.createElement('div');
+        note.className = 'session-form-notice';
+        form.insertBefore(note, form.firstChild);
+    }
+    note.textContent = message;
+    note.style.color = isError ? '#b91c1c' : '#047857';
+    note.style.marginBottom = '1rem';
+}
+
+function clearFormNotice(form) {
+    if (!form) {
+        return;
+    }
+    const note = form.querySelector('.session-form-notice');
+    if (note) {
+        note.remove();
+    }
+}
+
+function toggleMemberDropdown(event, rowKey) {
+    event.stopPropagation();
+    document.querySelectorAll('.member-row').forEach((row) => {
+        if (!row.id.endsWith(rowKey)) {
+            row.style.display = 'none';
+        }
+    });
+    const row = document.getElementById(`member-row-${rowKey}`);
+    if (row) {
+        row.style.display = row.style.display === 'table-row' ? 'none' : 'table-row';
+    }
+}
+
+function goToSessionProfile(sessionId) {
+    if (!sessionId || !PD_SESSIONS_DETAIL_BASE) {
+        return;
+    }
+    const url = `${PD_SESSIONS_DETAIL_BASE}&session=${encodeURIComponent(sessionId)}`;
+    window.location.href = url;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateSessionSortArrows();
+    fetchSessions();
+    const form = document.getElementById('addSessionForm');
+    if (form) {
+        form.addEventListener('submit', handleAddSession);
+    }
+    const modalOverlay = document.getElementById('addSessionModal');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay) {
+                closeAddSessionModal();
+            }
+        });
     }
 });
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    // ESC to close modal
-    if (e.key === 'Escape') {
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
         closeAddSessionModal();
     }
-    
-    // Ctrl+N to add new session
-    if (e.ctrlKey && e.key === 'n') {
-        e.preventDefault();
+    if (event.ctrlKey && (event.key === 'n' || event.key === 'N')) {
+        event.preventDefault();
         openAddSessionModal();
     }
 });
+
+document.addEventListener('click', (event) => {
+    const isDropdown = event.target.classList && (event.target.classList.contains('details-dropdown') || event.target.closest('.member-list-block'));
+    if (!isDropdown) {
+        document.querySelectorAll('.member-row').forEach((row) => {
+            row.style.display = 'none';
+        });
+    }
+});
+
+window.sortSessions = sortSessions;
+window.filterSessions = filterSessions;
+window.openAddSessionModal = openAddSessionModal;
+window.closeAddSessionModal = closeAddSessionModal;
+window.toggleMemberDropdown = toggleMemberDropdown;
+window.goToSessionProfile = goToSessionProfile;
