@@ -228,3 +228,99 @@ function flattenObject(obj, prefix = '', out = {}) {
   }
   return out;
 }
+
+
+
+/* ==== BEGIN: Added for Total CEUs column & REST fetch integration ==== */
+
+/**
+ * Simple numeric helper.
+ */
+function num(v) { return Number(v) || 0; }
+
+/**
+ * Render members into a table with a Total CEUs column.
+ * Expects a <table id="members-table"> with <thead> and <tbody> in the admin page.
+ */
+function renderMembers() {
+  const tbody = document.querySelector('#members-table tbody');
+  if (!tbody) return;
+  const rows = (Array.isArray(filteredMembers) && filteredMembers.length ? filteredMembers : members);
+
+  const html = rows.map(m => `
+    <tr>
+      <td>${m.members_id ?? ''}</td>
+      <td>${m.name ?? ''}</td>
+      <td class="num">${num(m.total_length)}</td>
+      <td class="num">${num(m.total_ceu)}</td>
+    </tr>
+  `).join('');
+
+  tbody.innerHTML = html;
+}
+
+/**
+ * Optional: build/update the table header to include Total CEUs.
+ * If your markup already has headers, you can remove this.
+ */
+function ensureMembersTableHeader() {
+  const thead = document.querySelector('#members-table thead');
+  if (!thead) return;
+  thead.innerHTML = `
+    <tr>
+      <th data-sort="members_id">Member ID</th>
+      <th data-sort="name">Name</th>
+      <th data-sort="total_length">Total Length</th>
+      <th data-sort="total_ceu">Total CEUs</th>
+    </tr>
+  `;
+}
+
+/**
+ * Fetch members from REST API and normalize numeric fields.
+ * If a global window.memberIdFilter exists, it's used as ?member_id=...
+ */
+async function fetchMembersFromServer() {
+  const q = (typeof window.memberIdFilter === 'number' && window.memberIdFilter > 0)
+    ? `?member_id=${window.memberIdFilter}`
+    : '';
+  const res = await fetch(`/wp-json/profdef/v2/membershome${q}`, { credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Failed to load members');
+  const rows = await res.json();
+
+  members = rows.map(r => ({
+    ...r,
+    total_length: Number(r.total_length) || 0,
+    total_ceu: Number(r.total_ceu) || 0,
+  }));
+  filteredMembers = members.slice();
+  ensureMembersTableHeader();
+  renderMembers();
+}
+
+/**
+ * Hook sorting to header clicks including total_ceu.
+ */
+document.addEventListener('click', (ev) => {
+  const th = ev.target.closest('#members-table thead th[data-sort]');
+  if (!th) return;
+  const key = th.getAttribute('data-sort');
+  if (!key) return;
+  // Prefer numeric compare for total_length/total_ceu
+  if (key === 'total_length' || key === 'total_ceu') {
+    if (memberSortKey === key) memberSortAsc = !memberSortAsc; else { memberSortKey = key; memberSortAsc = true; }
+    const dir = memberSortAsc ? 1 : -1;
+    filteredMembers.sort((a,b) => (num(a[key]) - num(b[key])) * dir);
+    renderMembers();
+  } else {
+    sortMembers(key);
+  }
+});
+
+// Auto-fetch on admin page load if the table is present
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.querySelector('#members-table')) {
+    fetchMembersFromServer().catch(err => console.error(err));
+  }
+});
+/* ==== END: Added for Total CEUs column & REST fetch integration ==== */
