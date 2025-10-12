@@ -49,6 +49,7 @@ function PD_members_table_admin_page() {
                 <th onclick="sortMembers('email')"     style="cursor:pointer;">Email <span id="sort-arrow-email"></span></th>
                 <th onclick="sortMembers('id')"        style="cursor:pointer;">ID <span id="sort-arrow-id"></span></th>
                 <th onclick="sortMembers('totalHours')"style="cursor:pointer;">Total Hours <span id="sort-arrow-totalHours"></span></th>
+                <th onclick="sortMembers('totalCEUs')" style="cursor:pointer;">Total CEUs  <span id="sort-arrow-totalCEUs"></span></th>
               </tr>
             </thead>
             <tbody id="MembersTableBody">

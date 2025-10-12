@@ -45,16 +45,9 @@ add_action('rest_api_init', function () {
     ]);
 });
 
-function pd_sessions_permission( WP_REST_Request $request ) {
-    $nonce = $request->get_header('X-WP-Nonce');
-    if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-        return new WP_Error('rest_forbidden', __( 'Bad or missing nonce.', 'professional-development' ), ['status' => 403]);
-    }
-    if ( ! current_user_can('manage_options') ) {
-        return new WP_Error('rest_forbidden', __( 'Insufficient permissions.', 'professional-development' ), ['status' => 403]);
-    }
-    return true;
-}
+# This is moved to the functions.php file
+# function pd_sessions_permission( WP_REST_Request $request )
+
 
 function pd_sessions_args_schema() {
     $schema = [

@@ -115,3 +115,14 @@ function ProfessionalDevelopment_decrypt($encrypted) {
     $legacy_key = 'hT4vaqdf3FLZePEyMfNbNn1M4SJf7Smm';
     return openssl_decrypt($ciphertext, 'AES-256-CBC', $legacy_key, 0, $iv);
 }
+
+function pd_sessions_permission( WP_REST_Request $request ) {
+    $nonce = $request->get_header('X-WP-Nonce');
+    if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+        return new WP_Error('rest_forbidden', __( 'Bad or missing nonce.', 'professional-development' ), ['status' => 403]);
+    }
+    if ( ! current_user_can('manage_options') ) {
+        return new WP_Error('rest_forbidden', __( 'Insufficient permissions.', 'professional-development' ), ['status' => 403]);
+    }
+    return true;
+}
