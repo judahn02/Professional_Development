@@ -37,7 +37,7 @@ function pd_get_presenters_json( WP_REST_Request $request ) {
     $conn->set_charset('utf8mb4');
 
     $rows = [];
-    if ($res = $conn->query('CALL presentor_table_view()')) {
+    if ($res = $conn->query('SELECT * FROM Test_Database.presentor_table_view;')) {
         while ($row = $res->fetch_assoc()) {
             $rows[] = [
                 'name'         => $row['name'],
