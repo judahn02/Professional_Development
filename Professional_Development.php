@@ -20,7 +20,8 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/ar_member_usrID.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/rest-presenters.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/rest-sessions.php';
 // require_once plugin_dir_path( __FILE__ ) . '/includes/REST/registers.php';
-require_once plugin_dir_path( __FILE__ ) . '/includes/REST/membershome.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/membershome.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/memberspage.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
@@ -286,7 +287,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.1',
+            '0.7',
             true
         );
 
@@ -294,12 +295,18 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             'PDMemberPage',
             array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('pd_presenterpage_nonce')
+                // Legacy AJAX (unchanged)
+                'ajaxurl'    => admin_url('admin-ajax.php'),
+                'ajaxNonce'  => wp_create_nonce('pd_presenterpage_nonce'),
+
+                // REST goodies
+                'restUrl'    => esc_url_raw( rest_url('profdef/v2') ), // append '/memberspage' in JS
+                'restNonce'  => wp_create_nonce('wp_rest'),
+                'membersId'  => isset($_GET['members_id']) ? (int) $_GET['members_id'] : get_current_user_id(),
             )
         );
-
     }
+
 
     if (isset($_GET['page']) && $_GET['page'] === 'profdef_session_page') {
         wp_enqueue_script(
