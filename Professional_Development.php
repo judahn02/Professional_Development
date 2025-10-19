@@ -221,7 +221,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.14',
+            '0.17',
             true
         );
 
@@ -240,12 +240,12 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery'),
-            '0.3',
+            '0.5',
             true
         );
 
         
-                        wp_localize_script(
+        wp_localize_script(
             'PD-admin-sessions-table-js',
             'PDSessions',
             array(
@@ -287,23 +287,20 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.7',
+            '0.18',
             true
         );
 
+    
         wp_localize_script(
             'PD-admin-member-page-js',
-            'PDMemberPage',
-            array(
-                // Legacy AJAX (unchanged)
-                'ajaxurl'    => admin_url('admin-ajax.php'),
-                'ajaxNonce'  => wp_create_nonce('pd_presenterpage_nonce'),
-
-                // REST goodies
-                'restUrl'    => esc_url_raw( rest_url('profdef/v2') ), // append '/memberspage' in JS
-                'restNonce'  => wp_create_nonce('wp_rest'),
-                'membersId'  => isset($_GET['members_id']) ? (int) $_GET['members_id'] : get_current_user_id(),
-            )
+            'PDMembers',
+            [
+                'root'  => esc_url_raw( rest_url('profdef/v2/') ), // note trailing slash
+                'route' => 'memberspage',
+                'nonce' => wp_create_nonce('wp_rest'),
+                'id'    => isset($_GET['members_id']) ? (int) $_GET['members_id'] : get_current_user_id(),
+            ]
         );
     }
 

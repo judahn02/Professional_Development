@@ -8,11 +8,19 @@ let memberSortAsc = true;
 let members = [];
 let filteredMembers = [];
 
+const minutesToHours = m => Math.round((Number(m || 0) / 60) * 100) / 100; // 2-dec float
+
 function num(v) { return Number(v) || 0; }
 
 function getTotalHours(member) {
-  if (typeof member.totalHours !== 'undefined') return num(member.totalHours);
-  if (typeof member.total_length !== 'undefined') return num(member.total_length);
+  if (member && typeof member.total_length !== 'undefined') {
+    // total_length is in minutes → convert to hours
+    return minutesToHours(member.total_length);
+  }
+  if (member && typeof member.totalHours !== 'undefined') {
+    // It comes in as minutes
+    return minutesToHours(member.totalHours) || 0;
+  }
   return 0;
 }
 

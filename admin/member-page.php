@@ -89,14 +89,6 @@ function PD_member_admin_page() {
                     </div>
                 </div>
 
-                <!-- Contact & Org
-                <div class="profile-section">
-                    <div class="profile-section-title">Contact</div>
-                    <ul class="profile-details-list">
-                        <li><strong>Member Type:</strong> <span id="profileType" class="badge"></span></li>
-                    </ul>
-                </div> -->
-
                 <!-- Progress Summary -->
                 <div class="summary-card">
                     <div class="summary-title">Progress Summary</div>
@@ -110,7 +102,7 @@ function PD_member_admin_page() {
                             <span class="summary-label">year(s):</span>
                         </label>
                         <span class="summary-value" id="filteredHours">0</span>
-                        <input type="range" min="1" max="10" value="1" id="yearRange" style="width: 100%; margin-top:0.5rem;">
+                        <input type="range" min="1" max="11" value="11" id="yearRange" style="width: 100%; margin-top:0.5rem;">
                     </div>
                     <button class="btn" onclick="exportReport()">Export Report</button>
                 </div>
@@ -131,13 +123,23 @@ function PD_member_admin_page() {
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <!-- Keep your original four, in order -->
                                     <th>Date</th>
                                     <th>Session Title</th>
                                     <th>Type</th>
                                     <th>Hours</th>
+
+                                    <!-- Append the rest of the fields -->
+                                    <!-- <th>Session Id</th> -->
+                                    <th>CEU Capable</th>
+                                    <th>CEU Weight</th>
+                                    <th>Parent Event</th>
+                                    <th>Event Type</th>
+                                    <!-- <th>Members ID</th> -->
                                 </tr>
                             </thead>
-                            <tbody id="sessionsTable"></tbody>
+
+                        <tbody id="sessionsTable"></tbody>
                         </table>
                         <div id="emptyState" class="empty-state" style="display: none;">
                             No sessions found matching your criteria.
