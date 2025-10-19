@@ -59,6 +59,14 @@ function toDateOnly(iso) {
   return d || iso;
 }
 
+/** Convert minutes to hours string like "1.12h" */
+function minutesToHoursLabel(minutes) {
+  const m = Number(minutes);
+  if (!Number.isFinite(m)) return '';
+  const h = m / 60;
+  return `${h.toFixed(2)}h`;
+}
+
 /** Render table body */
 function renderSessionsTable(rows) {
   const tbody = document.getElementById('sessionsTableBody');
@@ -80,7 +88,7 @@ function renderSessionsTable(rows) {
 
     tr.appendChild(makeCell(toDateOnly(r['Date'])));
     tr.appendChild(makeCell(r['Title']));
-    tr.appendChild(makeCell(r['Length']));           // minutes or hours, per your SP
+    tr.appendChild(makeCell(minutesToHoursLabel(r['Length'])));           // display as hours with 2 decimals
     tr.appendChild(makeCell(r['Session Type']));
     tr.appendChild(makeCell(r['CEU Weight']));
     tr.appendChild(makeCell(r['CEU Const']));        // "CEU Considerations" column header
@@ -88,6 +96,22 @@ function renderSessionsTable(rows) {
     tr.appendChild(makeCell(r['Event Type']));
     tr.appendChild(makeCell(r['Parent Event']));
     tr.appendChild(makeCell(r['presenters']));
+
+    /*
+<td>
+                <span class="details-dropdown" data-index="${index}" onclick="toggleAttendeeDropdown(event, ${index})">
+                    <svg class="dropdown-icon" width="18" height="18" fill="none" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M6 9l6 6 6-6"/></svg>
+                    Details
+                </span>
+            </td>
+        </tr>
+        <tr class="attendee-row" id="attendee-row-${index}" style="display:none;">
+            <td colspan="10" style="background:#fef2f2; padding:0; border-top:1px solid #fecaca;">
+                <div class="attendee-list-block">
+                    <ul>${attendees}</ul>
+                </div>
+            </td>
+    */
 
     // Actions column (customize as needed)
     const actions = document.createElement('td');
