@@ -241,7 +241,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery'),
-            '0.10',
+            '0.13',
             true
         );
 

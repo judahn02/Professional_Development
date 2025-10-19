@@ -67,6 +67,72 @@ function minutesToHoursLabel(minutes) {
   return `${h.toFixed(2)}h`;
 }
 
+/** Extract attendee names from various possible formats */
+function getAttendeeNames(row) {
+  // Common keys that might contain attendee info
+  const candidates = [
+    row.members,
+    row.attendees,
+    row.Attendees,
+    row['Attendees'],
+    row['members'],
+    row['attendee_names'],
+  ];
+
+  // Attempt to parse possible JSON strings
+  const jsonCandidates = [row.attendees_json, row.members_json];
+  for (const js of jsonCandidates) {
+    if (typeof js === 'string' && js.trim()) {
+      try {
+        const parsed = JSON.parse(js);
+        if (Array.isArray(parsed)) {
+          return parsed.map(formatAttendeeItem).filter(Boolean);
+        }
+      } catch {}
+    }
+  }
+
+  // First array-like candidate wins
+  for (const c of candidates) {
+    if (Array.isArray(c)) {
+      return c.map(formatAttendeeItem).filter(Boolean);
+    }
+    if (typeof c === 'string' && c.trim()) {
+      // Comma or semicolon separated fallback
+      return c.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
+function formatAttendeeItem(item) {
+  if (item == null) return '';
+  if (typeof item === 'string') return item.trim();
+  if (typeof item === 'object') {
+    // Try common name fields; fallback to JSON
+    const fn = item.first_name || item.firstname || '';
+    const ln = item.last_name || item.lastname || '';
+    const full = item.full_name || item.name || `${fn} ${ln}`.trim();
+    if (full && full.trim()) return full.trim();
+    if (item.email && typeof item.email === 'string') return item.email.trim();
+    try { return JSON.stringify(item); } catch { return ''; }
+  }
+  return String(item);
+}
+
+/** Toggle the attendee details row for a given index */
+function toggleAttendeeDropdown(event, index) {
+  if (event && typeof event.preventDefault === 'function') event.preventDefault();
+  const row = document.getElementById(`attendee-row-${index}`);
+  if (!row) return;
+  const isHidden = row.style.display === 'none' || getComputedStyle(row).display === 'none';
+  row.style.display = isHidden ? 'table-row' : 'none';
+}
+
+// Expose for inline handlers if needed
+window.toggleAttendeeDropdown = toggleAttendeeDropdown;
+
 /** Render table body */
 function renderSessionsTable(rows) {
   const tbody = document.getElementById('sessionsTableBody');
@@ -83,7 +149,7 @@ function renderSessionsTable(rows) {
     return;
   }
 
-  for (const r of rows) {
+  rows.forEach((r, index) => {
     const tr = document.createElement('tr');
 
     tr.appendChild(makeCell(toDateOnly(r['Date'])));
@@ -97,39 +163,59 @@ function renderSessionsTable(rows) {
     tr.appendChild(makeCell(r['Parent Event']));
     tr.appendChild(makeCell(r['presenters']));
 
-    /*
-<td>
-                <span class="details-dropdown" data-index="${index}" onclick="toggleAttendeeDropdown(event, ${index})">
-                    <svg class="dropdown-icon" width="18" height="18" fill="none" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M6 9l6 6 6-6"/></svg>
-                    Details
-                </span>
-            </td>
-        </tr>
-        <tr class="attendee-row" id="attendee-row-${index}" style="display:none;">
-            <td colspan="10" style="background:#fef2f2; padding:0; border-top:1px solid #fecaca;">
-                <div class="attendee-list-block">
-                    <ul>${attendees}</ul>
-                </div>
-            </td>
-    */
-
     // Actions column (customize as needed)
     const actions = document.createElement('td');
-    // Example: view button using returned id (if present)
-    if (r.id != null) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = 'View';
-      btn.addEventListener('click', () => {
-        // TODO: implement your action (modal, navigate, etc.)
-        console.log('View session id:', r.id);
-      });
-      actions.appendChild(btn);
-    }
+    // Details dropdown trigger
+    const details = document.createElement('span');
+    details.className = 'details-dropdown';
+    details.dataset.index = String(index);
+    details.style.cursor = 'pointer';
+    details.addEventListener('click', (ev) => toggleAttendeeDropdown(ev, index));
+    // Icon + label
+    details.innerHTML = `
+      <svg class="dropdown-icon" width="18" height="18" fill="none" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M6 9l6 6 6-6"/></svg>
+      Details
+    `;
+    actions.appendChild(details);
+
     tr.appendChild(actions);
 
     tbody.appendChild(tr);
-  }
+    
+    // Attendee details row (hidden by default)
+    const detailsTr = document.createElement('tr');
+    detailsTr.className = 'attendee-row';
+    detailsTr.id = `attendee-row-${index}`;
+    detailsTr.style.display = 'none';
+
+    const detailsTd = document.createElement('td');
+    detailsTd.colSpan = 11; // span the full table width
+    detailsTd.style.background = '#fef2f2';
+    detailsTd.style.padding = '0';
+    detailsTd.style.borderTop = '1px solid #fecaca';
+
+    const block = document.createElement('div');
+    block.className = 'attendee-list-block';
+    const ul = document.createElement('ul');
+
+    const names = getAttendeeNames(r);
+    if (names.length === 0) {
+      const li = document.createElement('li');
+      li.textContent = 'No attendees found.';
+      ul.appendChild(li);
+    } else {
+      for (const name of names) {
+        const li = document.createElement('li');
+        li.textContent = name;
+        ul.appendChild(li);
+      }
+    }
+
+    block.appendChild(ul);
+    detailsTd.appendChild(block);
+    detailsTr.appendChild(detailsTd);
+    tbody.appendChild(detailsTr);
+  });
 }
 
 /** Kickoff on DOM ready */
