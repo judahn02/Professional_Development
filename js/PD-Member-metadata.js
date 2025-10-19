@@ -36,16 +36,16 @@ async function init() {
     if (Array.isArray(apiSessions) && apiSessions.length) {
       // Map API fields -> UI shape
       sessions = apiSessions.map(s => ({
-        date:  toDateOnly(s['Date']),
+        date: toDateOnly(s['Date']),
         title: s['Title'] ?? '',
-        type:  s['Session Type'] ?? '',
+        type: s['Session Type'] ?? '',
         hours: minutesToHours(s['Length']),
         ceuCapable: (s['CEU Capable'] === true || s['CEU Capable'] === 'True'),
-        ceuWeight:  s['CEU Weight'] ?? '',
+        ceuWeight: s['CEU Weight'] ?? '',
         parentEvent: s['Parent Event'] ?? '',
-        eventType:  s['Event Type'] ?? '',
-        sessionId:  s['Session Id'] ?? '',
-        membersId:  s['Members_id'] ?? ''
+        eventType: s['Event Type'] ?? '',
+        sessionId: s['Session Id'] ?? '',
+        membersId: s['Members_id'] ?? ''
       }));
     }
   } catch (e) {
@@ -53,7 +53,25 @@ async function init() {
   }
   // Initial hours will be calculated by the slider's applyRange()
   renderSessions();
-  
+  //Line getting most recent session by date, then my order
+  const mostRecentSession = sessions.length
+    ? (sessions.reduce((best, s, idx) => {
+      if (!best) return { s, idx };
+      // Assuming date is "YYYY-MM-DD" (safe to compare as a string)
+      const cmp = String(s.date).localeCompare(String(best.s.date));
+      if (cmp > 0) return { s, idx };          // s has a later date
+      if (cmp === 0 && idx < best.idx) return { s, idx }; // same date → keep earlier in original order
+      return best;
+    }, null)).s
+    : null;
+
+const mostRecent = document.getElementById('recentSession');
+if (mostRecent && mostRecentSession) {
+  mostRecent.textContent = mostRecentSession.title + " | " + mostRecentSession.date + " | " + mostRecentSession.parentEvent
+    || 'No title';
+}
+
+
 }
 
 // Calculate total hours

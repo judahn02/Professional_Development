@@ -287,7 +287,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.18',
+            '0.22',
             true
         );
 
