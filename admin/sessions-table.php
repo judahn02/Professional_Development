@@ -56,15 +56,16 @@ function PD_sessions_page() {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th onclick="sortSessions('date')" style="cursor:pointer;">Date <span id="sort-arrow-date"></span></th>
-                            <th onclick="sortSessions('title')" style="cursor:pointer;">Session Title <span id="sort-arrow-title"></span></th>
-                            <th onclick="sortSessions('length')" style="cursor:pointer;">Length <span id="sort-arrow-length"></span></th>
-                            <th onclick="sortSessions('stype')" style="cursor:pointer;">Session Type <span id="sort-arrow-stype"></span></th>
-                            <th onclick="sortSessions('ceuWeight')" style="cursor:pointer;">CEU Weight <span id="sort-arrow-ceuWeight"></span></th>
-                            <th onclick="sortSessions('ceuConsiderations')" style="cursor:pointer;">CEU Considerations <span id="sort-arrow-ceuConsiderations"></span></th>
-                            <th onclick="sortSessions('qualifyForCeus')" style="cursor:pointer;">Qualify for CEUs? <span id="sort-arrow-qualifyForCeus"></span></th>
-                            <th onclick="sortSessions('eventType')" style="cursor:pointer;">Event Type <span id="sort-arrow-eventType"></span></th>
-                            <th onclick="sortSessions('presenters')" style="cursor:pointer;">Presenter(s) <span id="sort-arrow-presenters"></span></th>
+                            <th style="cursor:pointer;">Date <span id="sort-arrow-date"></span></th>
+                            <th style="cursor:pointer;">Session Title <span id="sort-arrow-title"></span></th>
+                            <th style="cursor:pointer;">Length <span id="sort-arrow-length"></span></th>
+                            <th style="cursor:pointer;">Session Type <span id="sort-arrow-stype"></span></th>
+                            <th style="cursor:pointer;">CEU Weight <span id="sort-arrow-ceuWeight"></span></th>
+                            <th style="cursor:pointer;">CEU Considerations <span id="sort-arrow-ceuConsiderations"></span></th>
+                            <th style="cursor:pointer;">Qualify for CEUs? <span id="sort-arrow-qualifyForCeus"></span></th>
+                            <th style="cursor:pointer;">Event Type <span id="sort-arrow-eventType"></span></th>
+                            <th style="cursor:pointer;">Parent Event <span id="sort-arrow-parentEvent"></span></th>
+                            <th style="cursor:pointer;">Presenter(s) <span id="sort-arrow-presenters"></span></th>
                             <th>Actions</th>
                         </tr>
                     </thead>

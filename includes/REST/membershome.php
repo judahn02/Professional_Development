@@ -37,6 +37,10 @@ function pd_members_home_callback( WP_REST_Request $request) {
     $name = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_name', ''));
     $user = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_user', ''));
     $pass = ProfessionalDevelopment_decrypt(get_option('ProfessionalDevelopment_db_pass', ''));
+
+    if (!$host || !$name || !$user) {
+        return new \WP_Error('profdef_db_creds_missing', 'Database credentials are not configured.', ['status' => 500]);
+    }
     
     $conn = @new mysqli($host, $user, $pass, $name) ;
 

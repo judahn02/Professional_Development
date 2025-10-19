@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 
 add_action('rest_api_init', function () {
     // New canonical route
-    register_rest_route('profdev/v1', '/presenters', [
+    register_rest_route('profdef/v1', '/presenters', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'pd_get_presenters_json',
         'permission_callback' => 'pd_presenters_permission',
@@ -58,9 +58,9 @@ function pd_get_presenters_json( WP_REST_Request $request ) {
     return rest_ensure_response($rows);
 }
 
-// POST /wp-json/profdev/v1/presenters -> add presenter
+// POST /wp-json/profdef/v1/presenters -> add presenter
 add_action('rest_api_init', function () {
-    register_rest_route('profdev/v1', '/presenters', [
+    register_rest_route('profdef/v1', '/presenters', [
         'methods'             => WP_REST_Server::CREATABLE, // POST
         'callback'            => 'pd_add_presenter_json',
         'permission_callback' => 'pd_presenters_permission',

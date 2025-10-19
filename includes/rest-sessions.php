@@ -4,13 +4,13 @@ if (!defined('ABSPATH')) {
 }
 
 add_action('rest_api_init', function () {
-    register_rest_route('profdev/v1', '/sessions', [
+    register_rest_route('profdef/v1', '/sessions', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'pd_sessions_list',
         'permission_callback' => 'pd_sessions_permission',
     ]);
 
-    register_rest_route('profdev/v1', '/sessions/(?P<id>\d+)', [
+    register_rest_route('profdef/v1', '/sessions/(?P<id>\d+)', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'pd_sessions_get_item',
         'permission_callback' => 'pd_sessions_permission',
@@ -22,14 +22,14 @@ add_action('rest_api_init', function () {
         ],
     ]);
 
-    register_rest_route('profdev/v1', '/sessions', [
+    register_rest_route('profdef/v1', '/sessions', [
         'methods'             => WP_REST_Server::CREATABLE,
         'callback'            => 'pd_sessions_create',
         'permission_callback' => 'pd_sessions_permission',
         'args'                => pd_sessions_args_schema(),
     ]);
 
-    register_rest_route('profdev/v1', '/sessions/(?P<id>\d+)', [
+    register_rest_route('profdef/v1', '/sessions/(?P<id>\d+)', [
         'methods'             => WP_REST_Server::EDITABLE,
         'callback'            => 'pd_sessions_update',
         'permission_callback' => 'pd_sessions_permission',

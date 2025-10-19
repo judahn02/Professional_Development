@@ -22,6 +22,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/rest-sessions.php';
 // require_once plugin_dir_path( __FILE__ ) . '/includes/REST/registers.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/membershome.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/memberspage.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
@@ -240,7 +241,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery'),
-            '0.5',
+            '0.9',
             true
         );
 
@@ -249,8 +250,8 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             'PDSessions',
             array(
-                'restRoot'       => esc_url_raw( rest_url( 'profdev/v1/' ) ),
-                'sessionsRoute'  => 'sessions',
+                'restRoot'       => esc_url_raw( rest_url( 'profdef/v2/' ) ),
+                'sessionsRoute'  => 'sessionhome',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' )
             )
@@ -274,7 +275,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             'PDPresenters',
             [
-                'root'  => esc_url_raw( rest_url('profdev/v1/') ),
+                'root'  => esc_url_raw( rest_url('profdef/v1/') ),
                 'route' => '/presenters',
                 'nonce' => wp_create_nonce('wp_rest'),
             ]
@@ -315,11 +316,11 @@ function slug_specific_admin_js_loader($hook) {
         );
 
         
-                        wp_localize_script(
+        wp_localize_script(
             'PD-admin-session-page-js',
             'PDSessionpage',
             array(
-                'restRoot'      => esc_url_raw( rest_url( 'profdev/v1/' ) ),
+                'restRoot'      => esc_url_raw( rest_url( 'profdef/v1/' ) ),
                 'sessionsRoute' => 'sessions',
                 'nonce'         => wp_create_nonce( 'wp_rest' ),
                 'listPageBase'  => admin_url( 'admin.php?page=profdef_sessions_table' )
