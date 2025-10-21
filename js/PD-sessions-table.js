@@ -11,6 +11,11 @@
     rawRows: [],
     currentSort: { key: null, dir: 'asc' }, // date,title,lengthMin,stype,ceuWeight,ceuConsiderations,ceuCapable,eventType,parentEvent,presenters
     _headersBound: false,
+    // Live search state
+    searchTerm: '',
+    _searchTimer: null,
+    // Modal state
+    _escHandler: null,
     get colSpan() {
       const cnt = document.querySelectorAll('.table thead th').length;
       return cnt || 11;
@@ -225,6 +230,52 @@
       this.setupTopScrollbar();
     },
 
+    // Build filtered + sorted view of rawRows
+    getRowsToRender() {
+      let rows = Array.isArray(this.rawRows) ? this.rawRows.slice() : [];
+      const q = (this.searchTerm || '').trim().toLowerCase();
+      if (q) {
+        rows = rows.filter((raw) => {
+          const r = this.normalizeRow(raw);
+          const hay = [
+            r.date || '',
+            r.title || '',
+            r.presenters || '',
+            r.stype || '',
+            r.eventType || '',
+          ].join(' \u2002 ').toLowerCase();
+          return hay.includes(q);
+        });
+      }
+      const { key, dir } = this.currentSort || {};
+      if (key) {
+        rows.sort((a, b) => this.compareRawRows(a, b, key, dir || 'asc'));
+      }
+      return rows;
+    },
+    refreshTable() {
+      const view = this.getRowsToRender();
+      this.renderSessionsTable(view);
+    },
+
+    // Live search handlers (1s debounce)
+    queueSearchFromDom() {
+      const el = document.getElementById('searchInput');
+      const val = el ? el.value : '';
+      this.queueSearch(val);
+    },
+    queueSearch(val) {
+      this.searchTerm = (val || '').toString();
+      if (this._searchTimer) {
+        clearTimeout(this._searchTimer);
+        this._searchTimer = null;
+      }
+      this._searchTimer = setTimeout(() => {
+        this._searchTimer = null;
+        this.refreshTable();
+      }, 500); // 1 second debounce
+    },
+
     // ----- Header sorting -----
     setupHeaderSorting() {
       if (this._headersBound) return;
@@ -263,14 +314,13 @@
       } else if (state.dir === 'desc') {
         // Third click => clear sort to original order
         this.currentSort = { key: null, dir: 'asc' };
-        this.renderSessionsTable(this.rawRows);
+        this.refreshTable();
         return;
       } else {
         dir = 'asc';
       }
       this.currentSort = { key, dir };
-      const sorted = this.rawRows.slice().sort((a, b) => this.compareRawRows(a, b, key, dir));
-      this.renderSessionsTable(sorted);
+      this.refreshTable();
     },
     compareRawRows(a, b, key, dir) {
       const ra = this.normalizeRow(a);
@@ -366,11 +416,42 @@
       window.addEventListener('resize', setWidths);
     },
 
+    // ----- Add Session Modal -----
+    openAddSessionModal() {
+      const overlay = document.getElementById('addSessionModal');
+      if (!overlay) return;
+      overlay.classList.add('active');
+      const onOverlayClick = (e) => {
+        if (e.target === overlay) {
+          this.closeAddSessionModal();
+        }
+      };
+      // Allow closing by clicking the overlay (outside modal)
+      overlay.addEventListener('click', onOverlayClick, { once: true });
+      // Close on ESC
+      this._escHandler = (ev) => {
+        if (ev.key === 'Escape' || ev.key === 'Esc') this.closeAddSessionModal();
+      };
+      document.addEventListener('keydown', this._escHandler);
+      // Focus first input for convenience
+      const first = overlay.querySelector('input, select, textarea, button');
+      if (first && typeof first.focus === 'function') first.focus();
+    },
+    closeAddSessionModal() {
+      const overlay = document.getElementById('addSessionModal');
+      if (!overlay) return;
+      overlay.classList.remove('active');
+      if (this._escHandler) {
+        document.removeEventListener('keydown', this._escHandler);
+        this._escHandler = null;
+      }
+    },
+
     async init() {
       try {
         const rows = await this.fetchSessions();
         this.rawRows = Array.isArray(rows) ? rows.slice() : [];
-        this.renderSessionsTable(this.rawRows);
+        this.refreshTable();
       } catch (err) {
         console.error(err);
         const tbody = document.getElementById('sessionsTableBody');
@@ -391,6 +472,9 @@
     init: Module.init.bind(Module),
     refresh: Module.init.bind(Module),
     toggleAttendeeDropdown: Module.toggleAttendeeDropdown.bind(Module),
+    // Live search API
+    queueSearch: Module.queueSearch.bind(Module),
+    queueSearchFromDom: Module.queueSearchFromDom.bind(Module),
     // UI hook: call setAttendeeSort('name'|'last'|'email') from your future buttons,
     // then call refreshVisibleAttendees() to re-render any open attendee lists.
     setAttendeeSort: function(mode) {
@@ -418,6 +502,11 @@
 
   // Optional: expose toggle for inline handlers (legacy)
   window.toggleAttendeeDropdown = Module.toggleAttendeeDropdown.bind(Module);
+  // Legacy inline handler for search input oninput="filterSessions()"
+  window.filterSessions = Module.queueSearchFromDom.bind(Module);
+  // Inline handlers for Add Session modal open/close
+  window.openAddSessionModal = Module.openAddSessionModal.bind(Module);
+  window.closeAddSessionModal = Module.closeAddSessionModal.bind(Module);
 
   // Auto-init when script loads (footer)
   Module.init();
