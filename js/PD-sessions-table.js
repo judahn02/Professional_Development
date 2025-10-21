@@ -146,6 +146,10 @@
       const row = document.getElementById(`attendee-row-${index}`);
       if (!row) return;
       const hidden = row.style.display === 'none' || getComputedStyle(row).display === 'none';
+      const id = this.rowIndexToId ? this.rowIndexToId.get(index) : undefined;
+      try {
+        console.log('PDSessionsTable: Details clicked ->', hidden ? 'open' : 'close', { index, id });
+      } catch (_) {}
       row.style.display = hidden ? 'table-row' : 'none';
 
       if (hidden) {
@@ -153,7 +157,6 @@
         const mainRow = row.previousElementSibling; // the session's main <tr>
         if (!mainRow) return;
         // The rendering order ensures we can retrieve the id from dataset if needed; we keep it simple by mapping index -> id
-        const id = this.rowIndexToId.get(index);
         if (id == null) return;
 
         if (this.attendeesCache.has(id)) return; // already loaded (content already rendered)
