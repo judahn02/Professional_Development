@@ -6,6 +6,11 @@
     // ----- Config -----
     // Current attendee sort mode: 'name' | 'last' | 'email'
     attendeeSort: (window.PDSessions && window.PDSessions.attendeeSort) || 'name',
+    utils: (window.PDSessionsUtils || {}),
+    // Sessions data + sort state
+    rawRows: [],
+    currentSort: { key: null, dir: 'asc' }, // date,title,lengthMin,stype,ceuWeight,ceuConsiderations,ceuCapable,eventType,parentEvent,presenters
+    _headersBound: false,
     get colSpan() {
       const cnt = document.querySelectorAll('.table thead th').length;
       return cnt || 11;
@@ -37,25 +42,14 @@
       return res.json();
     },
 
-    // ----- Formatting -----
-    toDateOnly(iso) {
-      if (!iso) return '';
-      const d = String(iso).split('T')[0];
-      return d || String(iso);
-    },
-    minutesToHoursLabel(minutes) {
-      const m = Number(minutes);
-      if (!Number.isFinite(m)) return '';
-      const h = m / 60;
-      return `${h.toFixed(2)}h`;
-    },
+    // ----- Formatting (moved to utils) -----
 
     // Normalize to the v2/sessionhome response shape only
     normalizeRow(row) {
       const r = row || {};
       return {
         id: r.id ?? null,
-        date: this.toDateOnly(r['Date'] || ''),
+        date: this.utils.toDateOnly(r['Date'] || ''),
         title: r['Title'] || '',
         lengthMin: Number(r['Length'] || 0) || 0,
         stype: r['Session Type'] || '',
@@ -90,97 +84,13 @@
       if (!Array.isArray(data)) return [];
       // expected: [["Name","email"], ...] -> [{name, email}] (unsorted; render path applies current sort)
       return data
-        .map((it) => this.formatAttendeeItem(it))
+        .map((it) => this.utils.formatAttendeeItem(it))
         .filter((x) => x && (x.name || x.email));
     },
-    formatAttendeeItem(item) {
-      if (!Array.isArray(item)) return { name: '', email: '' };
-      const [name, email] = item;
-      return {
-        name: name ? String(name) : '',
-        email: email ? String(email) : '',
-      };
-    },
+    // formatAttendeeItem moved to utils
 
     // ----- DOM Helpers -----
-    getLastName(name) {
-      const n = (name || '').trim();
-      if (!n) return '';
-      // Support "Last, First" by splitting on comma first
-      if (n.includes(',')) {
-        const [last] = n.split(',');
-        return last.trim();
-      }
-      // Otherwise take final token as last name
-      const parts = n.split(/\s+/);
-      return parts.length ? parts[parts.length - 1] : n;
-    },
-    sortAttendees(list, mode) {
-      const arr = Array.isArray(list) ? list.slice() : [];
-      const sensitivity = { sensitivity: 'base' };
-      if (mode === 'email') {
-        arr.sort((a, b) => {
-          const ae = (a.email || '').toString();
-          const be = (b.email || '').toString();
-          const byEmail = ae.localeCompare(be, undefined, sensitivity);
-          if (byEmail !== 0) return byEmail;
-          const an = (a.name || '').toString();
-          const bn = (b.name || '').toString();
-          return an.localeCompare(bn, undefined, sensitivity);
-        });
-        return arr;
-      }
-      if (mode === 'last') {
-        arr.sort((a, b) => {
-          const al = this.getLastName(a.name);
-          const bl = this.getLastName(b.name);
-          const byLast = al.localeCompare(bl, undefined, sensitivity);
-          if (byLast !== 0) return byLast;
-          const an = (a.name || '').toString();
-          const bn = (b.name || '').toString();
-          const byName = an.localeCompare(bn, undefined, sensitivity);
-          if (byName !== 0) return byName;
-          const ae = (a.email || '').toString();
-          const be = (b.email || '').toString();
-          return ae.localeCompare(be, undefined, sensitivity);
-        });
-        return arr;
-      }
-      // default: name
-      arr.sort((a, b) => {
-        const an = (a.name || '').toString();
-        const bn = (b.name || '').toString();
-        const byName = an.localeCompare(bn, undefined, sensitivity);
-        if (byName !== 0) return byName;
-        const ae = (a.email || '').toString();
-        const be = (b.email || '').toString();
-        return ae.localeCompare(be, undefined, sensitivity);
-      });
-      return arr;
-    },
-    renderAttendeeListItems(ul, attendees) {
-      if (!ul) return;
-      ul.innerHTML = '';
-      if (!attendees || attendees.length === 0) {
-        const li = document.createElement('li');
-        li.className = 'no-attendees';
-        li.textContent = 'No attendees found.';
-        ul.appendChild(li);
-        return;
-      }
-      for (const a of attendees) {
-        const li = document.createElement('li');
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'attendee-name';
-        nameSpan.textContent = a.name || '';
-        const emailSpan = document.createElement('span');
-        emailSpan.className = 'attendee-email';
-        emailSpan.textContent = a.email || '';
-        li.appendChild(nameSpan);
-        li.appendChild(emailSpan);
-        ul.appendChild(li);
-      }
-    },
+    // Sorting and rendering helpers moved to utils
     makeCell(text) {
       const td = document.createElement('td');
       td.textContent = (text ?? '').toString();
@@ -218,7 +128,7 @@
       ul.id = `attendee-list-${index}`;
       // Initial placeholder; will be replaced upon first toggle if fetch configured
       if (Array.isArray(attendees) && attendees.length) {
-        this.renderAttendeeListItems(ul, this.sortAttendees(attendees, this.attendeeSort));
+        this.utils.renderAttendeeListItems(ul, this.utils.sortAttendees(attendees, this.attendeeSort));
       } else {
         const li = document.createElement('li');
         li.textContent = 'Click Details to load attendees...';
@@ -256,7 +166,7 @@
         try {
           const attendees = await this.fetchAttendees(id);
           this.attendeesCache.set(id, attendees); // cache raw
-          this.renderAttendeeListItems(ul, this.sortAttendees(attendees, this.attendeeSort));
+          this.utils.renderAttendeeListItems(ul, this.utils.sortAttendees(attendees, this.attendeeSort));
         } catch (err) {
           console.error(err);
           ul.innerHTML = '';
@@ -291,7 +201,7 @@
         const tr = document.createElement('tr');
         tr.appendChild(this.makeCell(r.date));
         tr.appendChild(this.makeCell(r.title));
-        tr.appendChild(this.makeCell(this.minutesToHoursLabel(r.lengthMin)));
+        tr.appendChild(this.makeCell(this.utils.minutesToHoursLabel(r.lengthMin)));
         tr.appendChild(this.makeCell(r.stype));
         tr.appendChild(this.makeCell(r.ceuWeight));
         tr.appendChild(this.makeCell(r.ceuConsiderations));
@@ -306,8 +216,118 @@
         frag.appendChild(this.makeAttendeeRow(index, []));
       });
       tbody.appendChild(frag);
-      // Update top scrollbar width and ensure listeners are bound
+      // Update headers + top scrollbar
+      this.updateSortArrows();
+      this.setupHeaderSorting();
       this.setupTopScrollbar();
+    },
+
+    // ----- Header sorting -----
+    setupHeaderSorting() {
+      if (this._headersBound) return;
+      this._headersBound = true;
+
+      const map = [
+        { span: 'sort-arrow-date', key: 'date' },
+        { span: 'sort-arrow-title', key: 'title' },
+        { span: 'sort-arrow-length', key: 'lengthMin' },
+        { span: 'sort-arrow-stype', key: 'stype' },
+        { span: 'sort-arrow-ceuWeight', key: 'ceuWeight' },
+        { span: 'sort-arrow-ceuConsiderations', key: 'ceuConsiderations' },
+        { span: 'sort-arrow-qualifyForCeus', key: 'ceuCapable' },
+        { span: 'sort-arrow-eventType', key: 'eventType' },
+        { span: 'sort-arrow-parentEvent', key: 'parentEvent' },
+        { span: 'sort-arrow-presenters', key: 'presenters' },
+      ];
+      map.forEach(({ span, key }) => {
+        const arrow = document.getElementById(span);
+        if (!arrow) return;
+        const th = arrow.closest('th');
+        if (!th) return;
+        th.addEventListener('click', () => this.applySort(key));
+      });
+    },
+    applySort(key) {
+      if (!Array.isArray(this.rawRows) || this.rawRows.length === 0) return;
+      const state = this.currentSort || { key: null, dir: 'asc' };
+      let dir;
+      if (state.key !== key) {
+        // First click on this column => ascending
+        dir = 'asc';
+      } else if (state.dir === 'asc') {
+        // Second click => descending
+        dir = 'desc';
+      } else if (state.dir === 'desc') {
+        // Third click => clear sort to original order
+        this.currentSort = { key: null, dir: 'asc' };
+        this.renderSessionsTable(this.rawRows);
+        return;
+      } else {
+        dir = 'asc';
+      }
+      this.currentSort = { key, dir };
+      const sorted = this.rawRows.slice().sort((a, b) => this.compareRawRows(a, b, key, dir));
+      this.renderSessionsTable(sorted);
+    },
+    compareRawRows(a, b, key, dir) {
+      const ra = this.normalizeRow(a);
+      const rb = this.normalizeRow(b);
+      let va = ra[key];
+      let vb = rb[key];
+      if (key === 'lengthMin') {
+        va = Number(va);
+        vb = Number(vb);
+      } else if (key === 'ceuWeight') {
+        va = parseFloat(va);
+        vb = parseFloat(vb);
+      } else {
+        va = (va ?? '').toString();
+        vb = (vb ?? '').toString();
+      }
+      let cmp = 0;
+      if (typeof va === 'number' && typeof vb === 'number') {
+        const na = Number.isFinite(va) ? va : Number.POSITIVE_INFINITY;
+        const nb = Number.isFinite(vb) ? vb : Number.POSITIVE_INFINITY;
+        cmp = na === nb ? 0 : (na < nb ? -1 : 1);
+      } else {
+        cmp = va.localeCompare(vb, undefined, { sensitivity: 'base' });
+      }
+      return dir === 'asc' ? cmp : -cmp;
+    },
+    updateSortArrows() {
+      const arrows = [
+        'sort-arrow-date',
+        'sort-arrow-title',
+        'sort-arrow-length',
+        'sort-arrow-stype',
+        'sort-arrow-ceuWeight',
+        'sort-arrow-ceuConsiderations',
+        'sort-arrow-qualifyForCeus',
+        'sort-arrow-eventType',
+        'sort-arrow-parentEvent',
+        'sort-arrow-presenters',
+      ];
+      arrows.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
+      });
+      const keyToSpan = {
+        date: 'sort-arrow-date',
+        title: 'sort-arrow-title',
+        lengthMin: 'sort-arrow-length',
+        stype: 'sort-arrow-stype',
+        ceuWeight: 'sort-arrow-ceuWeight',
+        ceuConsiderations: 'sort-arrow-ceuConsiderations',
+        ceuCapable: 'sort-arrow-qualifyForCeus',
+        eventType: 'sort-arrow-eventType',
+        parentEvent: 'sort-arrow-parentEvent',
+        presenters: 'sort-arrow-presenters',
+      };
+      const { key, dir } = this.currentSort || {};
+      if (!key) return;
+      const spanId = keyToSpan[key];
+      const el = spanId ? document.getElementById(spanId) : null;
+      if (el) el.textContent = dir === 'asc' ? '▲' : '▼';
     },
 
     // ----- Top scrollbar sync -----
@@ -346,7 +366,8 @@
     async init() {
       try {
         const rows = await this.fetchSessions();
-        this.renderSessionsTable(rows);
+        this.rawRows = Array.isArray(rows) ? rows.slice() : [];
+        this.renderSessionsTable(this.rawRows);
       } catch (err) {
         console.error(err);
         const tbody = document.getElementById('sessionsTableBody');
@@ -386,8 +407,8 @@
         const ul = document.getElementById(`attendee-list-${index}`);
         if (!ul) return;
         const raw = Module.attendeesCache.get(id) || [];
-        const sorted = Module.sortAttendees(raw, Module.attendeeSort);
-        Module.renderAttendeeListItems(ul, sorted);
+        const sorted = Module.utils.sortAttendees(raw, Module.attendeeSort);
+        Module.utils.renderAttendeeListItems(ul, sorted);
       });
     }
   };

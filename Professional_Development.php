@@ -223,7 +223,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.17',
+            '0.18',
             true
         );
 
@@ -238,11 +238,20 @@ function slug_specific_admin_js_loader($hook) {
     }
 
     if (isset($_GET['page']) && $_GET['page'] === 'profdef_sessions_table') {
+        // Load shared utilities first so table script can depend on them
+        wp_enqueue_script(
+            'PD-admin-sessions-utils-js',
+            plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
+            array(),
+            '0.1.0',
+            true
+        );
+
         wp_enqueue_script(
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
-            array('jquery'),
-            '0.18',
+            array('jquery', 'PD-admin-sessions-utils-js'),
+            '0.21',
             true
         );
 
