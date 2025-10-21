@@ -43,6 +43,11 @@ function PD_sessions_page() {
                         oninput="filterSessions()"
                     >
                 </div>
+                <!-- Dev note: Attendee sorting support is built in.
+                     Example future buttons:
+                     <button onclick="PDSessionsTable.setAttendeeSort('last'); PDSessionsTable.refreshVisibleAttendees();">Sort by Last</button>
+                     <button onclick="PDSessionsTable.setAttendeeSort('email'); PDSessionsTable.refreshVisibleAttendees();">Sort by Email</button>
+                     Default mode is 'name'. No UI added yet. -->
                 <button class="add-session-btn" onclick="openAddSessionModal()">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>

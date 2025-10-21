@@ -23,6 +23,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/rest-sessions.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/membershome.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/memberspage.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome2.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
@@ -134,7 +135,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-sessions-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
                 array(),
-                '0.1',
+                '0.3',
                 'all'
             ) ;
         }
@@ -241,7 +242,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery'),
-            '0.13',
+            '0.17',
             true
         );
 
@@ -252,6 +253,7 @@ function slug_specific_admin_js_loader($hook) {
             array(
                 'restRoot'       => esc_url_raw( rest_url( 'profdef/v2/' ) ),
                 'sessionsRoute'  => 'sessionhome',
+                'sessionsRoute2' => 'sessionhome2',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' )
             )

@@ -1,19 +1,23 @@
-/* Member Row Styles */
-.member-row {
+/* Member/Attendee Row Styles */
+.member-row,
+.attendee-row {
     background: #fef2f2;
     animation: fadeIn 0.2s;
 }
-.member-list-block {
+.member-list-block,
+.attendee-list-block {
     padding: 1.25rem 2rem 1.25rem 2rem;
     max-width: 900px;
     margin: 0 auto;
 }
-.member-list-block ul {
+.member-list-block ul,
+.attendee-list-block ul {
     list-style: none;
     margin: 0;
     padding: 0;
 }
-.member-list-block li {
+.member-list-block li,
+.attendee-list-block li {
     display: flex;
     flex-direction: column;
     padding: 0.75rem 0.5rem 0.75rem 0.5rem;
@@ -21,22 +25,48 @@
     font-size: 1rem;
     transition: background 0.2s;
 }
-.member-list-block li:last-child {
+.member-list-block li:last-child,
+.attendee-list-block li:last-child {
     border-bottom: none;
 }
-.member-list-block .member-name {
+.member-list-block .member-name,
+.attendee-list-block .attendee-name {
     font-weight: 600;
     color: #e11d48;
     margin-bottom: 0.1rem;
 }
-.member-list-block .member-email {
+.member-list-block .member-email,
+.attendee-list-block .attendee-email {
     font-size: 0.95em;
     color: #6b7280;
 }
-.member-list-block .no-members {
+.member-list-block .no-members,
+.attendee-list-block .no-attendees {
     color: #9ca3af;
     font-style: italic;
     text-align: center;
+}
+
+/* Attendee list as wrapping cards */
+.attendee-list-block ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+}
+.attendee-list-block li {
+    border-bottom: none;             /* override list style */
+    border: 1px solid #fee2e2;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 0.75rem;
+    flex: 0 0 250px;                 /* requested width */
+}
+.attendee-list-block .attendee-name {
+    display: block;
+}
+.attendee-list-block .attendee-email {
+    display: block;
+    word-break: break-word;
 }
 .details-dropdown {
     position: relative;
