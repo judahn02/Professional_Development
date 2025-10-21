@@ -70,6 +70,7 @@
     },
 
     attendeesCache: new Map(), // id -> array of {name,email} (raw; render path applies sort)
+    _scrollSyncBound: false,
     async fetchAttendees(id) {
       const url = this.getAttendeesUrl(id);
       const res = await fetch(url, {
@@ -305,6 +306,41 @@
         frag.appendChild(this.makeAttendeeRow(index, []));
       });
       tbody.appendChild(frag);
+      // Update top scrollbar width and ensure listeners are bound
+      this.setupTopScrollbar();
+    },
+
+    // ----- Top scrollbar sync -----
+    setupTopScrollbar() {
+      const top = document.getElementById('sessionsTopScroll');
+      const spacer = document.getElementById('sessionsTopScrollSpacer');
+      const container = document.getElementById('sessionsTableContainer');
+      const table = document.getElementById('sessionsTable') || document.querySelector('.table');
+      if (!top || !spacer || !container || !table) return;
+
+      const setWidths = () => {
+        const width = table.scrollWidth;
+        spacer.style.width = width + 'px';
+        top.scrollLeft = container.scrollLeft;
+      };
+      setWidths();
+
+      if (this._scrollSyncBound) return;
+      this._scrollSyncBound = true;
+      let syncing = false;
+      top.addEventListener('scroll', () => {
+        if (syncing) return;
+        syncing = true;
+        container.scrollLeft = top.scrollLeft;
+        syncing = false;
+      }, { passive: true });
+      container.addEventListener('scroll', () => {
+        if (syncing) return;
+        syncing = true;
+        top.scrollLeft = container.scrollLeft;
+        syncing = false;
+      }, { passive: true });
+      window.addEventListener('resize', setWidths);
     },
 
     async init() {

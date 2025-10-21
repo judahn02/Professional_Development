@@ -57,8 +57,9 @@ function PD_sessions_page() {
             </div>
 
             <!-- sessions table -->
-            <div class="table-container">
-                <table class="table">
+            <div class="table-scroll-top" id="sessionsTopScroll"><div class="table-scroll-spacer" id="sessionsTopScrollSpacer"></div></div>
+            <div class="table-container" id="sessionsTableContainer">
+                <table class="table" id="sessionsTable">
                     <thead>
                         <tr>
                             <th style="cursor:pointer;">Date <span id="sort-arrow-date"></span></th>

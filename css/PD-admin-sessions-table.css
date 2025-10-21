@@ -197,12 +197,29 @@ body {
     background: white;
     border: 2px solid #e11d48;
     border-radius: 0.75rem;
-    overflow: hidden;
+    /* Allow horizontal scroll on narrow viewports */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Top horizontal scrollbar synced with table */
+.table-scroll-top {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    height: 16px; /* small bar area to show scrollbar */
+    margin-bottom: 0;
+}
+.table-scroll-top .table-scroll-spacer {
+    height: 1px; /* invisible line; width set via JS to table scrollWidth */
 }
 
 .table {
     width: 100%;
+    /* Ensure columns don't squish; enable horizontal scroll */
+    min-width: 1200px;
     border-collapse: collapse;
 }
 
