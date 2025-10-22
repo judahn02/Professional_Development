@@ -114,25 +114,25 @@ function PD_sessions_page() {
                         <label class="form-label">Session Type</label>
                         <select class="form-select" id="sessionType" required>
                             <option value="">Select Type</option>
-                            <option value="Workshop">Workshop</option>
+                            <!-- <option value="Workshop">Workshop</option>
                             <option value="Panel Discussion">Panel Discussion</option>
                             <option value="Plenary">Plenary</option>
                             <option value="Endnote">Endnote</option>
                             <option value="Keynote">Keynote</option>
                             <option value="Demonstration">Demonstration</option>
                             <option value="ShareShop">ShareShop</option>
-                            <option value="Other">Other</option>
+                            <option value="Other">Other</option> -->
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Event Type</label>
                         <select class="form-select" id="eventType" required>
                             <option value="">Select Event Type</option>
-                            <option value="NPDC">NPDC</option>
+                            <!-- <option value="NPDC">NPDC</option>
                             <option value="Symposium">Symposium</option>
                             <option value="Webinar">Webinar</option>
                             <option value="External Group">External Group</option>
-                            <option value="Other">Other</option>
+                            <option value="Other">Other</option> -->
                         </select>
                     </div>
                 </div>
@@ -155,9 +155,9 @@ function PD_sessions_page() {
                     <label class="form-label">CEU Considerations</label>
                     <select class="form-select" id="ceuConsiderations">
                         <option value="">Select CEU Consideration</option>
-                        <option value="PPO">PPO</option>
+                        <!-- <option value="PPO">PPO</option>
                         <option value="SJ">SJ</option>
-                        <option value="Other">Other</option>
+                        <option value="Other">Other</option> -->
                         <option value="NA">NA</option>
                     </select>
                 </div>

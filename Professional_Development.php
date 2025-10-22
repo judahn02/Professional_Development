@@ -252,7 +252,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.28',
+            '0.29',
             true
         );
 
@@ -264,6 +264,7 @@ function slug_specific_admin_js_loader($hook) {
                 'restRoot'       => esc_url_raw( rest_url( 'profdef/v2/' ) ),
                 'sessionsRoute'  => 'sessionhome',
                 'sessionsRoute2' => 'sessionhome2',
+                'sessionsRoute3' => 'sessionhome3',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000

@@ -37,6 +37,11 @@
       const route = (window.PDSessions && window.PDSessions.sessionsRoute2 || '').replace(/^\/+/, '');
       return `${root}/${route}?sessionid=${encodeURIComponent(id)}`;
     },
+    getFormOptionsUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute3 || '').replace(/^\/+/, '');
+      return `${root}/${route}`;
+    },
 
     // ----- API -----
     async fetchSessions() {
@@ -113,6 +118,52 @@
       if (!entry || !Array.isArray(entry.items)) return false;
       const age = Date.now() - (entry.at || 0);
       return age >= 0 && age < this.attendeeCacheTTLms;
+    },
+
+    // ----- Form options loading -----
+    formOptions: null, // { session_types:[], event_types:[], ceu_considerations:[] }
+    async fetchFormOptions() {
+      const url = this.getFormOptionsUrl();
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`REST error ${res.status}: ${body.slice(0, 300)}`);
+      }
+      const data = await res.json();
+      if (!data || typeof data !== 'object') return { session_types: [], event_types: [], ceu_considerations: [] };
+      return data;
+    },
+    async loadFormOptionsOnce() {
+      if (this.formOptions) return this.formOptions;
+      try {
+        this.formOptions = await this.fetchFormOptions();
+      } catch (e) {
+        console.error(e);
+        this.formOptions = { session_types: [], event_types: [], ceu_considerations: [] };
+      }
+      return this.formOptions;
+    },
+    clearAndFillSelect(select, placeholder, items, idKey, nameKey) {
+      if (!select) return;
+      // Keep only the first placeholder if it exists, else create one
+      select.innerHTML = '';
+      if (placeholder) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = placeholder;
+        select.appendChild(opt);
+      }
+      for (const item of (items || [])) {
+        const opt = document.createElement('option');
+        opt.value = String(item[idKey]);
+        opt.textContent = String(item[nameKey]);
+        select.appendChild(opt);
+      }
     },
 
     // ----- DOM Helpers -----
@@ -489,6 +540,32 @@
       const overlay = document.getElementById('addSessionModal');
       if (!overlay) return;
       overlay.classList.add('active');
+      // Populate dynamic selects from REST (sessionhome3)
+      this.loadFormOptionsOnce().then((opts) => {
+        try {
+          const sessionType = overlay.querySelector('#sessionType');
+          const eventType = overlay.querySelector('#eventType');
+          const ceuSelect = overlay.querySelector('#ceuConsiderations');
+          // Fill Session Type (id->session_id, label->session_name)
+          if (sessionType) {
+            this.clearAndFillSelect(sessionType, 'Select Type', opts.session_types || [], 'session_id', 'session_name');
+          }
+          // Fill Event Type (id->event_id, label->event_name)
+          if (eventType) {
+            this.clearAndFillSelect(eventType, 'Select Event Type', opts.event_types || [], 'event_id', 'event_name');
+          }
+          // Fill CEU Considerations (id->ceu_id, label->ceu_name) + ensure NA present
+          if (ceuSelect) {
+            this.clearAndFillSelect(ceuSelect, 'Select CEU Consideration', opts.ceu_considerations || [], 'ceu_id', 'ceu_name');
+            if (![...ceuSelect.options].some(o => o.value === 'NA')) {
+              const na = document.createElement('option');
+              na.value = 'NA';
+              na.textContent = 'NA';
+              ceuSelect.appendChild(na);
+            }
+          }
+        } catch (err) { console.error(err); }
+      });
       // Qualify for CEUs -> control CEU Considerations visibility
       const qualify = overlay.querySelector('#qualifyForCeus');
       const ceuGroup = overlay.querySelector('#ceuConsiderationsGroup');
