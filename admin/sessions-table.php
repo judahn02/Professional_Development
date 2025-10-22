@@ -72,6 +72,7 @@ function PD_sessions_page() {
                             <th style="cursor:pointer;">Event Type <span id="sort-arrow-eventType"></span></th>
                             <th style="cursor:pointer;">Parent Event <span id="sort-arrow-parentEvent"></span></th>
                             <th style="cursor:pointer;">Presenter(s) <span id="sort-arrow-presenters"></span></th>
+                            <th style="cursor:pointer;">Attendees <span id="sort-arrow-attendees"></span></th>
                             <th>Actions</th>
                         </tr>
                     </thead>

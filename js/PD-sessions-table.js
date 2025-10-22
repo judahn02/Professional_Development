@@ -16,6 +16,12 @@
     _searchTimer: null,
     // Modal state
     _escHandler: null,
+    // Attendee cache TTL (ms). Override via window.PDSessions.attendeeTTLms
+    get attendeeCacheTTLms() {
+      const v = window.PDSessions && window.PDSessions.attendeeTTLms;
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : 5 * 60 * 1000; // 5 minutes
+    },
     get colSpan() {
       const cnt = document.querySelectorAll('.table thead th').length;
       return cnt || 11;
@@ -38,7 +44,8 @@
       const res = await fetch(url, {
         method: 'GET',
         credentials: 'same-origin',
-        headers: { 'Accept': 'application/json' }
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -64,11 +71,14 @@
         eventType: r['Event Type'] || '',
         parentEvent: r['Parent Event'] || '',
         presenters: r['presenters'] || '',
+        attendeesCt: (r['attendees_ct'] !== undefined && r['attendees_ct'] !== null)
+          ? Number(r['attendees_ct'])
+          : null,
         raw: r,
       };
     },
 
-    attendeesCache: new Map(), // id -> array of {name,email} (raw; render path applies sort)
+    attendeesCache: new Map(), // id -> { items: array<{name,email}>, at: ms }
     _scrollSyncBound: false,
     async fetchAttendees(id) {
       const url = this.getAttendeesUrl(id);
@@ -77,9 +87,12 @@
         credentials: 'same-origin',
         headers: {
           'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
           // Include nonce if your endpoint requires auth
           ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
-        }
+        },
+        cache: 'no-store',
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -93,6 +106,14 @@
         .filter((x) => x && (x.name || x.email));
     },
     // formatAttendeeItem moved to utils
+
+    // Cache helpers
+    isAttendeeCacheFresh(id) {
+      const entry = this.attendeesCache.get(id);
+      if (!entry || !Array.isArray(entry.items)) return false;
+      const age = Date.now() - (entry.at || 0);
+      return age >= 0 && age < this.attendeeCacheTTLms;
+    },
 
     // ----- DOM Helpers -----
     // Sorting and rendering helpers moved to utils
@@ -115,6 +136,12 @@
       td.appendChild(span);
       return td;
     },
+    makeAttendeeCountCell(count) {
+      const td = document.createElement('td');
+      const n = Number(count);
+      td.textContent = Number.isFinite(n) ? String(n) : '—';
+      return td;
+    },
     makeAttendeeRow(index, attendees) {
       const tr = document.createElement('tr');
       tr.className = 'attendee-row';
@@ -129,6 +156,16 @@
 
       const block = document.createElement('div');
       block.className = 'attendee-list-block';
+      // Actions (top-right)
+      const actions = document.createElement('div');
+      actions.className = 'attendee-actions';
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'edit-attendees-btn';
+      editBtn.textContent = 'Edit Attendees';
+      editBtn.addEventListener('click', (e) => this.onEditAttendees(e, index));
+      actions.appendChild(editBtn);
+      block.appendChild(actions);
       const ul = document.createElement('ul');
       ul.id = `attendee-list-${index}`;
       // Initial placeholder; will be replaced upon first toggle if fetch configured
@@ -144,6 +181,19 @@
       tr.appendChild(td);
       return tr;
     },
+    onEditAttendees(event, index) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      const id = this.rowIndexToId ? this.rowIndexToId.get(index) : undefined;
+      try {
+        console.log('PDSessionsTable: Edit Attendees clicked', { index, id });
+      } catch (_) {}
+      // Placeholder for future navigation or modal
+      // Example: if (window.PDSessions && PDSessions.detailPageBase && id) {
+      //   window.location.href = `${PDSessions.detailPageBase}&session_id=${encodeURIComponent(id)}`;
+      // }
+      const ev = new CustomEvent('pd:edit-attendees', { detail: { index, id } });
+      document.dispatchEvent(ev);
+    },
 
     // ----- Events -----
     async toggleAttendeeDropdown(event, index) {
@@ -155,6 +205,13 @@
       try {
         console.log('PDSessionsTable: Details clicked ->', hidden ? 'open' : 'close', { index, id });
       } catch (_) {}
+      // Radio behavior: only one open at a time
+      if (hidden) {
+        const all = document.querySelectorAll('tr.attendee-row');
+        all.forEach((tr) => {
+          if (tr && tr.id !== `attendee-row-${index}`) tr.style.display = 'none';
+        });
+      }
       row.style.display = hidden ? 'table-row' : 'none';
 
       if (hidden) {
@@ -164,16 +221,23 @@
         // The rendering order ensures we can retrieve the id from dataset if needed; we keep it simple by mapping index -> id
         if (id == null) return;
 
-        if (this.attendeesCache.has(id)) return; // already loaded (content already rendered)
         const ul = document.getElementById(`attendee-list-${index}`);
         if (!ul) return;
+        // If cached and fresh, render from cache
+        if (this.attendeesCache.has(id) && this.isAttendeeCacheFresh(id)) {
+          const cachedEntry = this.attendeesCache.get(id);
+          const cached = (cachedEntry && cachedEntry.items) || [];
+          ul.innerHTML = '';
+          this.utils.renderAttendeeListItems(ul, this.utils.sortAttendees(cached, this.attendeeSort));
+          return;
+        }
         ul.innerHTML = '';
         const loading = document.createElement('li');
         loading.textContent = 'Loading attendees...';
         ul.appendChild(loading);
         try {
           const attendees = await this.fetchAttendees(id);
-          this.attendeesCache.set(id, attendees); // cache raw
+          this.attendeesCache.set(id, { items: attendees, at: Date.now() }); // cache with timestamp
           this.utils.renderAttendeeListItems(ul, this.utils.sortAttendees(attendees, this.attendeeSort));
         } catch (err) {
           console.error(err);
@@ -217,6 +281,7 @@
         tr.appendChild(this.makeCell(r.eventType));
         tr.appendChild(this.makeCell(r.parentEvent));
         tr.appendChild(this.makeCell(r.presenters));
+        tr.appendChild(this.makeAttendeeCountCell(r.attendeesCt));
         tr.appendChild(this.makeActionsCell(index, r.id));
         frag.appendChild(tr);
 
@@ -273,7 +338,7 @@
       this._searchTimer = setTimeout(() => {
         this._searchTimer = null;
         this.refreshTable();
-      }, 500); // 1 second debounce
+      }, 1000); // 1 second debounce
     },
 
     // ----- Header sorting -----
@@ -292,6 +357,7 @@
         { span: 'sort-arrow-eventType', key: 'eventType' },
         { span: 'sort-arrow-parentEvent', key: 'parentEvent' },
         { span: 'sort-arrow-presenters', key: 'presenters' },
+        { span: 'sort-arrow-attendees', key: 'attendeesCt' },
       ];
       map.forEach(({ span, key }) => {
         const arrow = document.getElementById(span);
@@ -327,7 +393,7 @@
       const rb = this.normalizeRow(b);
       let va = ra[key];
       let vb = rb[key];
-      if (key === 'lengthMin') {
+      if (key === 'lengthMin' || key === 'attendeesCt') {
         va = Number(va);
         vb = Number(vb);
       } else if (key === 'ceuWeight') {
@@ -359,6 +425,7 @@
         'sort-arrow-eventType',
         'sort-arrow-parentEvent',
         'sort-arrow-presenters',
+        'sort-arrow-attendees',
       ];
       arrows.forEach(id => {
         const el = document.getElementById(id);
@@ -375,6 +442,7 @@
         eventType: 'sort-arrow-eventType',
         parentEvent: 'sort-arrow-parentEvent',
         presenters: 'sort-arrow-presenters',
+        attendeesCt: 'sort-arrow-attendees',
       };
       const { key, dir } = this.currentSort || {};
       if (!key) return;
@@ -493,7 +561,8 @@
         if (!visible) return;
         const ul = document.getElementById(`attendee-list-${index}`);
         if (!ul) return;
-        const raw = Module.attendeesCache.get(id) || [];
+        const entry = Module.attendeesCache.get(id);
+        const raw = entry && Array.isArray(entry.items) ? entry.items : [];
         const sorted = Module.utils.sortAttendees(raw, Module.attendeeSort);
         Module.utils.renderAttendeeListItems(ul, sorted);
       });

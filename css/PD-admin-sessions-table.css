@@ -4,11 +4,17 @@
     background: #fef2f2;
     animation: fadeIn 0.2s;
 }
-.member-list-block,
-.attendee-list-block {
+.member-list-block {
     padding: 1.25rem 2rem 1.25rem 2rem;
     max-width: 900px;
     margin: 0 auto;
+}
+.attendee-list-block {
+    padding: 1.25rem 2rem 1.25rem 2rem;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    position: relative; /* allow absolutely-positioned actions */
 }
 .member-list-block ul,
 .attendee-list-block ul {
@@ -52,6 +58,40 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem 0.75rem;
+    margin-top: 2.25rem; /* leave room for top-right actions */
+}
+.attendee-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.edit-attendees-btn {
+    background: #e11d48;
+    color: #fff;
+    border: 1px solid #e11d48;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.edit-attendees-btn:hover {
+    background: #be123c;
+    border-color: #be123c;
+}
+
+/* Responsive: avoid overlay on narrow screens */
+@media (max-width: 768px) {
+    .attendee-actions {
+        position: static;
+        margin-bottom: 0.5rem;
+    }
+    .attendee-list-block ul {
+        margin-top: 0;
+    }
 }
 .attendee-list-block li {
     border-bottom: none;             /* override list style */
@@ -59,7 +99,8 @@
     border-radius: 0.5rem;
     background: #ffffff;
     padding: 0.75rem;
-    flex: 0 0 250px;                 /* requested width */
+    flex: 1 1 250px;                 /* min 250px, can grow */
+    max-width: calc(25% - 0.75rem);  /* at most 4 columns per row */
 }
 .attendee-list-block .attendee-name {
     display: block;
