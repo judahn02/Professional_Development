@@ -121,7 +121,6 @@
     },
 
     // ----- Form options loading -----
-    formOptions: null, // { session_types:[], event_types:[], ceu_considerations:[] }
     async fetchFormOptions() {
       const url = this.getFormOptionsUrl();
       const res = await fetch(url, {
@@ -138,33 +137,7 @@
       if (!data || typeof data !== 'object') return { session_types: [], event_types: [], ceu_considerations: [] };
       return data;
     },
-    async loadFormOptionsOnce() {
-      if (this.formOptions) return this.formOptions;
-      try {
-        this.formOptions = await this.fetchFormOptions();
-      } catch (e) {
-        console.error(e);
-        this.formOptions = { session_types: [], event_types: [], ceu_considerations: [] };
-      }
-      return this.formOptions;
-    },
-    clearAndFillSelect(select, placeholder, items, idKey, nameKey) {
-      if (!select) return;
-      // Keep only the first placeholder if it exists, else create one
-      select.innerHTML = '';
-      if (placeholder) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = placeholder;
-        select.appendChild(opt);
-      }
-      for (const item of (items || [])) {
-        const opt = document.createElement('option');
-        opt.value = String(item[idKey]);
-        opt.textContent = String(item[nameKey]);
-        select.appendChild(opt);
-      }
-    },
+    // clearAndFillSelect moved to utils
 
     // ----- DOM Helpers -----
     // Sorting and rendering helpers moved to utils
@@ -540,23 +513,23 @@
       const overlay = document.getElementById('addSessionModal');
       if (!overlay) return;
       overlay.classList.add('active');
-      // Populate dynamic selects from REST (sessionhome3)
-      this.loadFormOptionsOnce().then((opts) => {
+      // Populate dynamic selects from REST (sessionhome3) — refreshed on each open
+      this.fetchFormOptions().then((opts) => {
         try {
           const sessionType = overlay.querySelector('#sessionType');
           const eventType = overlay.querySelector('#eventType');
           const ceuSelect = overlay.querySelector('#ceuConsiderations');
           // Fill Session Type (id->session_id, label->session_name)
           if (sessionType) {
-            this.clearAndFillSelect(sessionType, 'Select Type', opts.session_types || [], 'session_id', 'session_name');
+            this.utils.clearAndFillSelect(sessionType, 'Select Type', opts.session_types || [], 'session_id', 'session_name');
           }
           // Fill Event Type (id->event_id, label->event_name)
           if (eventType) {
-            this.clearAndFillSelect(eventType, 'Select Event Type', opts.event_types || [], 'event_id', 'event_name');
+            this.utils.clearAndFillSelect(eventType, 'Select Event Type', opts.event_types || [], 'event_id', 'event_name');
           }
           // Fill CEU Considerations (id->ceu_id, label->ceu_name) + ensure NA present
           if (ceuSelect) {
-            this.clearAndFillSelect(ceuSelect, 'Select CEU Consideration', opts.ceu_considerations || [], 'ceu_id', 'ceu_name');
+            this.utils.clearAndFillSelect(ceuSelect, 'Select CEU Consideration', opts.ceu_considerations || [], 'ceu_id', 'ceu_name');
             if (![...ceuSelect.options].some(o => o.value === 'NA')) {
               const na = document.createElement('option');
               na.value = 'NA';

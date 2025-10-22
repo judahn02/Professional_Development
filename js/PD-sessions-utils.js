@@ -100,8 +100,28 @@
         ul.appendChild(li);
       }
     },
+
+    // Populate a <select> with placeholder + id->value, label->text
+    clearAndFillSelect(select, placeholder, items, idKey, nameKey) {
+      if (!select) return;
+      select.innerHTML = '';
+      if (placeholder) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = placeholder;
+        select.appendChild(opt);
+      }
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (!item) continue;
+          const opt = document.createElement('option');
+          opt.value = String(item[idKey]);
+          opt.textContent = String(item[nameKey]);
+          select.appendChild(opt);
+        }
+      }
+    },
   };
 
   window.PDSessionsUtils = Utils;
 })();
-
