@@ -121,6 +121,63 @@
         }
       }
     },
+
+    // Compare helpers
+    compareValues(a, b, numeric = false) {
+      if (numeric) {
+        const na = Number(a);
+        const nb = Number(b);
+        const aa = Number.isFinite(na) ? na : Number.POSITIVE_INFINITY;
+        const bb = Number.isFinite(nb) ? nb : Number.POSITIVE_INFINITY;
+        return aa === bb ? 0 : (aa < bb ? -1 : 1);
+      }
+      const sa = (a ?? '').toString();
+      const sb = (b ?? '').toString();
+      return sa.localeCompare(sb, undefined, { sensitivity: 'base' });
+    },
+    compareRows(a, b, key, dir, normalizeFn) {
+      const ra = typeof normalizeFn === 'function' ? normalizeFn(a) : a;
+      const rb = typeof normalizeFn === 'function' ? normalizeFn(b) : b;
+      let va = ra[key];
+      let vb = rb[key];
+      let cmp = 0;
+      if (key === 'lengthMin' || key === 'attendeesCt') {
+        cmp = Utils.compareValues(va, vb, true);
+      } else if (key === 'ceuWeight') {
+        const pa = parseFloat(va);
+        const pb = parseFloat(vb);
+        cmp = Utils.compareValues(pa, pb, true);
+      } else {
+        cmp = Utils.compareValues(va, vb, false);
+      }
+      return dir === 'asc' ? cmp : -cmp;
+    },
+
+    // Sync top scrollbar with main container; idempotent
+    syncHorizontalScroll(topEl, containerEl, tableEl, spacerEl) {
+      if (!topEl || !containerEl || !tableEl || !spacerEl) return;
+      const setWidths = () => {
+        spacerEl.style.width = tableEl.scrollWidth + 'px';
+        topEl.scrollLeft = containerEl.scrollLeft;
+      };
+      setWidths();
+      if (topEl._pdSyncBound) return; // already bound
+      topEl._pdSyncBound = true;
+      let syncing = false;
+      topEl.addEventListener('scroll', () => {
+        if (syncing) return;
+        syncing = true;
+        containerEl.scrollLeft = topEl.scrollLeft;
+        syncing = false;
+      }, { passive: true });
+      containerEl.addEventListener('scroll', () => {
+        if (syncing) return;
+        syncing = true;
+        topEl.scrollLeft = containerEl.scrollLeft;
+        syncing = false;
+      }, { passive: true });
+      window.addEventListener('resize', setWidths);
+    },
   };
 
   window.PDSessionsUtils = Utils;

@@ -413,29 +413,7 @@
       this.refreshTable();
     },
     compareRawRows(a, b, key, dir) {
-      const ra = this.normalizeRow(a);
-      const rb = this.normalizeRow(b);
-      let va = ra[key];
-      let vb = rb[key];
-      if (key === 'lengthMin' || key === 'attendeesCt') {
-        va = Number(va);
-        vb = Number(vb);
-      } else if (key === 'ceuWeight') {
-        va = parseFloat(va);
-        vb = parseFloat(vb);
-      } else {
-        va = (va ?? '').toString();
-        vb = (vb ?? '').toString();
-      }
-      let cmp = 0;
-      if (typeof va === 'number' && typeof vb === 'number') {
-        const na = Number.isFinite(va) ? va : Number.POSITIVE_INFINITY;
-        const nb = Number.isFinite(vb) ? vb : Number.POSITIVE_INFINITY;
-        cmp = na === nb ? 0 : (na < nb ? -1 : 1);
-      } else {
-        cmp = va.localeCompare(vb, undefined, { sensitivity: 'base' });
-      }
-      return dir === 'asc' ? cmp : -cmp;
+      return this.utils.compareRows(a, b, key, dir, (row) => this.normalizeRow(row));
     },
     updateSortArrows() {
       const arrows = [
@@ -481,31 +459,7 @@
       const spacer = document.getElementById('sessionsTopScrollSpacer');
       const container = document.getElementById('sessionsTableContainer');
       const table = document.getElementById('sessionsTable') || document.querySelector('.table');
-      if (!top || !spacer || !container || !table) return;
-
-      const setWidths = () => {
-        const width = table.scrollWidth;
-        spacer.style.width = width + 'px';
-        top.scrollLeft = container.scrollLeft;
-      };
-      setWidths();
-
-      if (this._scrollSyncBound) return;
-      this._scrollSyncBound = true;
-      let syncing = false;
-      top.addEventListener('scroll', () => {
-        if (syncing) return;
-        syncing = true;
-        container.scrollLeft = top.scrollLeft;
-        syncing = false;
-      }, { passive: true });
-      container.addEventListener('scroll', () => {
-        if (syncing) return;
-        syncing = true;
-        top.scrollLeft = container.scrollLeft;
-        syncing = false;
-      }, { passive: true });
-      window.addEventListener('resize', setWidths);
+      this.utils.syncHorizontalScroll(top, container, table, spacer);
     },
 
     // ----- Add Session Modal -----
