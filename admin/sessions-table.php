@@ -146,18 +146,19 @@ function PD_sessions_page() {
                         <label class="form-label">Qualify for CEUs?</label>
                         <select class="form-select" id="qualifyForCeus">
                             <option value="Yes">Yes</option>
-                            <option value="No">No</option>
+                            <option value="No" selected>No</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="ceuConsiderationsGroup">
                     <label class="form-label">CEU Considerations</label>
                     <select class="form-select" id="ceuConsiderations">
                         <option value="">Select CEU Consideration</option>
                         <option value="PPO">PPO</option>
                         <option value="SJ">SJ</option>
                         <option value="Other">Other</option>
+                        <option value="NA">NA</option>
                     </select>
                 </div>
 

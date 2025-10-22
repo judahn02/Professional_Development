@@ -489,6 +489,39 @@
       const overlay = document.getElementById('addSessionModal');
       if (!overlay) return;
       overlay.classList.add('active');
+      // Qualify for CEUs -> control CEU Considerations visibility
+      const qualify = overlay.querySelector('#qualifyForCeus');
+      const ceuGroup = overlay.querySelector('#ceuConsiderationsGroup');
+      const ceuSelect = overlay.querySelector('#ceuConsiderations');
+      if (qualify && ceuGroup && ceuSelect) {
+        // Ensure NA option exists (in case markup changes)
+        if (![...ceuSelect.options].some(o => o.value === 'NA')) {
+          const o = document.createElement('option');
+          o.value = 'NA';
+          o.textContent = 'NA';
+          ceuSelect.appendChild(o);
+        }
+        const applyVisibility = () => {
+          const val = qualify.value;
+          const naOpt = [...ceuSelect.options].find(o => o.value === 'NA');
+          if (val === 'Yes') {
+            ceuGroup.style.display = '';
+            if (naOpt) { naOpt.hidden = true; naOpt.disabled = true; }
+            if (ceuSelect.value === 'NA') ceuSelect.value = '';
+          } else {
+            ceuGroup.style.display = 'none';
+            if (naOpt) { naOpt.hidden = false; naOpt.disabled = false; }
+            ceuSelect.value = 'NA';
+          }
+        };
+        // Default to No on open
+        qualify.value = 'No';
+        applyVisibility();
+        // Bind change
+        qualify.removeEventListener('change', qualify._pdCeuHandler || (()=>{}));
+        qualify._pdCeuHandler = applyVisibility;
+        qualify.addEventListener('change', applyVisibility);
+      }
       const onOverlayClick = (e) => {
         if (e.target === overlay) {
           this.closeAddSessionModal();
