@@ -1,3 +1,61 @@
+/*
+PD Sessions Table (Admin)
+
+What this module does
+- Renders the Sessions admin table, handles sorting, live search, and lazy attendee loading.
+- Talks to WP REST endpoints to fetch: sessions list, attendees per session, and Add Session form options.
+
+REST endpoints (configured via localized window.PDSessions)
+- GET `${restRoot}/${sessionsRoute}`           -> sessions list (v2/sessionhome)
+- GET `${restRoot}/${sessionsRoute2}?sessionid=ID` -> attendees as [["Name","email"], ...] (v2/sessionhome2)
+- GET `${restRoot}/${sessionsRoute3}`         -> dropdown options for Add Session (v2/sessionhome3)
+
+Config injected from PHP (window.PDSessions)
+- restRoot, sessionsRoute, sessionsRoute2, sessionsRoute3, nonce, detailPageBase, attendeeTTLms, [attendeeSort]
+  • `attendeeTTLms` controls attendee cache freshness (default 5 minutes).
+  • `attendeeSort` is one of 'name' | 'last' | 'email'.
+
+Utilities expected (window.PDSessionsUtils)
+- toDateOnly(str): normalize date string to "YYYY-MM-DD"
+- minutesToHoursLabel(mins): render minutes as hours string
+- formatAttendeeItem(item): [name,email] -> { name, email }
+- sortAttendees(list, mode): sort attendees by name/last/email
+- compareRows(a,b,key,dir,normalizeFn): generic row compare
+- syncHorizontalScroll(top, container, table, spacer): top scrollbar sync
+- clearAndFillSelect(select, placeholder, items, valueKey, labelKey): fill selects
+
+Rendering and behavior
+- normalizeRow(): maps API fields -> table columns used here.
+- Sorting: click header cycles asc -> desc -> none; arrows update via updateSortArrows().
+- Live search: 1s debounce; filters by date, title, presenters, session type, and event type.
+- Attendees panel: per-row "Details" toggles a sibling row; only one open at a time (radio behavior).
+  • Fetches attendees on first open via sessionhome2, caches results for `attendeeTTLms`.
+  • Attendees are rendered and can be re-sorted by `attendeeSort`.
+- Add Session modal: openAddSessionModal() fetches options every open from sessionhome3.
+  • CEU visibility tied to #qualifyForCeus; ensures 'NA' option exists and hides it when qualifying.
+  • setupAddNewForSelect(): appends an "Add new" option that reveals an inline text input.
+
+Accessibility and UX
+- Keyboard: Details supports Enter/Space; ARIA attributes (aria-controls/expanded) update on toggle.
+- Error states: shows friendly rows for failed loads (sessions/attendees) and validation hint in inline add-new.
+
+DOM contracts (expected ids/classes)
+- Table/container: #sessionsTable, #sessionsTableBody, #sessionsTableContainer
+- Top scrollbar: #sessionsTopScroll, #sessionsTopScrollSpacer
+- Search input: #searchInput
+- Sort arrow spans by id: #sort-arrow-date|title|length|stype|ceuWeight|ceuConsiderations|qualifyForCeus|eventType|parentEvent|presenters|attendees
+- Modal: #addSessionModal with #sessionType, #eventType, #ceuConsiderations, #qualifyForCeus, #ceuConsiderationsGroup
+- Row details trigger: span.details-dropdown; attendee rows use tr.attendee-row and ul#attendee-list-{index}
+
+Public API (window.PDSessionsTable)
+- init(), refresh(), toggleAttendeeDropdown(index)
+- queueSearch(val), queueSearchFromDom()
+- setAttendeeSort(mode), getAttendeeSort(), refreshVisibleAttendees()
+
+Inline handlers exposed for legacy markup
+- window.toggleAttendeeDropdown, window.filterSessions
+- window.openAddSessionModal, window.closeAddSessionModal
+*/
 // PDSessionsTable module organizes fetching, formatting, rendering, and events
 (function () {
   'use strict';
