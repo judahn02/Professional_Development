@@ -50,7 +50,12 @@
         method: 'GET',
         credentials: 'same-origin',
         cache: 'no-store',
-        headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -127,7 +132,12 @@
         method: 'GET',
         credentials: 'same-origin',
         cache: 'no-store',
-        headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -151,8 +161,19 @@
       const span = document.createElement('span');
       span.className = 'details-dropdown';
       span.dataset.index = String(index);
+      span.setAttribute('role', 'button');
+      span.setAttribute('tabindex', '0');
+      span.setAttribute('aria-controls', `attendee-row-${index}`);
+      span.setAttribute('aria-expanded', 'false');
       span.style.cursor = 'pointer';
       span.addEventListener('click', (ev) => this.toggleAttendeeDropdown(ev, index));
+      span.addEventListener('keydown', (ev) => {
+        const k = ev.key;
+        if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
+          ev.preventDefault();
+          this.toggleAttendeeDropdown(ev, index);
+        }
+      });
       span.innerHTML = `
         <svg class="dropdown-icon" width="18" height="18" fill="none" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M6 9l6 6 6-6"/></svg>
         Details
@@ -237,6 +258,9 @@
         });
       }
       row.style.display = hidden ? 'table-row' : 'none';
+      // Update aria-expanded state on the trigger
+      const trigger = document.querySelector(`span.details-dropdown[data-index="${index}"]`);
+      if (trigger) trigger.setAttribute('aria-expanded', hidden ? 'true' : 'false');
 
       if (hidden) {
         // About to show; ensure attendees are loaded
@@ -476,10 +500,12 @@
           // Fill Session Type (id->session_id, label->session_name)
           if (sessionType) {
             this.utils.clearAndFillSelect(sessionType, 'Select Type', opts.session_types || [], 'session_id', 'session_name');
+            this.setupAddNewForSelect(sessionType, 'Session Type');
           }
           // Fill Event Type (id->event_id, label->event_name)
           if (eventType) {
             this.utils.clearAndFillSelect(eventType, 'Select Event Type', opts.event_types || [], 'event_id', 'event_name');
+            this.setupAddNewForSelect(eventType, 'Event Type');
           }
           // Fill CEU Considerations (id->ceu_id, label->ceu_name) + ensure NA present
           if (ceuSelect) {
@@ -490,6 +516,7 @@
               na.textContent = 'NA';
               ceuSelect.appendChild(na);
             }
+            this.setupAddNewForSelect(ceuSelect, 'CEU Consideration');
           }
         } catch (err) { console.error(err); }
       });
@@ -541,6 +568,95 @@
       // Focus first input for convenience
       const first = overlay.querySelector('input, select, textarea, button');
       if (first && typeof first.focus === 'function') first.focus();
+    },
+    setupAddNewForSelect(select, label) {
+      if (!select) return;
+      // Ensure an Add new option exists at the end
+      const ADD_VAL = '__ADD_NEW__';
+      if (![...select.options].some(o => o.value === ADD_VAL)) {
+        const opt = document.createElement('option');
+        opt.value = ADD_VAL;
+        opt.textContent = 'Add new';
+        select.appendChild(opt);
+      }
+      // Remove prior handler if any
+      if (select._pdAddNewHandler) select.removeEventListener('change', select._pdAddNewHandler);
+      const handler = (e) => {
+        if (select.value === ADD_VAL) {
+          this.showAddNewInput(select, label);
+        }
+      };
+      select._pdAddNewHandler = handler;
+      select.addEventListener('change', handler);
+    },
+    showAddNewInput(select, label) {
+      if (!select) return;
+      // Create inline input UI adjacent to select
+      const wrap = document.createElement('div');
+      wrap.className = 'addnew-container';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'form-input addnew-input';
+      input.placeholder = `Add new ${label}...`;
+
+      const actions = document.createElement('div');
+      actions.className = 'addnew-actions';
+
+      const btnOk = document.createElement('button');
+      btnOk.type = 'button';
+      btnOk.className = 'addnew-btn addnew-ok';
+      btnOk.title = 'Confirm';
+      btnOk.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
+
+      const btnCancel = document.createElement('button');
+      btnCancel.type = 'button';
+      btnCancel.className = 'addnew-btn addnew-cancel';
+      btnCancel.title = 'Cancel';
+      btnCancel.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+      actions.appendChild(btnOk);
+      actions.appendChild(btnCancel);
+      wrap.appendChild(input);
+      wrap.appendChild(actions);
+
+      // Insert and hide select
+      select.style.display = 'none';
+      select.parentNode.insertBefore(wrap, select.nextSibling);
+      input.focus();
+
+      const clearErrorIfTyped = () => {
+        if ((input.value || '').trim().length > 0) {
+          input.classList.remove('addnew-error');
+          input.removeAttribute('aria-invalid');
+          if (input.dataset.origPh) input.placeholder = input.dataset.origPh;
+        }
+      };
+      // Clear error state only when the user types something
+      input.addEventListener('input', clearErrorIfTyped);
+
+      btnCancel.addEventListener('click', () => {
+        // Tear down and restore select
+        wrap.remove();
+        select.value = '';
+        select.style.display = '';
+        select.focus();
+      });
+
+      btnOk.addEventListener('click', () => {
+        const v = (input.value || '').trim();
+        if (!v) {
+          // Validation error state
+          try { console.warn('PDSessionsTable: add-new empty value', { field: label }); } catch(_) {}
+          input.dataset.origPh = input.placeholder;
+          input.placeholder = 'please enter something';
+          input.classList.add('addnew-error');
+          input.setAttribute('aria-invalid', 'true');
+          input.focus();
+          return;
+        }
+        // For now, hold — no action; keep input visible
+        try { console.log('PDSessionsTable: add-new pending', { field: label, value: v }); } catch(_){}
+      });
     },
     closeAddSessionModal() {
       const overlay = document.getElementById('addSessionModal');

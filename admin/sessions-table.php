@@ -89,7 +89,7 @@ function PD_sessions_page() {
         <div class="modal">
             <div class="modal-header">
                 <h2 class="modal-title">Add New Session</h2>
-                <button class="close-btn" onclick="closeAddSessionModal()">&times;</button>
+                <button type="button" class="close-btn" aria-label="Close modal" onclick="closeAddSessionModal()">&times;</button>
             </div>
             
             <form id="addSessionForm">

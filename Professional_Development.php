@@ -136,7 +136,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-sessions-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
                 array(),
-                '0.49',
+                '0.54',
                 'all'
             ) ;
         }
@@ -244,7 +244,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.1.0',
+            '0.4',
             true
         );
 
@@ -252,7 +252,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.29',
+            '0.34',
             true
         );
 
