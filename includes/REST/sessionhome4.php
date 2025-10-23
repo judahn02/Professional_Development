@@ -11,11 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Sanitize callback: keep only letters (A–Z, a–z). Trim and cap to 255.
+// Sanitize callback: allow letters and spaces; collapse whitespace; trim; cap to 255.
 function pd_sessionhome4_letters_only( $value ) {
-    $term = trim( (string) $value );
-    // Letters only (ASCII). Remove everything else.
-    $term = preg_replace( '/[^a-zA-Z]+/', '', $term );
+    $term = (string) $value;
+    $term = preg_replace( '/[^a-zA-Z\s]+/', '', $term );
+    $term = preg_replace( '/\s+/', ' ', $term );
+    $term = trim( $term );
     if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
         if ( mb_strlen( $term ) > 255 ) {
             $term = mb_substr( $term, 0, 255 );
@@ -38,7 +39,7 @@ add_action( 'rest_api_init', function () {
             'callback'            => 'pd_sessionhome4_search_presenters',
             'args'                => [
                 'term' => [
-                    'description'      => 'Search term for presenter name (letters only)',
+                    'description'      => 'Search term for presenter name (letters and spaces only)',
                     'type'             => 'string',
                     'required'         => true,
                     'sanitize_callback'=> 'pd_sessionhome4_letters_only',

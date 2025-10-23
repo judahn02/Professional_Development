@@ -100,6 +100,12 @@ Inline handlers exposed for legacy markup
       const route = (window.PDSessions && window.PDSessions.sessionsRoute3 || '').replace(/^\/+/, '');
       return `${root}/${route}`;
     },
+    getPresenterSearchUrl(term) {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute4 || '').replace(/^\/+/, '');
+      const q = encodeURIComponent(term);
+      return `${root}/${route}?term=${q}`;
+    },
 
     // ----- API -----
     async fetchSessions() {
@@ -204,6 +210,30 @@ Inline handlers exposed for legacy markup
       const data = await res.json();
       if (!data || typeof data !== 'object') return { session_types: [], event_types: [], ceu_considerations: [] };
       return data;
+    },
+    // Presenter search (letters + spaces)
+    async searchPresenters(term) {
+      const cleaned = (term || '')
+        .replace(/[^a-zA-Z\s]+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!cleaned) return [];
+      const url = this.getPresenterSearchUrl(cleaned);
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
+      });
+      if (!res.ok) return [];
+      const data = await res.json().catch(() => []);
+      if (!Array.isArray(data)) return [];
+      return data
+        .map(r => ({ id: Number(r.id)||0, name: String(r.name||'') }))
+        .filter(r => r.name !== '');
     },
     // clearAndFillSelect moved to utils
 
@@ -626,6 +656,267 @@ Inline handlers exposed for legacy markup
       // Focus first input for convenience
       const first = overlay.querySelector('input, select, textarea, button');
       if (first && typeof first.focus === 'function') first.focus();
+
+      // Setup Presenter tokens + autocomplete
+      this.setupPresenterTokenInput();
+    },
+    setupPresenterTokenInput() {
+      const input = document.getElementById('presenters');
+      if (!input) return;
+
+      // Create wrapper and suggestions list
+      let wrap = input.closest('.token-input');
+      const parent = input.parentNode;
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'token-input';
+        // Positioning context for suggestions
+        wrap.style.position = 'relative';
+        parent.insertBefore(wrap, input);
+        wrap.appendChild(input);
+      }
+
+      input.classList.add('token-field');
+      input.setAttribute('autocomplete', 'off');
+      input.setAttribute('aria-autocomplete', 'list');
+      input.setAttribute('role', 'combobox');
+      input.setAttribute('aria-expanded', 'false');
+
+      // Ensure state holders
+      if (!wrap._selected) wrap._selected = []; // [{id,name}]
+      if (!wrap._debounce) wrap._debounce = null;
+
+      let list = wrap.querySelector('.suggestions-list');
+      if (!list) {
+        list = document.createElement('ul');
+        list.className = 'suggestions-list';
+        list.id = 'presentersSuggestions';
+        list.setAttribute('role', 'listbox');
+        list.style.display = 'none';
+        // Suggestion list should span the input width
+        list.style.position = 'absolute';
+        list.style.left = '0';
+        list.style.right = '0';
+        wrap.appendChild(list);
+      }
+
+      // Hidden field carries JSON selection on submit/save
+      let hidden = document.getElementById('presentersSelected');
+      if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.id = 'presentersSelected';
+        hidden.name = 'presentersSelected';
+        wrap.appendChild(hidden);
+      }
+
+      const renderChips = () => {
+        // Remove existing chips
+        wrap.querySelectorAll('.token-chip').forEach(el => el.remove());
+        // Remove prior hidden id inputs
+        wrap.querySelectorAll('input.presenter-id-hidden').forEach(el => el.remove());
+        // Insert chips before the input
+        wrap._selected.forEach(({ id, name }) => {
+          const chip = document.createElement('span');
+          chip.className = 'token-chip';
+          chip.dataset.id = String(id);
+          chip.textContent = name;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'remove-btn';
+          btn.setAttribute('aria-label', `Remove ${name}`);
+          btn.innerHTML = '&times;';
+          btn.addEventListener('click', () => {
+            wrap._selected = wrap._selected.filter(p => !(p.id === id && p.name === name));
+            renderChips();
+            updateHiddenValue();
+            input.focus();
+          });
+          chip.appendChild(btn);
+          wrap.insertBefore(chip, input);
+
+          // Hidden input for each ID to submit simple arrays along with JSON
+          const hid = document.createElement('input');
+          hid.type = 'hidden';
+          hid.className = 'presenter-id-hidden';
+          hid.name = 'presenter_ids[]';
+          hid.value = String(id);
+          wrap.appendChild(hid);
+        });
+      };
+
+      const updateHiddenValue = () => {
+        try {
+          hidden.value = JSON.stringify(wrap._selected);
+        } catch (_) {
+          hidden.value = '[]';
+        }
+      };
+
+      const hideSuggestions = () => {
+        list.style.display = 'none';
+        input.setAttribute('aria-expanded', 'false');
+        // Clear active highlight
+        list.querySelectorAll('li[aria-selected="true"]').forEach(li => li.setAttribute('aria-selected', 'false'));
+      };
+
+      const showSuggestions = (items) => {
+        if (!Array.isArray(items) || items.length === 0) {
+          // caller should use showNoResults() when appropriate
+          hideSuggestions();
+          return;
+        }
+        list.innerHTML = '';
+        items.forEach(({ id, name }, idx) => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          li.setAttribute('role', 'option');
+          li.dataset.id = String(id);
+          li.dataset.name = name;
+          if (idx === 0) li.setAttribute('aria-selected', 'true');
+          li.addEventListener('mousedown', (e) => { // mousedown to avoid blur hiding
+            e.preventDefault();
+            addPresenter({ id, name });
+          });
+          list.appendChild(li);
+        });
+        list.style.display = '';
+        input.setAttribute('aria-expanded', 'true');
+      };
+
+      const showNoResults = (term) => {
+        list.innerHTML = '';
+        const li = document.createElement('li');
+        li.className = 'no-results-row';
+        li.setAttribute('aria-disabled', 'true');
+        const msg = document.createElement('div');
+        msg.className = 'no-results-msg';
+        msg.textContent = 'No results';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'add-new-presentor-btn';
+        btn.textContent = 'Add new presentor?';
+        // Placeholder; intentionally does nothing for now
+        li.appendChild(msg);
+        li.appendChild(btn);
+        list.appendChild(li);
+        list.style.display = '';
+        input.setAttribute('aria-expanded', 'true');
+      };
+
+      const addPresenter = ({ id, name }) => {
+        // Avoid duplicates by id or case-insensitive name when id=0
+        const exists = wrap._selected.some(p => (id && p.id === id) || (!id && p.name.toLowerCase() === String(name).toLowerCase()));
+        if (exists) {
+          hideSuggestions();
+          input.value = '';
+          return;
+        }
+        wrap._selected.push({ id: Number(id)||0, name: String(name||'') });
+        renderChips();
+        hideSuggestions();
+        input.value = '';
+        updateHiddenValue();
+      };
+
+      const debouncedSearch = (term) => {
+        if (wrap._debounce) clearTimeout(wrap._debounce);
+        wrap._debounce = setTimeout(async () => {
+          // Enforce letters + spaces on the fly
+          const q = (term || '').replace(/[^a-zA-Z\s]+/g, '').replace(/\s+/g, ' ').trim();
+          if (!q) { hideSuggestions(); return; }
+          try {
+            const results = await Module.searchPresenters(q);
+            // Filter out already selected
+            const filtered = results.filter(r => !wrap._selected.some(p => (r.id && p.id === r.id) || (!r.id && p.name.toLowerCase() === r.name.toLowerCase())));
+            if (filtered.length === 0) {
+              showNoResults(q);
+            } else {
+              showSuggestions(filtered);
+            }
+          } catch (err) {
+            console.error(err);
+            hideSuggestions();
+          }
+        }, 500);
+      };
+
+      // Bind input handlers
+      input.removeEventListener('input', input._pdInputHandler || (()=>{}));
+      input._pdInputHandler = (e) => {
+        // Keep only letters and spaces visually while typing; collapse spaces
+        const cur = input.value;
+        const cleaned = cur.replace(/[^a-zA-Z\s]+/g, '').replace(/\s+/g, ' ');
+        if (cur !== cleaned) {
+          const pos = input.selectionStart;
+          input.value = cleaned;
+          try { input.setSelectionRange(cleaned.length, cleaned.length); } catch(_) {}
+        }
+        debouncedSearch(input.value);
+      };
+      input.addEventListener('input', input._pdInputHandler);
+
+      input.removeEventListener('keydown', input._pdKeyHandler || (()=>{}));
+      input._pdKeyHandler = (ev) => {
+        const key = ev.key;
+        if (key === 'Backspace' && input.value === '' && wrap._selected.length > 0) {
+          // Remove last chip
+          wrap._selected.pop();
+          renderChips();
+          updateHiddenValue();
+          hideSuggestions();
+          ev.preventDefault();
+          return;
+        }
+        if (list.style.display !== 'none') {
+          const all = Array.from(list.querySelectorAll('li'));
+          const cur = all.findIndex(li => li.getAttribute('aria-selected') === 'true');
+          if (key === 'ArrowDown') {
+            const next = Math.min(all.length - 1, cur + 1);
+            all.forEach(li => li.setAttribute('aria-selected', 'false'));
+            if (all[next]) all[next].setAttribute('aria-selected', 'true');
+            ev.preventDefault();
+          } else if (key === 'ArrowUp') {
+            const prev = Math.max(0, cur - 1);
+            all.forEach(li => li.setAttribute('aria-selected', 'false'));
+            if (all[prev]) all[prev].setAttribute('aria-selected', 'true');
+            ev.preventDefault();
+          } else if (key === 'Enter') {
+            const li = all.find(li => li.getAttribute('aria-selected') === 'true') || all[0];
+            if (li) {
+              addPresenter({ id: Number(li.dataset.id)||0, name: li.dataset.name });
+              ev.preventDefault();
+            }
+          } else if (key === 'Escape') {
+            hideSuggestions();
+            ev.preventDefault();
+          }
+        }
+      };
+      input.addEventListener('keydown', input._pdKeyHandler);
+
+      input.removeEventListener('blur', input._pdBlurHandler || (()=>{}));
+      input._pdBlurHandler = (e) => {
+        setTimeout(() => hideSuggestions(), 120); // allow click selection
+      };
+      input.addEventListener('blur', input._pdBlurHandler);
+
+      // Initial render (if any prefilled value)
+      if (input.value && input.value.trim() !== '') {
+        const names = input.value.split(',').map(s => s.trim()).filter(Boolean);
+        wrap._selected = names.map(n => ({ id: 0, name: n }));
+      }
+      renderChips();
+      updateHiddenValue();
+
+      // On submit, mirror selected names into visible input to satisfy required validation
+      const form = document.getElementById('addSessionForm');
+      if (form && !form._pdPresentersSubmitBound) {
+        form._pdPresentersSubmitBound = true;
+        form.addEventListener('submit', () => {
+          input.value = (wrap._selected || []).map(p => p.name).join(', ');
+        });
+      }
     },
     setupAddNewForSelect(select, label) {
       if (!select) return;

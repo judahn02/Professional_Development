@@ -137,7 +137,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-sessions-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
                 array(),
-                '0.54',
+                '0.58',
                 'all'
             ) ;
         }
@@ -245,7 +245,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.4',
+            '0.5',
             true
         );
 
@@ -253,7 +253,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.34',
+            '0.39',
             true
         );
 
@@ -266,6 +266,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute'  => 'sessionhome',
                 'sessionsRoute2' => 'sessionhome2',
                 'sessionsRoute3' => 'sessionhome3',
+                'sessionsRoute4' => 'sessionhome4',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000
