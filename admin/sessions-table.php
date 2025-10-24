@@ -140,7 +140,7 @@ function PD_sessions_page() {
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">CEU Weight</label>
-                        <input type="number" class="form-input" id="ceuWeight" min="0" step="0.1">
+                        <input type="text" class="form-input" id="ceuWeight" value="0" readonly disabled>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Qualify for CEUs?</label>

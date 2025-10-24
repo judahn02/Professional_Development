@@ -6,6 +6,7 @@
 
   const Modal = {
     _escHandler: null,
+    _ceuBindDone: false,
 
     getFormOptionsUrl() {
       const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
@@ -147,6 +148,36 @@
       qualify.addEventListener('change', handler);
     },
 
+    bindCeuWeight(overlay) {
+      const lenEl = overlay.querySelector('#sessionLength');
+      const qualify = overlay.querySelector('#qualifyForCeus');
+      const weightEl = overlay.querySelector('#ceuWeight');
+      if (!weightEl || !(lenEl && qualify)) return;
+
+      const update = () => {
+        const minutes = Number(lenEl.value || 0);
+        let value = 0;
+        if (qualify.value === 'Yes' && Number.isFinite(minutes) && minutes > 0) {
+          const w = (minutes / 60) * 0.10;
+          value = Math.max(0, w);
+        }
+        // Use fixed 2 decimals for display consistency
+        weightEl.value = value.toFixed(2);
+      };
+
+      // Avoid duplicate bindings
+      lenEl.removeEventListener('input', lenEl._pdLenHandler || (()=>{}));
+      lenEl._pdLenHandler = update;
+      lenEl.addEventListener('input', update);
+
+      qualify.removeEventListener('change', qualify._pdQualHandler2 || (()=>{}));
+      qualify._pdQualHandler2 = update;
+      qualify.addEventListener('change', update);
+
+      // Initial compute
+      update();
+    },
+
     async open() {
       const overlay = document.getElementById('addSessionModal');
       if (!overlay) return;
@@ -180,6 +211,7 @@
       }
 
       this.applyCeuVisibility(overlay);
+      this.bindCeuWeight(overlay);
 
       const onOverlayClick = (e) => { if (e.target === overlay) this.close(); };
       overlay.addEventListener('click', onOverlayClick, { once: true });
@@ -211,4 +243,3 @@
   window.openAddSessionModal = Modal.open.bind(Modal);
   window.closeAddSessionModal = Modal.close.bind(Modal);
 })();
-
