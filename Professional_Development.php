@@ -250,11 +250,20 @@ function slug_specific_admin_js_loader($hook) {
             true
         );
 
+        // Add Session modal logic (separate from table)
+        wp_enqueue_script(
+            'PD-admin-sessions-modal-js',
+            plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
+            array('jquery', 'PD-admin-sessions-utils-js'),
+            '0.1',
+            true
+        );
+
         wp_enqueue_script(
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
-            array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.43',
+            array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
+            '0.45',
             true
         );
 

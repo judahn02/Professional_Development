@@ -601,88 +601,10 @@ Inline handlers exposed for legacy markup
 
     // ----- Add Session Modal -----
     openAddSessionModal() {
-      const overlay = document.getElementById('addSessionModal');
-      if (!overlay) return;
-      overlay.classList.add('active');
-      // Populate dynamic selects from REST (sessionhome3) — refreshed on each open
-      this.fetchFormOptions().then((opts) => {
-        try {
-          const sessionType = overlay.querySelector('#sessionType');
-          const eventType = overlay.querySelector('#eventType');
-          const ceuSelect = overlay.querySelector('#ceuConsiderations');
-          // Fill Session Type (id->session_id, label->session_name)
-          if (sessionType) {
-            this.utils.clearAndFillSelect(sessionType, 'Select Type', opts.session_types || [], 'session_id', 'session_name');
-            this.setupAddNewForSelect(sessionType, 'Session Type');
-          }
-          // Fill Event Type (id->event_id, label->event_name)
-          if (eventType) {
-            this.utils.clearAndFillSelect(eventType, 'Select Event Type', opts.event_types || [], 'event_id', 'event_name');
-            this.setupAddNewForSelect(eventType, 'Event Type');
-          }
-          // Fill CEU Considerations (id->ceu_id, label->ceu_name) + ensure NA present
-          if (ceuSelect) {
-            this.utils.clearAndFillSelect(ceuSelect, 'Select CEU Consideration', opts.ceu_considerations || [], 'ceu_id', 'ceu_name');
-            if (![...ceuSelect.options].some(o => o.value === 'NA')) {
-              const na = document.createElement('option');
-              na.value = 'NA';
-              na.textContent = 'NA';
-              ceuSelect.appendChild(na);
-            }
-            this.setupAddNewForSelect(ceuSelect, 'CEU Consideration');
-          }
-        } catch (err) { console.error(err); }
-      });
-      // Qualify for CEUs -> control CEU Considerations visibility
-      const qualify = overlay.querySelector('#qualifyForCeus');
-      const ceuGroup = overlay.querySelector('#ceuConsiderationsGroup');
-      const ceuSelect = overlay.querySelector('#ceuConsiderations');
-      if (qualify && ceuGroup && ceuSelect) {
-        // Ensure NA option exists (in case markup changes)
-        if (![...ceuSelect.options].some(o => o.value === 'NA')) {
-          const o = document.createElement('option');
-          o.value = 'NA';
-          o.textContent = 'NA';
-          ceuSelect.appendChild(o);
-        }
-        const applyVisibility = () => {
-          const val = qualify.value;
-          const naOpt = [...ceuSelect.options].find(o => o.value === 'NA');
-          if (val === 'Yes') {
-            ceuGroup.style.display = '';
-            if (naOpt) { naOpt.hidden = true; naOpt.disabled = true; }
-            if (ceuSelect.value === 'NA') ceuSelect.value = '';
-          } else {
-            ceuGroup.style.display = 'none';
-            if (naOpt) { naOpt.hidden = false; naOpt.disabled = false; }
-            ceuSelect.value = 'NA';
-          }
-        };
-        // Default to No on open
-        qualify.value = 'No';
-        applyVisibility();
-        // Bind change
-        qualify.removeEventListener('change', qualify._pdCeuHandler || (()=>{}));
-        qualify._pdCeuHandler = applyVisibility;
-        qualify.addEventListener('change', applyVisibility);
+      if (window.PDSessionsModal && typeof window.PDSessionsModal.open === 'function') {
+        window.PDSessionsModal.open();
       }
-      const onOverlayClick = (e) => {
-        if (e.target === overlay) {
-          this.closeAddSessionModal();
-        }
-      };
-      // Allow closing by clicking the overlay (outside modal)
-      overlay.addEventListener('click', onOverlayClick, { once: true });
-      // Close on ESC
-      this._escHandler = (ev) => {
-        if (ev.key === 'Escape' || ev.key === 'Esc') this.closeAddSessionModal();
-      };
-      document.addEventListener('keydown', this._escHandler);
-      // Focus first input for convenience
-      const first = overlay.querySelector('input, select, textarea, button');
-      if (first && typeof first.focus === 'function') first.focus();
-
-      // Setup Presenter tokens + autocomplete
+      // Ensure presenter token input is initialized each open
       this.setupPresenterTokenInput();
     },
     // ----- Add Presenter Modal -----
