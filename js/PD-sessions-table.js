@@ -106,6 +106,11 @@ Inline handlers exposed for legacy markup
       const q = encodeURIComponent(term);
       return `${root}/${route}?term=${q}`;
     },
+    getPresenterCreateUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute5 || '').replace(/^\/+/, '');
+      return `${root}/${route}`;
+    },
 
     // ----- API -----
     async fetchSessions() {
@@ -234,6 +239,26 @@ Inline handlers exposed for legacy markup
       return data
         .map(r => ({ id: Number(r.id)||0, name: String(r.name||'') }))
         .filter(r => r.name !== '');
+    },
+    async createPresenterAPI(name, email, number) {
+      const url = this.getPresenterCreateUrl();
+      const payload = { name: String(name||'').trim(), email: String(email||'').trim(), number: String(number||'').trim() };
+      const res = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(()=>'');
+        throw new Error(`Create presenter failed (${res.status}): ${text.slice(0,200)}`);
+      }
+      const data = await res.json().catch(()=>({}));
+      return data;
     },
     // clearAndFillSelect moved to utils
 
@@ -660,6 +685,89 @@ Inline handlers exposed for legacy markup
       // Setup Presenter tokens + autocomplete
       this.setupPresenterTokenInput();
     },
+    // ----- Add Presenter Modal -----
+    openAddPresenterModal(name) {
+      const overlay = document.getElementById('addPresenterModal');
+      if (!overlay) return;
+      const nameBox = document.getElementById('addPresenterName');
+      if (nameBox) nameBox.textContent = String(name || '').trim();
+      const email = document.getElementById('presenterEmail');
+      const phone = document.getElementById('presenterPhone');
+      if (email) email.value = '';
+      if (phone) phone.value = '';
+      overlay.classList.add('active');
+      overlay.setAttribute('aria-hidden', 'false');
+
+      // Bind buttons
+      const btnCancel = document.getElementById('btnAddPresenterCancel');
+      const btnOk = document.getElementById('btnAddPresenterConfirm');
+      if (btnCancel && !btnCancel._pdBound) {
+        btnCancel._pdBound = true;
+        btnCancel.addEventListener('click', () => this.closeAddPresenterModal());
+      }
+      if (btnOk && !btnOk._pdBound) {
+        btnOk._pdBound = true;
+        btnOk.addEventListener('click', async () => {
+          const nameEl = document.getElementById('addPresenterName');
+          const emailEl = document.getElementById('presenterEmail');
+          const phoneEl = document.getElementById('presenterPhone');
+          const fullName = nameEl ? nameEl.textContent.trim() : (name || '');
+          const emailVal = emailEl ? emailEl.value : '';
+          const phoneVal = phoneEl ? phoneEl.value : '';
+          try {
+            const resp = await this.createPresenterAPI(fullName, emailVal, phoneVal);
+            if (resp && resp.success && Number(resp.id) > 0) {
+              const field = document.getElementById('presenters');
+              const wrap = field ? field.closest('.token-input') : null;
+              if (wrap && typeof wrap._pdAddPresenter === 'function') {
+                wrap._pdAddPresenter({ id: Number(resp.id), name: fullName });
+                const list = wrap.querySelector('.suggestions-list');
+                if (list) list.style.display = 'none';
+                if (field) {
+                  // Ensure any typed term is cleared
+                  field.value = '';
+                  field.setAttribute('aria-expanded', 'false');
+                  field.focus();
+                }
+              } else if (field) {
+                const existing = (field.value || '').trim();
+                field.value = existing ? `${existing}, ${fullName}` : fullName;
+              }
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Failed to add presenter.');
+          } finally {
+            this.closeAddPresenterModal();
+          }
+        });
+      }
+
+      // Close by clicking overlay background
+      const onOverlayClick = (e) => {
+        if (e.target === overlay) this.closeAddPresenterModal();
+      };
+      overlay.addEventListener('click', onOverlayClick, { once: true });
+
+      // Close on ESC
+      this._escHandlerPresenter = (ev) => {
+        if (ev.key === 'Escape' || ev.key === 'Esc') this.closeAddPresenterModal();
+      };
+      document.addEventListener('keydown', this._escHandlerPresenter);
+
+      // Focus first field
+      if (email && typeof email.focus === 'function') email.focus();
+    },
+    closeAddPresenterModal() {
+      const overlay = document.getElementById('addPresenterModal');
+      if (!overlay) return;
+      overlay.classList.remove('active');
+      overlay.setAttribute('aria-hidden', 'true');
+      if (this._escHandlerPresenter) {
+        document.removeEventListener('keydown', this._escHandlerPresenter);
+        this._escHandlerPresenter = null;
+      }
+    },
     setupPresenterTokenInput() {
       const input = document.getElementById('presenters');
       if (!input) return;
@@ -745,6 +853,18 @@ Inline handlers exposed for legacy markup
         });
       };
 
+      // Expose helper so other module methods (e.g., modal confirm) can push and refresh
+      wrap._pdAddPresenter = ({ id, name }) => {
+        if (!name) return;
+        const exists = wrap._selected.some(p => (id && p.id === id) || (!id && p.name.toLowerCase() === String(name).toLowerCase()));
+        if (exists) return;
+        wrap._selected.push({ id: Number(id)||0, name: String(name||'') });
+        renderChips();
+        updateHiddenValue();
+        // Clear any typed text left in the input
+        input.value = '';
+      };
+
       const updateHiddenValue = () => {
         try {
           hidden.value = JSON.stringify(wrap._selected);
@@ -796,7 +916,10 @@ Inline handlers exposed for legacy markup
         btn.type = 'button';
         btn.className = 'add-new-presentor-btn';
         btn.textContent = 'Add new presentor?';
-        // Placeholder; intentionally does nothing for now
+        btn.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          this.openAddPresenterModal(term || '');
+        });
         li.appendChild(msg);
         li.appendChild(btn);
         list.appendChild(li);
@@ -1078,6 +1201,9 @@ Inline handlers exposed for legacy markup
   // Inline handlers for Add Session modal open/close
   window.openAddSessionModal = Module.openAddSessionModal.bind(Module);
   window.closeAddSessionModal = Module.closeAddSessionModal.bind(Module);
+  // Presenter modal handlers (optional inline use)
+  window.openAddPresenterModal = Module.openAddPresenterModal.bind(Module);
+  window.closeAddPresenterModal = Module.closeAddPresenterModal.bind(Module);
 
   // Auto-init when script loads (footer)
   Module.init();

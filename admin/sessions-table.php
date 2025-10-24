@@ -174,5 +174,39 @@ function PD_sessions_page() {
             </form>
         </div>
     </div>
+
+    <!-- Add presenter modal -->
+    <div class="modal-overlay" id="addPresenterModal" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addPresenterTitle">
+            <div class="modal-header">
+                <h2 class="modal-title" id="addPresenterTitle">Add New Presentor</h2>
+                <button type="button" class="close-btn" aria-label="Close modal" onclick="closeAddPresenterModal()">&times;</button>
+            </div>
+
+            <form id="addPresenterForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <div id="addPresenterName" class="form-input" style="background:#f9fafb; border-color:#e5e7eb;">
+                        <!-- filled by JS with the typed name -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="presenterEmail">Email</label>
+                    <input type="email" class="form-input" id="presenterEmail" placeholder="email@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="presenterPhone">Phone Number</label>
+                    <input type="tel" class="form-input" id="presenterPhone" placeholder="(555) 555-5555">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="btnAddPresenterCancel">Cancel</button>
+                    <button type="button" class="btn-save" id="btnAddPresenterConfirm">Add Presentor</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <?php 
 }
