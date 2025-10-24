@@ -16,24 +16,63 @@ add_action( 'rest_api_init', function () {
         '/sessionhome6',
         [
             'methods'             => WP_REST_Server::CREATABLE, // POST
-            // 'permission_callback' => 'pd_sessions_permission',
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_sessions_permission',
             'callback'            => 'pd_sessionhome6_add_lookup_value',
             'args'                => [
                 'target' => [
                     'description' => "Target table: 'ceu_consideration' | 'event_type' | 'type_of_session'",
                     'type'        => 'string',
                     'required'    => true,
+                    'sanitize_callback' => 'pd_sessionhome6_sanitize_target',
+                    'validate_callback' => 'pd_sessionhome6_validate_target',
                 ],
                 'value'  => [
                     'description' => 'Value to insert into the selected lookup table',
                     'type'        => 'string',
                     'required'    => true,
+                    'sanitize_callback' => 'pd_sessionhome6_sanitize_value',
+                    'validate_callback' => 'pd_sessionhome6_validate_value',
                 ],
             ],
         ]
     );
 } );
+
+/**
+ * Sanitize and validate helpers for sessionhome6
+ */
+function pd_sessionhome6_sanitize_target( $value ) {
+    $v = strtolower( trim( (string) $value ) );
+    // Cap to proc arg length (32)
+    if ( strlen( $v ) > 32 ) {
+        $v = substr( $v, 0, 32 );
+    }
+    return $v;
+}
+function pd_sessionhome6_validate_target( $value, WP_REST_Request $request, $param ) {
+    $allowed = [ 'ceu_consideration', 'event_type', 'type_of_session' ];
+    return in_array( strtolower( (string) $value ), $allowed, true );
+}
+
+function pd_sessionhome6_sanitize_value( $value ) {
+    $v = sanitize_text_field( wp_unslash( (string) $value ) );
+    $v = trim( $v );
+    // Cap to proc arg length (64), support mb when available
+    if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+        if ( mb_strlen( $v ) > 64 ) {
+            $v = mb_substr( $v, 0, 64 );
+        }
+    } else {
+        if ( strlen( $v ) > 64 ) {
+            $v = substr( $v, 0, 64 );
+        }
+    }
+    return $v;
+}
+function pd_sessionhome6_validate_value( $value, WP_REST_Request $request, $param ) {
+    $v = (string) $value;
+    return $v !== '';
+}
 
 /**
  * Handler: POST /profdef/v2/sessionhome6
@@ -134,4 +173,3 @@ function pd_sessionhome6_add_lookup_value( WP_REST_Request $req ) {
         'value'   => $value,
     ], 201 );
 }
-

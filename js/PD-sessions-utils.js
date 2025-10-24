@@ -101,7 +101,7 @@
       }
     },
 
-    // Populate a <select> with placeholder + id->value, label->text
+    // Populate a <select> with placeholder + id->value, label->text, sorted by label A->Z
     clearAndFillSelect(select, placeholder, items, idKey, nameKey) {
       if (!select) return;
       select.innerHTML = '';
@@ -112,7 +112,12 @@
         select.appendChild(opt);
       }
       if (Array.isArray(items)) {
-        for (const item of items) {
+        const sorted = items.slice().sort((a, b) => {
+          const an = (a && a[nameKey] != null) ? String(a[nameKey]) : '';
+          const bn = (b && b[nameKey] != null) ? String(b[nameKey]) : '';
+          return an.localeCompare(bn, undefined, { sensitivity: 'base' });
+        });
+        for (const item of sorted) {
           if (!item) continue;
           const opt = document.createElement('option');
           opt.value = String(item[idKey]);

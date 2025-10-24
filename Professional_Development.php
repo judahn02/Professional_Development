@@ -28,6 +28,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome3.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome4.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome5.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome6.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome7.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
@@ -247,7 +248,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.5',
+            '0.6',
             true
         );
 
@@ -256,7 +257,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.1',
+            '0.2',
             true
         );
 
@@ -264,7 +265,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.46',
+            '0.48',
             true
         );
 
@@ -279,6 +280,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute3' => 'sessionhome3',
                 'sessionsRoute4' => 'sessionhome4',
                 'sessionsRoute5' => 'sessionhome5',
+                'sessionsRoute6' => 'sessionhome6',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000

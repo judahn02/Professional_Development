@@ -36,6 +36,30 @@
       return data;
     },
 
+    getAddLookupUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute6 || '').replace(/^\/+/, '');
+      return `${root}/${route}`;
+    },
+    async addLookupValue(target, value) {
+      const url = this.getAddLookupUrl();
+      const res = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        },
+        body: JSON.stringify({ target, value })
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(()=> '');
+        throw new Error(`Add lookup failed ${res.status}: ${body.slice(0,300)}`);
+      }
+      return res.json();
+    },
+
     setupAddNewForSelect(select, label) {
       if (!select) return;
       const ADD_VAL = '__ADD_NEW__';
@@ -100,7 +124,7 @@
         select.focus();
       });
 
-      btnOk.addEventListener('click', () => {
+      btnOk.addEventListener('click', async () => {
         const v = (input.value || '').trim();
         if (!v) {
           try { console.warn('PDSessionsModal: add-new empty value', { field: label }); } catch(_) {}
@@ -111,8 +135,53 @@
           input.focus();
           return;
         }
-        // Keep input visible for now; saving to DB is out-of-scope for this modal utility
-        try { console.log('PDSessionsModal: add-new pending', { field: label, value: v }); } catch(_){}
+        // Map select id -> target string used by the stored procedure
+        let target = '';
+        if (select.id === 'sessionType') target = 'type_of_session';
+        else if (select.id === 'eventType') target = 'event_type';
+        else if (select.id === 'ceuConsiderations') target = 'ceu_consideration';
+        else target = '';
+
+        if (!target) {
+          try { console.error('PDSessionsModal: unknown select for add-new', select.id); } catch(_) {}
+          return;
+        }
+        // Call REST to add lookup value and receive new id
+        try {
+          const resp = await Modal.addLookupValue(target, v);
+          const newId = resp && resp.id ? String(resp.id) : '';
+          if (!newId) throw new Error('Missing id in response');
+          // Insert option at alphabetically sorted position and select it
+          const opt = document.createElement('option');
+          opt.value = newId;
+          opt.textContent = v;
+          const addOpt = [...select.options].find(o => o.value === '__ADD_NEW__');
+          const placeholderOpt = select.options[0] && select.options[0].value === '' ? select.options[0] : null;
+          // Determine insertion point among existing options (excluding placeholder and add-new)
+          let inserted = false;
+          const compare = (a, b) => String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+          for (let i = 0; i < select.options.length; i++) {
+            const o = select.options[i];
+            if (o === placeholderOpt) continue;
+            if (o === addOpt) { select.insertBefore(opt, o); inserted = true; break; }
+            if (o && o.value !== '__ADD_NEW__' && o.value !== '') {
+              if (compare(v, o.textContent) < 0) { select.insertBefore(opt, o); inserted = true; break; }
+            }
+          }
+          if (!inserted) {
+            if (addOpt) select.insertBefore(opt, addOpt); else select.appendChild(opt);
+          }
+          // Teardown inline input UI and restore select
+          wrap.remove();
+          select.style.display = '';
+          select.value = newId;
+          // fire change for any dependent logic
+          try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch(_) {}
+          select.focus();
+        } catch (err) {
+          console.error(err);
+          alert('Failed to add value.');
+        }
       });
     },
 

@@ -109,6 +109,11 @@ function PD_sessions_page() {
                     <input type="text" class="form-input" id="sessionTitle" required>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Parent Event</label>
+                    <input type="text" class="form-input" id="parentEvent" placeholder="Part of confrence or larger event? Otherwise leave blank">
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Session Type</label>
