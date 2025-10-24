@@ -568,6 +568,7 @@ body {
     background: #fff;
     position: relative; /* anchor suggestions below */
 }
+.autocomplete-wrap { position: relative; }
 .token-input:focus-within {
     border-color: #e11d48;
     box-shadow: 0 0 0 3px rgba(225,29,72,0.1);
