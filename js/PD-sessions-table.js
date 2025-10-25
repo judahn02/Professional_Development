@@ -132,6 +132,27 @@ Inline handlers exposed for legacy markup
       }
       return res.json();
     },
+    async fetchSessionById(id) {
+      if (!id) return null;
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute || '').replace(/^\/+/, '');
+      const url = `${root}/${route}?session_id=${encodeURIComponent(id)}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(()=>null);
+      if (Array.isArray(data) && data.length) return data[0];
+      return null;
+    },
 
     // ----- Formatting (moved to utils) -----
 
@@ -1088,6 +1109,24 @@ Inline handlers exposed for legacy markup
   window.PDSessionsTable = {
     init: Module.init.bind(Module),
     refresh: Module.init.bind(Module),
+    prependSessionById: async function(id) {
+      const raw = await Module.fetchSessionById(id);
+      if (!raw) { await Module.init(); return; }
+      // remove duplicate if exists
+      const idVal = (raw && raw.id != null) ? raw.id : null;
+      if (Array.isArray(Module.rawRows)) {
+        Module.rawRows = Module.rawRows.filter(r => {
+          const rid = (r && r.id != null) ? r.id : null;
+          return idVal === null || rid !== idVal;
+        });
+      } else {
+        Module.rawRows = [];
+      }
+      Module.rawRows.unshift(raw);
+      Module.refreshTable();
+      // Open the Details dropdown for the new top row to show attendees
+      try { Module.toggleAttendeeDropdown(null, 0); } catch (_) {}
+    },
     toggleAttendeeDropdown: Module.toggleAttendeeDropdown.bind(Module),
     // Live search API
     queueSearch: Module.queueSearch.bind(Module),

@@ -11,14 +11,21 @@ add_action('rest_api_init', function () {
     $ns = 'profdef/v2';
 
     register_rest_route(
-        $ns, 
+        $ns,
         '/sessionhome',
         [
             'methods'  => \WP_REST_Server::READABLE, // GET
             'permission_callback' => '__return_true',
             'callback' => 'pd_sessions_home_callback',
+            'args' => [
+                'session_id' => [
+                    'description' => 'Optional session id to fetch a single row',
+                    'type' => 'integer',
+                    'required' => false,
+                ],
+            ],
         ],
-    ) ;
+    );
 }) ;
 
 function pd_sessions_home_callback( WP_REST_Request $request ) {
@@ -42,8 +49,29 @@ function pd_sessions_home_callback( WP_REST_Request $request ) {
     }
     $conn->set_charset('utf8mb4');
 
-    // 3) Prepare + execute stored procedure without member id
-    $stmt = $conn->prepare('CALL get_sessions2(NULL)');
+    // 3) Prepare + execute stored procedure, optionally with session_id
+    $sid_param = $request->get_param('session_id');
+    $sid = ($sid_param !== null) ? (int) $sid_param : 0;
+    if ($sid > 0) {
+        $stmt = $conn->prepare('CALL get_sessions2(?)');
+        if (!$stmt) {
+            $conn->close();
+            return new \WP_Error('profdef_prepare_failed', 'Failed to prepare stored procedure (with id).', [
+                'status' => 500,
+                'debug'  => WP_DEBUG ? $conn->error : null,
+            ]);
+        }
+        $stmt->bind_param('i', $sid);
+    } else {
+        $stmt = $conn->prepare('CALL get_sessions2(NULL)');
+        if (!$stmt) {
+            $conn->close();
+            return new \WP_Error('profdef_prepare_failed', 'Failed to prepare stored procedure (NULL).', [
+                'status' => 500,
+                'debug'  => WP_DEBUG ? $conn->error : null,
+            ]);
+        }
+    }
     if (!$stmt) {
         $conn->close();
         return new \WP_Error('profdef_prepare_failed', 'Failed to prepare stored procedure (NULL).', [

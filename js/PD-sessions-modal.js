@@ -390,6 +390,12 @@
         }
         // Use fixed 2 decimals for display consistency
         weightEl.value = value.toFixed(2);
+        // Toggle disabled (grey) state: enabled when qualifying; grey when not
+        if (qualify.value === 'Yes') {
+          weightEl.disabled = false;   // un-grey for visibility (still readOnly)
+        } else {
+          weightEl.disabled = true;    // grey when not qualifying
+        }
       };
 
       // Avoid duplicate bindings
@@ -481,14 +487,16 @@
       try {
         const payload = collectAddPayload(overlay);
         const resp = await Modal.createSessionAPI(payload);
-        // Close modal and refresh table
+        // Close modal and prepend new row to table
         Modal.close();
         try {
-          if (window.PDSessionsTable && typeof window.PDSessionsTable.refresh === 'function') {
+          if (window.PDSessionsTable && typeof window.PDSessionsTable.prependSessionById === 'function' && resp && resp.id) {
+            window.PDSessionsTable.prependSessionById(resp.id);
+          } else if (window.PDSessionsTable && typeof window.PDSessionsTable.refresh === 'function') {
             window.PDSessionsTable.refresh();
           }
         } catch(_) {}
-        alert('Session created. ID: ' + (resp && resp.id));
+        // No alert; table updates to show new row on top
       } catch (err) {
         console.error(err);
         alert(err.message || 'Failed to create session.');
