@@ -140,8 +140,15 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 				}
 			}
 
-			if ( $full_name !== '' && $email !== '' ) {
-				$attendees[] = [ $full_name, $email ];
+			// Certification Status from proc (may be null)
+			$status = '';
+			if ( array_key_exists( 'Certification Status', $row ) ) {
+				$status = trim( (string) $row['Certification Status'] );
+			}
+
+			// Include attendee even if one of name/email is missing; keep both fields present
+			if ( $full_name !== '' || $email !== '' ) {
+				$attendees[] = [ $full_name, $email, $status ];
 			}
 		}
 		$result->free();
