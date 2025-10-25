@@ -29,6 +29,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome4.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome5.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome6.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome7.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome8.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
