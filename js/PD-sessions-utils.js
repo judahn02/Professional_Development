@@ -17,11 +17,12 @@
 
     // Attendee helpers
     formatAttendeeItem(item) {
-      if (!Array.isArray(item)) return { name: '', email: '' };
-      const [name, email] = item;
+      if (!Array.isArray(item)) return { name: '', email: '', status: '' };
+      const [name, email, status] = item;
       return {
         name: name ? String(name) : '',
         email: email ? String(email) : '',
+        status: status ? String(status) : '',
       };
     },
     getLastName(name) {
@@ -95,8 +96,13 @@
         const emailSpan = document.createElement('span');
         emailSpan.className = 'attendee-email';
         emailSpan.textContent = a.email || '';
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'attendee-status';
+        const val = (a.status || '').toString();
+        statusSpan.textContent = 'Cert. Status: ' + (val !== '' ? val : '—');
         li.appendChild(nameSpan);
         li.appendChild(emailSpan);
+        li.appendChild(statusSpan);
         ul.appendChild(li);
       }
     },
