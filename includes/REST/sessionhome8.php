@@ -32,13 +32,42 @@ add_action( 'rest_api_init', function () {
             'callback'            => 'pd_sessionhome8_create_session',
             'args'                => [
                 'session_date' => [ 'type' => 'string', 'required' => true ],
-                'length_minutes' => [ 'type' => 'integer', 'required' => true ],
+                'length_minutes' => [
+                    'type' => 'integer', 'required' => true,
+                    'sanitize_callback' => function( $v ) { return (int) $v; },
+                    'validate_callback' => function( $v ) { return is_numeric( $v ) && (int) $v > 0; },
+                ],
                 'session_title' => [ 'type' => 'string', 'required' => true ],
                 'specific_event' => [ 'type' => 'string', 'required' => false ],
-                'type_of_session_id' => [ 'type' => 'integer', 'required' => true ],
-                'event_type_id' => [ 'type' => 'integer', 'required' => true ],
-                'ceu_id' => [ 'type' => 'integer', 'required' => false ],
-                'presenters_csv' => [ 'type' => 'string', 'required' => false ],
+                'type_of_session_id' => [
+                    'type' => 'integer', 'required' => true,
+                    'sanitize_callback' => function( $v ) { return (int) $v; },
+                    'validate_callback' => function( $v ) { return is_numeric( $v ) && (int) $v > 0; },
+                ],
+                'event_type_id' => [
+                    'type' => 'integer', 'required' => true,
+                    'sanitize_callback' => function( $v ) { return (int) $v; },
+                    'validate_callback' => function( $v ) { return is_numeric( $v ) && (int) $v > 0; },
+                ],
+                'ceu_id' => [
+                    'type' => 'integer', 'required' => false,
+                    'sanitize_callback' => function( $v ) {
+                        if ($v === null || $v === '') return null;
+                        return (int) $v;
+                    },
+                    'validate_callback' => function( $v ) {
+                        if ($v === null || $v === '') return true;
+                        return is_numeric( $v ) && (int) $v > 0;
+                    },
+                ],
+                'presenters_csv' => [
+                    'type' => 'string', 'required' => false,
+                    'sanitize_callback' => function( $v ) {
+                        $s = preg_replace( '/[^0-9,]+/', '', (string) $v );
+                        $s = preg_replace( '/,+/', ',', $s );
+                        return trim( $s, ',' );
+                    },
+                ],
             ],
         ]
     );

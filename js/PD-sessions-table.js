@@ -711,6 +711,8 @@ Inline handlers exposed for legacy markup
       input.setAttribute('aria-autocomplete', 'list');
       input.setAttribute('role', 'combobox');
       input.setAttribute('aria-expanded', 'false');
+      // Avoid native required blocking submit before we can mirror chips into value
+      try { input.removeAttribute('required'); } catch(_) {}
 
       // Ensure state holders
       if (!wrap._selected) wrap._selected = []; // [{id,name}]

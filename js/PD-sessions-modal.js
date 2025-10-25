@@ -62,6 +62,30 @@
       return res.json();
     },
 
+    getCreateSessionUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute8 || '').replace(/^\/+/, '');
+      return `${root}/${route}`;
+    },
+    async createSessionAPI(payload) {
+      const url = this.getCreateSessionUrl();
+      const res = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(()=> '');
+        throw new Error(`Create session failed ${res.status}: ${body.slice(0,300)}`);
+      }
+      return res.json();
+    },
+
     getParentEventsUrl() {
       const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
       const route = (window.PDSessions && window.PDSessions.sessionsRoute7 || '').replace(/^\/+/, '');
@@ -426,6 +450,9 @@
       const first = overlay.querySelector('input, select, textarea, button');
       if (first && typeof first.focus === 'function') first.focus();
 
+      // Bind Add Session form submit
+      this.bindAddSessionForm(overlay);
+
       // Notify listeners so other modules (e.g., token input) can initialize
       try { document.dispatchEvent(new CustomEvent('pd:add-session-modal-opened')); } catch(_) {}
     },
@@ -440,6 +467,69 @@
       }
       try { document.dispatchEvent(new CustomEvent('pd:add-session-modal-closed')); } catch(_) {}
     },
+  };
+
+  Modal.bindAddSessionForm = function(overlay) {
+    const form = overlay.querySelector('#addSessionForm');
+    if (!form || form._pdSubmitBound) return;
+    form._pdSubmitBound = true;
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btn = form.querySelector('.btn-save');
+      const orig = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+      try {
+        const payload = collectAddPayload(overlay);
+        const resp = await Modal.createSessionAPI(payload);
+        // Close modal and refresh table
+        Modal.close();
+        try {
+          if (window.PDSessionsTable && typeof window.PDSessionsTable.refresh === 'function') {
+            window.PDSessionsTable.refresh();
+          }
+        } catch(_) {}
+        alert('Session created. ID: ' + (resp && resp.id));
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to create session.');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = orig; }
+      }
+    });
+
+    function collectAddPayload(overlay) {
+      const v = (sel) => {
+        const el = overlay.querySelector(sel);
+        return el ? el.value : '';
+      };
+      const payload = {
+        session_date: v('#sessionDate'),
+        length_minutes: parseInt(v('#sessionLength'), 10) || 0,
+        session_title: v('#sessionTitle'),
+        type_of_session_id: parseInt(v('#sessionType'), 10) || 0,
+        event_type_id: parseInt(v('#eventType'), 10) || 0,
+      };
+
+      // Optional: specific_event only if non-empty (avoid sending null to REST schema type string)
+      const parentEvent = (v('#parentEvent') || '').trim();
+      if (parentEvent !== '') payload.specific_event = parentEvent;
+
+      // Optional: ceu_id only when qualifying and numeric
+      const qualify = v('#qualifyForCeus');
+      const ceuSel = overlay.querySelector('#ceuConsiderations');
+      const ceuRaw = ceuSel ? ceuSel.value : '';
+      if (qualify === 'Yes') {
+        const ceuNum = parseInt(ceuRaw, 10);
+        if (Number.isFinite(ceuNum) && ceuNum > 0) payload.ceu_id = ceuNum;
+      }
+
+      // Optional: presenters_csv from hidden inputs (comma-separated)
+      const wrap = overlay.querySelector('#presenters') ? overlay.querySelector('#presenters').closest('.token-input') : null;
+      const ids = wrap ? Array.from(wrap.querySelectorAll('input.presenter-id-hidden')).map(i => i.value).filter(Boolean) : [];
+      if (ids.length) payload.presenters_csv = ids.join(',');
+
+      return payload;
+    }
   };
 
   window.PDSessionsModal = Modal;
