@@ -100,12 +100,17 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 		);
 	}
 
-	// 4) Build attendees and backfill from WordPress users when needed
-	$attendees = [];
+    // 4) Build attendees and backfill from WordPress users when needed
+    $attendees = [];
+    $missing_member_id = false;
 
 	if ( $result = $stmt->get_result() ) {
 		while ( $row = $result->fetch_assoc() ) {
-			$uid = (int) ( $row['members_id'] ?? $row['member_id'] ?? 0 );
+            $uid = (int) ( $row['members_id'] ?? $row['member_id'] ?? 0 );
+            if ( $uid <= 0 ) {
+                // Flag rows with missing member id; handled after draining results
+                $missing_member_id = true;
+            }
 
 			$full_name = '';
 			$email     = '';
@@ -162,9 +167,16 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 		}
 	}
 
-	$stmt->close();
-	$conn->close();
+    $stmt->close();
+    $conn->close();
 
-	// 6) Respond with a plain array [["First Last","email","status",members_id], ...]
-	return new WP_REST_Response( $attendees, 200 );
+    // If nothing usable came back, return an empty array with 201 instead of erroring
+    if ( empty( $attendees ) ) {
+        return new WP_REST_Response( [], 201 );
+    }
+
+    // If some rows were missing members_id, still return what we could build
+    // (composite PK should prevent this; keep as safety without failing the request)
+    // 6) Respond with a plain array [["First Last","email","status",members_id], ...]
+    return new WP_REST_Response( $attendees, 200 );
 }

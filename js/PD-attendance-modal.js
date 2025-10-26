@@ -2,7 +2,7 @@
 (function(){
   'use strict';
 
-  const ALLOWED = ['Certified','Master','None'];
+  const ALLOWED = ['Certified','Master','None',''];
 
   const state = {
     sessionId: null,
@@ -22,6 +22,13 @@
     return `${root}/${route}?sessionid=${encodeURIComponent(id)}`;
   }
 
+  function getMemberSearchUrl(term, limit = 20) {
+    const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+    const route = (window.PDSessions && window.PDSessions.sessionsRoute10 || 'sessionhome10').replace(/^\/+/, '');
+    const q = encodeURIComponent(term);
+    return `${root}/${route}?search_p=${q}&limit=${encodeURIComponent(limit)}`;
+  }
+
   function statusClassFromLabel(label) {
     const v = String(label || '').trim().toLowerCase();
     if (v === 'certified') return 'certified';
@@ -35,12 +42,266 @@
     return v === '' ? 'Not Assigned' : v;
   }
 
+  function createStatusSelect(current, memberId, sessionId) {
+    const sel = document.createElement('select');
+    sel.className = 'attendees-status-select';
+    sel.dataset.memberId = String(memberId || 0);
+    const make = (value, text) => {
+      const o = document.createElement('option');
+      o.value = value;
+      o.textContent = text;
+      return o;
+    };
+    sel.appendChild(make('Certified', 'Certified'));
+    sel.appendChild(make('Master', 'Master'));
+    sel.appendChild(make('None', 'None'));
+    sel.appendChild(make('', 'Not Assigned'));
+    sel.value = (current || '');
+    sel.addEventListener('change', () => {
+      const Table = window.PDSessionsTable;
+      if (!Table || !(Table.attendeesCache instanceof Map)) return;
+      const entry = Table.attendeesCache.get(sessionId);
+      if (!entry || !Array.isArray(entry.items)) return;
+      const mid = Number(sel.dataset.memberId || 0);
+      const idx = entry.items.findIndex(it => Number(it.memberId||0) === mid);
+      if (idx >= 0) {
+        entry.items[idx].status = sel.value;
+        Table.attendeesCache.set(sessionId, { items: entry.items, at: entry.at });
+      }
+    });
+    return sel;
+  }
+
+  async function fetchAndSetSessionName(sessionId) {
+    const overlay = document.getElementById('editAttendeesModal');
+    if (!overlay) return;
+    const nameEl = overlay.querySelector('#attSessionNameLabel');
+    if (nameEl) nameEl.textContent = 'Loading...';
+    try {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute || '').replace(/^\/+/, '');
+      const url = `${root}/${route}?session_id=${encodeURIComponent(sessionId)}`;
+      const res = await fetch(url, {
+        method: 'GET', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Accept': 'application/json', ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}) }
+      });
+      if (!res.ok) throw new Error('session fetch failed');
+      const data = await res.json().catch(()=>null);
+      let title = '';
+      if (Array.isArray(data) && data.length) {
+        const raw = data[0] || {};
+        title = String(raw['Title'] || raw['title'] || '').trim();
+      }
+      if (!title) title = `Session ${sessionId}`;
+      if (nameEl) nameEl.textContent = title;
+    } catch (err) {
+      if (nameEl) nameEl.textContent = `Session ${sessionId}`;
+    }
+  }
+
+  function bindSearchFilter(sessionId) {
+    const overlay = document.getElementById('editAttendeesModal');
+    if (!overlay) return;
+    const input = overlay.querySelector('#attendeesSearchInput');
+    const table = overlay.querySelector('#attendees-table');
+    const tbody = table ? (table.querySelector('#attendeesBody') || table.querySelector('tbody')) : null;
+    if (!input || !tbody) return;
+    if (input._pdBound) return;
+    input._pdBound = true;
+    const apply = () => {
+      const q = (input.value || '').trim().toLowerCase();
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach(tr => {
+        const name = (tr.dataset.name || '');
+        const email = (tr.dataset.email || '');
+        const show = !q || name.includes(q) || email.includes(q);
+        tr.style.display = show ? '' : 'none';
+      });
+    };
+    input.addEventListener('input', apply);
+  }
+
+  // Simple toast helper inside the overlay
+  function showToast(message, type = 'error') {
+    const overlay = document.getElementById('editAttendeesModal');
+    if (!overlay) return;
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.position = 'fixed';
+    toast.style.top = '16px';
+    toast.style.right = '16px';
+    toast.style.zIndex = '1001';
+    toast.style.padding = '10px 12px';
+    toast.style.borderRadius = '8px';
+    toast.style.color = type === 'error' ? '#7f1d1d' : '#065f46';
+    toast.style.background = type === 'error' ? '#fee2e2' : '#d1fae5';
+    toast.style.border = type === 'error' ? '1px solid #fecaca' : '1px solid #a7f3d0';
+    overlay.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 3500);
+  }
+
+  // Debounce helper
+  function debounce(fn, ms) {
+    let t = null;
+    return function(...args) {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+
+  function setupAttendeeAutocomplete(sessionId) {
+    const overlay = document.getElementById('editAttendeesModal');
+    if (!overlay) return;
+    const input = overlay.querySelector('#attendeeNewName');
+    const statusSel = overlay.querySelector('#attendeeNewStatus');
+    if (!input) return;
+    // Ensure suggestions list exists directly under the input wrapper so it drops below the textbox
+    let wrap = input.parentElement;
+    if (!wrap || !wrap.classList.contains('autocomplete-wrap')) {
+      const parent = input.parentNode;
+      const newWrap = document.createElement('div');
+      newWrap.className = 'autocomplete-wrap';
+      parent.insertBefore(newWrap, input);
+      newWrap.appendChild(input);
+      wrap = newWrap;
+    }
+    let list = wrap.querySelector('#attendeesSuggestions');
+    if (!list) {
+      list = document.createElement('ul');
+      list.className = 'suggestions-list';
+      list.id = 'attendeesSuggestions';
+      list.setAttribute('role', 'listbox');
+      list.style.display = 'none';
+      wrap.appendChild(list);
+    }
+    const hideList = () => { list.style.display = 'none'; list.innerHTML = ''; };
+
+    const onSelect = (member) => {
+      // Block add if already an attendee
+      const Table = window.PDSessionsTable;
+      const entry = Table && Table.attendeesCache instanceof Map ? Table.attendeesCache.get(sessionId) : null;
+      const items = entry && Array.isArray(entry.items) ? entry.items : [];
+      const exists = items.some(it => Number(it.memberId||0) === Number(member.id||0));
+      if (exists) {
+        showToast('That member is already an attendee.', 'error');
+        hideList();
+        input.value = '';
+        input.focus();
+        return;
+      }
+      // Determine initial status
+      const initialStatus = statusSel ? statusSel.value : '';
+      // Add new row in table
+      const table = overlay.querySelector('#attendees-table');
+      const tbody = table ? table.querySelector('tbody') : null;
+      if (tbody) {
+        const tr = document.createElement('tr');
+        tr.dataset.name = String(member.name||'').toLowerCase();
+        tr.dataset.email = String(member.email||'').toLowerCase();
+        const tdName = document.createElement('td');
+        tdName.textContent = member.name || '';
+        tr.appendChild(tdName);
+        const tdStatus = document.createElement('td');
+        const sel = createStatusSelect(initialStatus, member.id, sessionId);
+        tdStatus.appendChild(sel);
+        tr.appendChild(tdStatus);
+        const tdDel = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'delete-btn';
+        btn.setAttribute('aria-label', 'Delete row');
+        btn.textContent = '×';
+        tdDel.appendChild(btn);
+        tr.appendChild(tdDel);
+        tbody.appendChild(tr);
+      }
+      // Update cache
+      const Table2 = window.PDSessionsTable;
+      if (Table2 && Table2.attendeesCache instanceof Map) {
+        const entry2 = Table2.attendeesCache.get(sessionId) || { items: [], at: Date.now() };
+        entry2.items.push({ name: member.name || '', email: member.email || '', status: initialStatus || '', memberId: Number(member.id||0) });
+        Table2.attendeesCache.set(sessionId, entry2);
+      }
+      // Reset input and list; focus for next add
+      hideList();
+      input.value = '';
+      input.focus();
+    };
+
+    const renderSuggestions = (items) => {
+      list.innerHTML = '';
+      if (!Array.isArray(items) || items.length === 0) {
+        // show helpful note when no results
+        const li = document.createElement('li');
+        li.className = 'no-results-row';
+        li.textContent = 'member might not be synced to external database, please sync in the members page';
+        list.appendChild(li);
+        list.style.display = 'block';
+        return;
+      }
+      // sort A->Z by name
+      items.sort((a,b) => (a.name||'').localeCompare(b.name||'', undefined, { sensitivity: 'base' }));
+      // cap 20
+      const limited = items.slice(0, 20);
+      for (const m of limited) {
+        const li = document.createElement('li');
+        li.textContent = m.name + (m.email ? ` — ${m.email}` : '');
+        li.setAttribute('role', 'option');
+        li.addEventListener('click', () => onSelect(m));
+        list.appendChild(li);
+      }
+      list.style.display = 'block';
+    };
+
+    const doSearch = async () => {
+      const q = (input.value || '').trim();
+      if (q.length < 2) { hideList(); return; }
+      try {
+        const url = getMemberSearchUrl(q, 20);
+        const res = await fetch(url, {
+          method: 'GET', credentials: 'same-origin',
+          headers: { 'Accept': 'application/json', ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}) },
+          cache: 'no-store',
+        });
+        if (res.status === 422) {
+          hideList();
+          showToast('there is a missmatch of name for member in external database and wp database that was not resolved internally, please contact your support: parallelsovit.', 'error');
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json().catch(()=>[]);
+        // Expect [[name, members_id, email], ...]
+        const suggestions = Array.isArray(data)
+          ? data.map(row => ({ name: String(row[0]||''), id: Number(row[1]||0), email: String(row[2]||'') }))
+          : [];
+        // Filter out already-attending
+        const Table = window.PDSessionsTable;
+        const entry = Table && Table.attendeesCache instanceof Map ? Table.attendeesCache.get(sessionId) : null;
+        const existing = entry && Array.isArray(entry.items) ? entry.items : [];
+        const filtered = suggestions.filter(s => s.id > 0 && !existing.some(it => Number(it.memberId||0) === s.id));
+        renderSuggestions(filtered);
+      } catch (err) {
+        console.error('member search failed', err);
+        hideList();
+      }
+    };
+
+    if (!input._pdBound) {
+      input._pdBound = true;
+      input.addEventListener('input', debounce(doSearch, 300));
+      // Dismiss suggestions by clicking outside
+      document.addEventListener('click', (e) => {
+        if (!wrap.contains(e.target)) hideList();
+      });
+    }
+  }
+
   async function loadAttendeesIntoTable(sessionId) {
     const overlay = document.getElementById('editAttendeesModal');
     if (!overlay) return;
     const table = overlay.querySelector('#attendees-table');
     if (!table) return;
-    const tbody = table.querySelector('tbody');
+    const tbody = table.querySelector('#attendeesBody') || table.querySelector('tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
@@ -94,7 +355,46 @@
       }
     }
 
+    // Compare actual list size to expected count from the main sessions table (if available)
+    const getExpectedCount = () => {
+      try {
+        const idx = state && typeof state.index === 'number' ? state.index : null;
+        if (idx == null) return null;
+        const detailsRow = document.getElementById(`attendee-row-${idx}`);
+        const mainRow = detailsRow ? detailsRow.previousElementSibling : null;
+        if (!mainRow) return null;
+        const cells = mainRow.querySelectorAll('td');
+        const cell = cells && cells[10] ? cells[10] : null; // Attendees column
+        if (!cell) return null;
+        const n = parseInt((cell.textContent || '').trim(), 10);
+        return Number.isFinite(n) ? n : null;
+      } catch (_) {
+        return null;
+      }
+    };
+    const expectedCount = getExpectedCount();
+
     if (!items.length) {
+      if (expectedCount === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.textContent = 'No attendees found.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      // If expected is not zero but list is empty, show mismatch message
+      if (expectedCount !== null && expectedCount !== 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.textContent = 'Attendee count mismatch. Please refresh the sessions table and try again.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      // Fallback friendly empty
       const tr = document.createElement('tr');
       const td = document.createElement('td');
       td.colSpan = 3;
@@ -104,16 +404,26 @@
       return;
     }
 
+    if (expectedCount !== null && Number(expectedCount) !== Number(items.length)) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 3;
+      td.textContent = 'Attendee count mismatch. Please refresh the sessions table and try again.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
     for (const a of items) {
       const tr = document.createElement('tr');
+      tr.dataset.name = (a && a.name) ? String(a.name).toLowerCase() : '';
+      tr.dataset.email = (a && a.email) ? String(a.email).toLowerCase() : '';
       const tdName = document.createElement('td');
       tdName.textContent = a && a.name ? a.name : '';
       tr.appendChild(tdName);
       const tdStatus = document.createElement('td');
-      const span = document.createElement('span');
-      span.className = `status ${statusClassFromLabel(a && a.status ? a.status : '')}`;
-      span.textContent = statusDisplay(a && a.status ? a.status : '');
-      tdStatus.appendChild(span);
+      const sel = createStatusSelect(a && a.status ? a.status : '', a && a.memberId ? a.memberId : 0, sessionId);
+      tdStatus.appendChild(sel);
       tr.appendChild(tdStatus);
       const tdDel = document.createElement('td');
       const btn = document.createElement('button');
@@ -125,6 +435,14 @@
       tr.appendChild(tdDel);
       tbody.appendChild(tr);
     }
+
+    // Apply any existing search filter
+    bindSearchFilter(sessionId);
+    const searchInput = overlay && overlay.querySelector('#attendeesSearchInput');
+    if (searchInput && searchInput.value) {
+      const event = new Event('input');
+      searchInput.dispatchEvent(event);
+    }
   }
 
   function openModal(sessionId, index) {
@@ -132,15 +450,17 @@
     state.index = Number.isFinite(index) ? index : null;
     const overlay = document.getElementById('editAttendeesModal');
     if (!overlay) return;
-    const idSpan = overlay.querySelector('#attSessionIdLabel');
-    if (idSpan) idSpan.textContent = String(state.sessionId || '');
+    // Update session name in header area
+    fetchAndSetSessionName(state.sessionId);
     // Populate Version7-style table from the same REST endpoint used by the main page
     if (state.sessionId) {
       loadAttendeesIntoTable(state.sessionId);
     }
     overlay.classList.add('active');
-    const first = overlay.querySelector('textarea, input, select, button');
+    const first = overlay.querySelector('#attendeesSearchInput, input, select, button');
     if (first && typeof first.focus === 'function') first.focus();
+    // Setup autocomplete for new attendee add
+    setupAttendeeAutocomplete(state.sessionId);
   }
 
   function closeModal() {
@@ -173,8 +493,8 @@
       if (!Number.isFinite(mid) || mid <= 0) {
         throw new Error(`Line ${i+1}: invalid member id`);
       }
-      if (!stat) {
-        throw new Error(`Line ${i+1}: status must be Certified | Master | None`);
+      if (!stat && stat !== '') {
+        throw new Error(`Line ${i+1}: status must be Certified | Master | None | ''`);
       }
       out.push([mid, state.sessionId, stat]);
     }

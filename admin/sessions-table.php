@@ -228,9 +228,13 @@ function PD_sessions_page() {
                     <div class="form-group">
                         <label class="form-label">Session</label>
                         <div class="form-input" style="background:#f9fafb; border-color:#e5e7eb;">
-                            Session ID: <span id="attSessionIdLabel"></span>
+                            <span id="attSessionNameLabel"></span>
                         </div>
                     </div>
+                </div>
+
+                <div class="attendees-search">
+                    <input type="text" id="attendeesSearchInput" class="attendees-search-input" placeholder="Search attendees by name or email" aria-label="Search attendees">
                 </div>
 
                 <div class="attendees-table-wrap">
@@ -243,13 +247,12 @@ function PD_sessions_page() {
                                 <th scope="col">Delete?</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- rows populated by JS later -->
-                        </tbody>
-                        <tfoot>
+                        <tbody id="attendeesAddBody">
                             <tr class="add-row">
                                 <td>
-                                    <input type="text" id="attendeeNewName" placeholder="New Attendee Name" class="attendees-add-input" aria-label="New attendee name" />
+                                    <div class="autocomplete-wrap">
+                                        <input type="text" id="attendeeNewName" placeholder="New Attendee Name" class="attendees-add-input" aria-label="New attendee name" autocomplete="off" />
+                                    </div>
                                 </td>
                                 <td>
                                     <select id="attendeeNewStatus" class="attendees-status-select" aria-label="Certification status">
@@ -259,11 +262,12 @@ function PD_sessions_page() {
                                         <option value="" selected>Not Assigned</option>
                                     </select>
                                 </td>
-                                <td>
-                                    <button type="button" class="add-btn" id="attendeeAddBtn" aria-label="Add attendee">+</button>
-                                </td>
+                                <td><!-- reserved for delete column alignment --></td>
                             </tr>
-                        </tfoot>
+                        </tbody>
+                        <tbody id="attendeesBody">
+                            <!-- rows populated by JS later -->
+                        </tbody>
                     </table>
                 </div>
 
