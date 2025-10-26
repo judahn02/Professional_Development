@@ -230,7 +230,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.20',
+            '0.21',
             true
         );
 
@@ -250,7 +250,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.10',
+            '0.11',
             true
         );
 
@@ -259,7 +259,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.6',
+            '0.7',
             true
         );
 
@@ -267,7 +267,16 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.51',
+            '0.52',
+            true
+        );
+
+        // Attendance modal (bulk register attendees)
+        wp_enqueue_script(
+            'PD-admin-attendance-modal-js',
+            plugin_dir_url(__FILE__) . 'js/PD-attendance-modal.js',
+            array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-table-js'),
+            '0.1',
             true
         );
 
@@ -285,6 +294,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute6' => 'sessionhome6',
                 'sessionsRoute7' => 'sessionhome7',
                 'sessionsRoute8' => 'sessionhome8',
+                'sessionsRoute9' => 'sessionhome9',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000

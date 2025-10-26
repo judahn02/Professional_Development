@@ -213,5 +213,37 @@ function PD_sessions_page() {
             </form>
         </div>
     </div>
+
+    <!-- Edit attendees modal -->
+    <div class="modal-overlay" id="editAttendeesModal" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editAttendeesTitle">
+            <div class="modal-header">
+                <h2 class="modal-title" id="editAttendeesTitle">Edit Attendees</h2>
+                <button type="button" class="close-btn" id="btnAttendanceClose" aria-label="Close modal">&times;</button>
+            </div>
+
+            <form id="editAttendeesForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label class="form-label">Session</label>
+                    <div class="form-input" style="background:#f9fafb; border-color:#e5e7eb;">
+                        Session ID: <span id="attSessionIdLabel"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="attendanceBulkInput">Bulk Attendees</label>
+                    <textarea id="attendanceBulkInput" class="form-input" rows="8" placeholder="One per line: member_id,status\nExample:\n123,Certified\n456,None"></textarea>
+                    <div class="help-text" style="margin-top:6px; color:#6b7280; font-size:12px;">
+                        Status must be one of: Certified, Master, None
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="btnAttendanceCancel">Cancel</button>
+                    <button type="submit" class="btn-save" id="btnAttendanceSave">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <?php 
 }
