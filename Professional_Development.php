@@ -31,6 +31,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome6.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome7.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome8.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome9.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome11.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome10.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
@@ -297,6 +298,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute8' => 'sessionhome8',
                 'sessionsRoute9' => 'sessionhome9',
                 'sessionsRoute10' => 'sessionhome10',
+                'sessionsRoute11' => 'sessionhome11',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000
