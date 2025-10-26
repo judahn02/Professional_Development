@@ -324,7 +324,7 @@ body {
     border-radius: 1rem;
     padding: 2rem;
     width: 90%;
-    max-width: 600px;
+    max-width: 860px; /* wider to accommodate attendees table */
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
@@ -467,6 +467,26 @@ body {
     border-color: #be123c;
     transform: translateY(-1px);
 }
+
+/* === Attendees (Version7-inspired) === */
+.attendees-modal-wrap { }
+.attendees-table-wrap { max-width: 100%; margin: 0 auto 1rem auto; overflow-x: auto; }
+.attendees-table { width: 100%; border-collapse: collapse; }
+.attendees-table caption { text-align: left; font-weight: 600; margin-bottom: .5rem; }
+.attendees-table th, .attendees-table td { padding: .75rem .9rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+.attendees-table thead th { text-align: left; font-size: .9rem; color: #6b7280; letter-spacing: .02em; }
+.attendees-table tbody tr:hover { background: #fafafa; }
+.attendees-table tfoot td { border-top: 1px solid #e5e7eb; }
+.status { display: inline-block; padding: .2rem .5rem; border-radius: .5rem; font-size: .85rem; border: 1px solid #e5e7eb; background: #f9fafb; }
+.status.certified { background: #f0fdf4; }
+.status.master { background: #eff6ff; }
+.status.none { background: #f9fafb; }
+.delete-btn { appearance: none; border: 1px solid #e5e7eb; background: white; border-radius: .5rem; width: 2rem; height: 2rem; font-size: 1rem; line-height: 1; cursor: pointer; }
+.delete-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.add-btn { appearance: none; border: 1px solid #e5e7eb; background: white; border-radius: .5rem; padding: 0 .75rem; height: 2rem; font-size: 1rem; line-height: 1; cursor: pointer; }
+.attendees-add-row { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; margin-top: .75rem; }
+.attendees-add-input { width: 100%; padding: .6rem .65rem; border: 1px solid #e5e7eb; border-radius: .5rem; }
+.attendees-status-select { width: 100%; max-width: 320px; padding: .45rem .5rem; border: 1px solid #e5e7eb; border-radius: .5rem; background: #fff; }
 
 .session-link {
     color: #0f172a;         

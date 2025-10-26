@@ -142,7 +142,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-sessions-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
                 array(),
-                '0.61',
+                '0.64',
                 'all'
             ) ;
         }
@@ -250,7 +250,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.11',
+            '0.12',
             true
         );
 
@@ -259,7 +259,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.7',
+            '0.8',
             true
         );
 
@@ -267,7 +267,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.52',
+            '0.53',
             true
         );
 
@@ -276,7 +276,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-attendance-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-attendance-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-table-js'),
-            '0.1',
+            '0.3',
             true
         );
 

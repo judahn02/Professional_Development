@@ -222,27 +222,56 @@ function PD_sessions_page() {
                 <button type="button" class="close-btn" id="btnAttendanceClose" aria-label="Close modal">&times;</button>
             </div>
 
-            <form id="editAttendeesForm" onsubmit="return false;">
-                <div class="form-group">
-                    <label class="form-label">Session</label>
-                    <div class="form-input" style="background:#f9fafb; border-color:#e5e7eb;">
-                        Session ID: <span id="attSessionIdLabel"></span>
+            <!-- Version7-inspired Attendees table markup (no JS yet) -->
+            <div class="attendees-modal-wrap">
+                <div class="attendees-session-meta">
+                    <div class="form-group">
+                        <label class="form-label">Session</label>
+                        <div class="form-input" style="background:#f9fafb; border-color:#e5e7eb;">
+                            Session ID: <span id="attSessionIdLabel"></span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="attendanceBulkInput">Bulk Attendees</label>
-                    <textarea id="attendanceBulkInput" class="form-input" rows="8" placeholder="One per line: member_id,status\nExample:\n123,Certified\n456,None"></textarea>
-                    <div class="help-text" style="margin-top:6px; color:#6b7280; font-size:12px;">
-                        Status must be one of: Certified, Master, None
-                    </div>
+                <div class="attendees-table-wrap">
+                    <table id="attendees-table" class="attendees-table">
+                        <caption>Attendees</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Attendee</th>
+                                <th scope="col">Certification Status at time of Attending</th>
+                                <th scope="col">Delete?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- rows populated by JS later -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="add-row">
+                                <td>
+                                    <input type="text" id="attendeeNewName" placeholder="New Attendee Name" class="attendees-add-input" aria-label="New attendee name" />
+                                </td>
+                                <td>
+                                    <select id="attendeeNewStatus" class="attendees-status-select" aria-label="Certification status">
+                                        <option value="Certified">Certified</option>
+                                        <option value="Master">Master</option>
+                                        <option value="None">None</option>
+                                        <option value="" selected>Not Assigned</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button type="button" class="add-btn" id="attendeeAddBtn" aria-label="Add attendee">+</button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
 
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" id="btnAttendanceCancel">Cancel</button>
-                    <button type="submit" class="btn-save" id="btnAttendanceSave">Save</button>
+                    <button type="button" class="btn-save" id="btnAttendanceSave">Save</button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
     <?php 

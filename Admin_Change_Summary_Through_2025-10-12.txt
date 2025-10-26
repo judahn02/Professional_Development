@@ -1,0 +1,39 @@
+Professional Development Plugin — Summary of Changes
+October 13–26, 2025 (Branch: main)
+
+Purpose
+- Provide a clear, non-technical summary of what changed in the plugin between Oct 13 and Oct 26, 2025.
+
+What Changed (Plain Language)
+- Sessions page improvements: The “Add New Session” form now opens as a pop-up, is easier to use, and includes smarter fields (for example, looking up Presenters and handling a Parent Event field).
+- Easier attendee management: After you add a session, the attendees area opens automatically so you can quickly add people.
+- Better CEU handling: If a session does not qualify for CEUs, related options are hidden. When it does, the CEU weight can be based on the session length to reduce manual work.
+- Clearer data in tables: The attendees list can show each person’s Certification Status when available. The Sessions table has smoother scrolling, improved sorting behavior, and a “Details” button.
+- Stronger data connections: The Sessions and Members pages are more reliably connected to the database. Several behind‑the‑scenes services were added to support these features.
+- Small fixes and polish: Wording like “Most recent session:” was corrected, and hours counting was adjusted for accuracy. Layout and formatting were tuned for readability.
+
+What You Might Notice
+- Add New Session opens in a pop‑up with clearer steps.
+- After creating a session, the page prompts you to add attendees.
+- You can search/select Presenters directly in the session form.
+- The Sessions table scrolls horizontally for wide content and supports better sorting.
+- Attendees can show a Certification Status in the list when available.
+- CEU options adjust automatically based on your selections; CEU weight can auto‑calculate from session length.
+
+Timeline Overview
+- Oct 19: Connected Sessions home to the database; added a Details button; fixed “Most recent session” text; improved hours counting; reconnected Members page data.
+- Oct 21: Enabled the session form pop‑up; improved table scrolling and sorting; added some diagnostics for a lingering issue.
+- Oct 22: Made CEU options smarter (hide/show); added background services to support the form; organized shared code for reliability.
+- Oct 23: Added Presenter lookup in the form; expanded background services and data to support sessions.
+- Oct 24: Continued improvements to the Add New Session flow; CEU weight can be based on length; added more background services to support new features.
+- Oct 25: Quality‑of‑life improvements—after adding a session, the attendees area opens; attendees can show Certification Status; finalized several background services.
+- Oct 26: Started work on an attendance pop‑up to help manage who attended.
+
+If Something Looks Off
+- Try refreshing the page or clearing your browser cache.
+- Note which page you were on and what you were doing.
+- Contact the developer or support team with those details.
+
+Notes
+- No downtime was planned as part of these changes.
+- These updates aim to make session management faster, clearer, and less error‑prone.
