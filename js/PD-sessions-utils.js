@@ -17,12 +17,13 @@
 
     // Attendee helpers
     formatAttendeeItem(item) {
-      if (!Array.isArray(item)) return { name: '', email: '', status: '' };
-      const [name, email, status] = item;
+      if (!Array.isArray(item)) return { name: '', email: '', status: '', memberId: 0 };
+      const [name, email, status, memberId] = item;
       return {
         name: name ? String(name) : '',
         email: email ? String(email) : '',
         status: status ? String(status) : '',
+        memberId: Number.isFinite(Number(memberId)) ? Number(memberId) : 0,
       };
     },
     getLastName(name) {

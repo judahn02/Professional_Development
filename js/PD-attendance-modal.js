@@ -15,6 +15,118 @@
     return `${root}/${route}`;
   }
 
+  // New: fetch attendees for this session using the same endpoint as the main table (sessionhome2)
+  function getAttendeesUrl(id) {
+    const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+    const route = (window.PDSessions && window.PDSessions.sessionsRoute2 || '').replace(/^\/+/, '');
+    return `${root}/${route}?sessionid=${encodeURIComponent(id)}`;
+  }
+
+  function statusClassFromLabel(label) {
+    const v = String(label || '').trim().toLowerCase();
+    if (v === 'certified') return 'certified';
+    if (v === 'master') return 'master';
+    if (v === 'none') return 'none';
+    return 'none';
+  }
+
+  function statusDisplay(label) {
+    const v = String(label || '');
+    return v === '' ? 'Not Assigned' : v;
+  }
+
+  async function loadAttendeesIntoTable(sessionId) {
+    const overlay = document.getElementById('editAttendeesModal');
+    if (!overlay) return;
+    const table = overlay.querySelector('#attendees-table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const fmt = (window.PDSessionsUtils && typeof window.PDSessionsUtils.formatAttendeeItem === 'function')
+      ? window.PDSessionsUtils.formatAttendeeItem
+      : (x) => Array.isArray(x) ? { name: x[0]||'', email: x[1]||'', status: x[2]||'', memberId: x[3]||0 } : { name: '', email: '', status: '', memberId: 0 };
+
+    // Use shared cache from PDSessionsTable when available
+    const Table = window.PDSessionsTable;
+    let items = [];
+    let usedCache = false;
+    if (Table && Table.attendeesCache instanceof Map && typeof Table.isAttendeeCacheFresh === 'function') {
+      if (Table.attendeesCache.has(sessionId) && Table.isAttendeeCacheFresh(sessionId)) {
+        const entry = Table.attendeesCache.get(sessionId);
+        if (entry && Array.isArray(entry.items)) {
+          items = entry.items.slice();
+          usedCache = true;
+        }
+      }
+    }
+
+    if (!usedCache) {
+      const url = getAttendeesUrl(sessionId);
+      if (!url) return;
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+          },
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`REST ${res.status}`);
+        const raw = await res.json();
+        items = Array.isArray(raw) ? raw.map(fmt) : [];
+        // Save into shared cache for reuse
+        if (Table && Table.attendeesCache instanceof Map) {
+          Table.attendeesCache.set(sessionId, { items: items.slice(), at: Date.now() });
+        }
+      } catch (err) {
+        console.error('PDAttendanceModal load error', err);
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.textContent = 'Failed to load attendees.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+    }
+
+    if (!items.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 3;
+      td.textContent = 'No attendees found.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    for (const a of items) {
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      tdName.textContent = a && a.name ? a.name : '';
+      tr.appendChild(tdName);
+      const tdStatus = document.createElement('td');
+      const span = document.createElement('span');
+      span.className = `status ${statusClassFromLabel(a && a.status ? a.status : '')}`;
+      span.textContent = statusDisplay(a && a.status ? a.status : '');
+      tdStatus.appendChild(span);
+      tr.appendChild(tdStatus);
+      const tdDel = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'delete-btn';
+      btn.setAttribute('aria-label', 'Delete row');
+      btn.textContent = '×';
+      tdDel.appendChild(btn);
+      tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    }
+  }
+
   function openModal(sessionId, index) {
     state.sessionId = Number(sessionId) || 0;
     state.index = Number.isFinite(index) ? index : null;
@@ -22,8 +134,10 @@
     if (!overlay) return;
     const idSpan = overlay.querySelector('#attSessionIdLabel');
     if (idSpan) idSpan.textContent = String(state.sessionId || '');
-    const textarea = overlay.querySelector('#attendanceBulkInput');
-    if (textarea) textarea.value = '';
+    // Populate Version7-style table from the same REST endpoint used by the main page
+    if (state.sessionId) {
+      loadAttendeesIntoTable(state.sessionId);
+    }
     overlay.classList.add('active');
     const first = overlay.querySelector('textarea, input, select, button');
     if (first && typeof first.focus === 'function') first.focus();
@@ -149,4 +263,3 @@
   // Expose API
   window.PDAttendanceModal = { open: (id, idx) => { bindOnce(); openModal(id, idx); }, close: closeModal };
 })();
-

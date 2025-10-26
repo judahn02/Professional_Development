@@ -147,8 +147,9 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 			}
 
 			// Include attendee even if one of name/email is missing; keep both fields present
+			// Return shape (array for backward compat): [ name, email, status, members_id ]
 			if ( $full_name !== '' || $email !== '' ) {
-				$attendees[] = [ $full_name, $email, $status ];
+				$attendees[] = [ $full_name, $email, $status, $uid ];
 			}
 		}
 		$result->free();
@@ -164,6 +165,6 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 	$stmt->close();
 	$conn->close();
 
-	// 6) Respond with a plain array [["First Last","email"], ...]
+	// 6) Respond with a plain array [["First Last","email","status",members_id], ...]
 	return new WP_REST_Response( $attendees, 200 );
 }
