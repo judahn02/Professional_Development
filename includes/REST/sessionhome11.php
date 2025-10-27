@@ -67,6 +67,17 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
         $incoming[ $mid ] = $normalize_status( $st );
     }
 
+    // Basic validation: detect invalid statuses early to avoid SQL errors
+    $invalid = [];
+    foreach ( $incoming as $mid => $st ) {
+        if ( ! in_array( $st, $allowed, true ) ) {
+            $invalid[] = [ 'member_id' => (int) $mid, 'status' => (string) $st ];
+        }
+    }
+    if ( ! empty( $invalid ) ) {
+        return new WP_Error( 'bad_param', 'Invalid status value detected.', [ 'status' => 400, 'invalid' => $invalid ] );
+    }
+
     // Decrypt creds
     $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
     $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
@@ -120,9 +131,11 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
             $ins = $conn->prepare( 'INSERT INTO attending (session_id, members_id, `Certification Status`) VALUES (?,?,?)' );
             if ( ! $ins ) { throw new Exception( 'prepare insert failed: ' . $conn->error ); }
             foreach ( $to_insert as $mid => $st ) {
-                $s = $st; $sid = $session_id; $m = (int) $mid;
+                $sid = $session_id; $m = (int) $mid;
+                // Convert empty status to NULL for ENUM compatibility
+                $s = ($st === '') ? null : $st;
                 $ins->bind_param( 'iis', $sid, $m, $s );
-                if ( ! $ins->execute() ) { throw new Exception( 'insert failed: ' . $ins->error ); }
+                if ( ! $ins->execute() ) { throw new Exception( 'insert failed for member_id ' . $m . ' with status ' . var_export($st, true) . ': ' . $ins->error ); }
             }
             $ins->close();
         }
@@ -130,9 +143,11 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
             $upd = $conn->prepare( 'UPDATE attending SET `Certification Status` = ? WHERE session_id = ? AND members_id = ?' );
             if ( ! $upd ) { throw new Exception( 'prepare update failed: ' . $conn->error ); }
             foreach ( $to_update as $mid => $st ) {
-                $s = $st; $sid = $session_id; $m = (int) $mid;
+                $sid = $session_id; $m = (int) $mid;
+                // Convert empty status to NULL for ENUM compatibility
+                $s = ($st === '') ? null : $st;
                 $upd->bind_param( 'sii', $s, $sid, $m );
-                if ( ! $upd->execute() ) { throw new Exception( 'update failed: ' . $upd->error ); }
+                if ( ! $upd->execute() ) { throw new Exception( 'update failed for member_id ' . $m . ' with status ' . var_export($st, true) . ': ' . $upd->error ); }
             }
             $upd->close();
         }
@@ -170,4 +185,3 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
         'attendees'  => $out,
     ], 200 );
 }
-

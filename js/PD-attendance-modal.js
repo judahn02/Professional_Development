@@ -29,6 +29,12 @@
     return `${root}/${route}?search_p=${q}&limit=${encodeURIComponent(limit)}`;
   }
 
+  function getBatchSaveUrl() {
+    const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+    const route = (window.PDSessions && window.PDSessions.sessionsRoute11 || 'sessionhome11').replace(/^\/+/, '');
+    return `${root}/${route}`;
+  }
+
   function statusClassFromLabel(label) {
     const v = String(label || '').trim().toLowerCase();
     if (v === 'certified') return 'certified';
@@ -70,6 +76,97 @@
       }
     });
     return sel;
+  }
+
+  async function saveAttendees(ev) {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    const overlay = document.getElementById('editAttendeesModal');
+    if (!overlay) return;
+    const btn = overlay.querySelector('#btnAttendanceSave');
+    const sid = state.sessionId;
+    const Table = window.PDSessionsTable;
+    const entry = Table && Table.attendeesCache instanceof Map ? Table.attendeesCache.get(sid) : null;
+    let items = entry && Array.isArray(entry.items) ? entry.items : [];
+    // Fallback: if cache empty or missing memberIds, derive from DOM rows
+    if (!items.length || items.every(it => !Number(it.memberId||0))) {
+      const tableEl = document.getElementById('attendees-table');
+      const tbodyEl = tableEl ? (tableEl.querySelector('#attendeesBody') || tableEl.querySelector('tbody')) : null;
+      const rows = tbodyEl ? Array.from(tbodyEl.querySelectorAll('tr')) : [];
+      items = rows.map(tr => {
+        const mid = Number(tr.dataset.memberId || 0);
+        const sel = tr.querySelector('select.attendees-status-select');
+        const st = sel ? sel.value : '';
+        const nameCell = tr.querySelector('td');
+        const nm = nameCell ? nameCell.textContent : '';
+        return { memberId: mid, status: st, name: nm, email: '' };
+      }).filter(it => Number(it.memberId||0) > 0);
+      if (Table && Table.attendeesCache instanceof Map) {
+        Table.attendeesCache.set(sid, { items: items.slice(), at: Date.now() });
+      }
+    }
+    const payload = {
+      session_id: sid,
+      attendees: items.filter(it => Number(it.memberId||0) > 0).map(it => ({ member_id: Number(it.memberId), status: (it.status || '') }))
+    };
+    if (!sid) { showToast('Missing session id.', 'error'); return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    try {
+      const url = getBatchSaveUrl();
+      const res = await fetch(url, {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(()=> '');
+        throw new Error(`Save failed (${res.status}): ${text.slice(0,300)}`);
+      }
+      await res.json().catch(()=>({}));
+      // Invalidate cache for this session so Details refetches from server (trust server state)
+      try { if (Table && Table.attendeesCache instanceof Map) Table.attendeesCache.delete(sid); } catch(_) {}
+      // Update attendee count cell in main table immediately
+      try {
+        const idx = state && typeof state.index === 'number' ? state.index : null;
+        if (idx != null) {
+          const detailsRow = document.getElementById(`attendee-row-${idx}`);
+          const mainRow = detailsRow ? detailsRow.previousElementSibling : null;
+          if (mainRow) {
+            const cells = mainRow.querySelectorAll('td');
+            if (cells && cells[10]) cells[10].textContent = String(payload.attendees.length);
+          }
+          // Do not render list from client state; rely on refetch after refresh
+        }
+      } catch (_) {}
+      // Clear search so the row is visible after refresh (without triggering a queued re-render that could close Details)
+      try {
+        const si = document.getElementById('searchInput');
+        if (si) si.value = '';
+        if (Table && typeof Table.setSearchImmediate === 'function') {
+          Table.setSearchImmediate('');
+        } else if (Table && typeof Table.queueSearch === 'function') {
+          // Fallback, but might cause a second re-render; prefer setSearchImmediate when available
+          Table.queueSearch('');
+        }
+      } catch(_) {}
+
+      // Full refresh for counts/session data; request to open and scroll to this session after refresh
+      try {
+        if (Table) { Table._pendingOpenId = sid; }
+        if (Table && typeof Table.refresh === 'function') Table.refresh();
+      } catch(_) {}
+      closeModal();
+      showToast('Attendees saved.', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || 'Failed to save attendees.', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    }
   }
 
   async function fetchAndSetSessionName(sessionId) {
@@ -193,11 +290,12 @@
       const initialStatus = statusSel ? statusSel.value : '';
       // Add new row in table
       const table = overlay.querySelector('#attendees-table');
-      const tbody = table ? table.querySelector('tbody') : null;
+      const tbody = table ? (table.querySelector('#attendeesBody') || table.querySelector('tbody')) : null;
       if (tbody) {
         const tr = document.createElement('tr');
         tr.dataset.name = String(member.name||'').toLowerCase();
         tr.dataset.email = String(member.email||'').toLowerCase();
+        tr.dataset.memberId = String(member.id || 0);
         const tdName = document.createElement('td');
         tdName.textContent = member.name || '';
         tr.appendChild(tdName);
@@ -211,6 +309,14 @@
         btn.className = 'delete-btn';
         btn.setAttribute('aria-label', 'Delete row');
         btn.textContent = '×';
+        btn.addEventListener('click', () => {
+          const ent = Table2 && Table2.attendeesCache instanceof Map ? Table2.attendeesCache.get(sessionId) : null;
+          if (ent && Array.isArray(ent.items)) {
+            ent.items = ent.items.filter(it => Number(it.memberId||0) !== Number(member.id||0));
+            Table2.attendeesCache.set(sessionId, ent);
+          }
+          tr.remove();
+        });
         tdDel.appendChild(btn);
         tr.appendChild(tdDel);
         tbody.appendChild(tr);
@@ -418,6 +524,7 @@
       const tr = document.createElement('tr');
       tr.dataset.name = (a && a.name) ? String(a.name).toLowerCase() : '';
       tr.dataset.email = (a && a.email) ? String(a.email).toLowerCase() : '';
+      tr.dataset.memberId = String((a && a.memberId) ? a.memberId : 0);
       const tdName = document.createElement('td');
       tdName.textContent = a && a.name ? a.name : '';
       tr.appendChild(tdName);
@@ -431,6 +538,17 @@
       btn.className = 'delete-btn';
       btn.setAttribute('aria-label', 'Delete row');
       btn.textContent = '×';
+      btn.addEventListener('click', () => {
+        if (Table && Table.attendeesCache instanceof Map) {
+          const ent = Table.attendeesCache.get(sessionId);
+          if (ent && Array.isArray(ent.items)) {
+            const mid = Number(a && a.memberId ? a.memberId : 0);
+            ent.items = ent.items.filter(it => Number(it.memberId||0) !== mid);
+            Table.attendeesCache.set(sessionId, ent);
+          }
+        }
+        tr.remove();
+      });
       tdDel.appendChild(btn);
       tr.appendChild(tdDel);
       tbody.appendChild(tr);
@@ -556,10 +674,11 @@
   function bindOnce() {
     const overlay = document.getElementById('editAttendeesModal');
     if (!overlay) return;
-    const form = overlay.querySelector('#editAttendeesForm');
-    if (form && !form._pdSubmitBound) {
-      form._pdSubmitBound = true;
-      form.addEventListener('submit', submitBulk);
+    // Bind Save button to batch save API
+    const btnSave = overlay.querySelector('#btnAttendanceSave');
+    if (btnSave && !btnSave._pdBound) {
+      btnSave._pdBound = true;
+      btnSave.addEventListener('click', saveAttendees);
     }
     const btnCancel = overlay.querySelector('#btnAttendanceCancel');
     if (btnCancel && !btnCancel._pdBound) {

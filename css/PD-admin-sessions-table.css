@@ -292,6 +292,15 @@ body {
     background: #fef7f7;
 }
 
+/* Subtle row highlight after programmatic scroll */
+.table tr.row-highlight {
+    animation: rowFlash 1.2s ease-out;
+}
+@keyframes rowFlash {
+    0% { background: #fff7d6; }
+    100% { background: transparent; }
+}
+
 .table tr:last-child td {
     border-bottom: none;
 }

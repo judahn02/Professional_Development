@@ -430,6 +430,43 @@ Inline handlers exposed for legacy markup
         }
       }
     },
+    async openAttendeeDetails(index) {
+      const row = document.getElementById(`attendee-row-${index}`);
+      if (!row) return;
+      const currentlyHidden = row.style.display === 'none' || getComputedStyle(row).display === 'none';
+      const id = this.rowIndexToId ? this.rowIndexToId.get(index) : undefined;
+      const all = document.querySelectorAll('tr.attendee-row');
+      all.forEach((tr) => { if (tr && tr.id !== `attendee-row-${index}`) tr.style.display = 'none'; });
+      row.style.display = 'table-row';
+      const trigger = document.querySelector(`span.details-dropdown[data-index="${index}"]`);
+      if (trigger) trigger.setAttribute('aria-expanded', 'true');
+      if (!currentlyHidden) return;
+      if (id == null) return;
+      const ul = document.getElementById(`attendee-list-${index}`);
+      if (!ul) return;
+      if (this.attendeesCache.has(id) && this.isAttendeeCacheFresh(id)) {
+        const cachedEntry = this.attendeesCache.get(id);
+        const cached = (cachedEntry && cachedEntry.items) || [];
+        ul.innerHTML = '';
+        this.utils.renderAttendeeListItems(ul, this.utils.sortAttendees(cached, this.attendeeSort));
+        return;
+      }
+      ul.innerHTML = '';
+      const loading = document.createElement('li');
+      loading.textContent = 'Loading attendees...';
+      ul.appendChild(loading);
+      try {
+        const attendees = await this.fetchAttendees(id);
+        this.attendeesCache.set(id, { items: attendees, at: Date.now() });
+        this.utils.renderAttendeeListItems(ul, this.utils.sortAttendees(attendees, this.attendeeSort));
+      } catch (err) {
+        console.error(err);
+        ul.innerHTML = '';
+        const li = document.createElement('li');
+        li.textContent = 'Error loading attendees.';
+        ul.appendChild(li);
+      }
+    },
 
     // ----- Render -----
     renderSessionsTable(rows) {
@@ -475,6 +512,35 @@ Inline handlers exposed for legacy markup
       this.updateSortArrows();
       this.setupHeaderSorting();
       this.setupTopScrollbar();
+
+      // If another component requested to open a specific session's Details after refresh,
+      // honor it and scroll into view smoothly.
+      try {
+        const pendingId = (window.PDSessionsTable && window.PDSessionsTable._pendingOpenId) || null;
+        if (pendingId != null) {
+          // Find the row index for this session id
+          let targetIndex = null;
+          if (this.rowIndexToId) {
+            this.rowIndexToId.forEach((id, idx) => { if (id === pendingId && targetIndex === null) targetIndex = idx; });
+          }
+          // Clear the pending flag regardless
+          window.PDSessionsTable._pendingOpenId = null;
+          if (targetIndex != null) {
+            const trigger = document.querySelector(`span.details-dropdown[data-index="${targetIndex}"]`);
+            const row = trigger ? trigger.closest('tr') : null;
+            if (row && typeof row.scrollIntoView === 'function') {
+              row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            // Open the Details panel for the target row (force open, do not toggle closed)
+            this.openAttendeeDetails(targetIndex);
+            // Briefly highlight the row for visibility
+            if (row) {
+              row.classList.add('row-highlight');
+              setTimeout(() => { try { row.classList.remove('row-highlight'); } catch(_) {} }, 1600);
+            }
+          }
+        }
+      } catch (_) {}
     },
 
     // Build filtered + sorted view of rawRows
@@ -1109,6 +1175,15 @@ Inline handlers exposed for legacy markup
   window.PDSessionsTable = {
     init: Module.init.bind(Module),
     refresh: Module.init.bind(Module),
+    // Expose cache + helpers so other modules can manage freshness and updates
+    attendeesCache: Module.attendeesCache,
+    invalidateCache: function(id) { try { Module.attendeesCache.delete(id); } catch(_) {} },
+    setCacheItems: function(id, items) { try { Module.attendeesCache.set(id, { items: Array.isArray(items) ? items.slice() : [], at: Date.now() }); } catch(_) {} },
+    // Immediately set the search term and refresh the visible table (no debounce)
+    setSearchImmediate: function(val) {
+      Module.searchTerm = (val || '').toString();
+      Module.refreshTable();
+    },
     prependSessionById: async function(id) {
       const raw = await Module.fetchSessionById(id);
       if (!raw) { await Module.init(); return; }
