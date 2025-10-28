@@ -319,13 +319,15 @@
         });
         tdDel.appendChild(btn);
         tr.appendChild(tdDel);
-        tbody.appendChild(tr);
+        // Insert at the top of the attendees body (just under the add row section)
+        tbody.insertBefore(tr, tbody.firstChild);
       }
       // Update cache
       const Table2 = window.PDSessionsTable;
       if (Table2 && Table2.attendeesCache instanceof Map) {
         const entry2 = Table2.attendeesCache.get(sessionId) || { items: [], at: Date.now() };
-        entry2.items.push({ name: member.name || '', email: member.email || '', status: initialStatus || '', memberId: Number(member.id||0) });
+        // Put the new attendee at the beginning of the list
+        entry2.items.unshift({ name: member.name || '', email: member.email || '', status: initialStatus || '', memberId: Number(member.id||0) });
         Table2.attendeesCache.set(sessionId, entry2);
       }
       // Reset input and list; focus for next add
@@ -408,6 +410,7 @@
     const table = overlay.querySelector('#attendees-table');
     if (!table) return;
     const tbody = table.querySelector('#attendeesBody') || table.querySelector('tbody');
+    const addTbody = table.querySelector('#attendeesAddBody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
@@ -430,6 +433,14 @@
     }
 
     if (!usedCache) {
+      // Show loading row and hide add-new row until response returns
+      if (addTbody) addTbody.style.display = 'none';
+      const loadingTr = document.createElement('tr');
+      const loadingTd = document.createElement('td');
+      loadingTd.colSpan = 3;
+      loadingTd.textContent = 'Loading attendees...';
+      loadingTr.appendChild(loadingTd);
+      tbody.appendChild(loadingTr);
       const url = getAttendeesUrl(sessionId);
       if (!url) return;
       try {
@@ -456,10 +467,16 @@
         td.colSpan = 3;
         td.textContent = 'Failed to load attendees.';
         tr.appendChild(td);
+        tbody.innerHTML = '';
         tbody.appendChild(tr);
+        if (addTbody) addTbody.style.display = '';
         return;
       }
+      // Remove loading row
+      tbody.innerHTML = '';
     }
+    // If cache was used, ensure add-new row is visible
+    if (usedCache && addTbody) addTbody.style.display = '';
 
     // Compare actual list size to expected count from the main sessions table (if available)
     const getExpectedCount = () => {
@@ -488,6 +505,7 @@
         td.textContent = 'No attendees found.';
         tr.appendChild(td);
         tbody.appendChild(tr);
+        if (addTbody) addTbody.style.display = '';
         return;
       }
       // If expected is not zero but list is empty, show mismatch message
@@ -498,6 +516,7 @@
         td.textContent = 'Attendee count mismatch. Please refresh the sessions table and try again.';
         tr.appendChild(td);
         tbody.appendChild(tr);
+        if (addTbody) addTbody.style.display = '';
         return;
       }
       // Fallback friendly empty
@@ -507,6 +526,7 @@
       td.textContent = 'No attendees found.';
       tr.appendChild(td);
       tbody.appendChild(tr);
+      if (addTbody) addTbody.style.display = '';
       return;
     }
 
@@ -517,6 +537,7 @@
       td.textContent = 'Attendee count mismatch. Please refresh the sessions table and try again.';
       tr.appendChild(td);
       tbody.appendChild(tr);
+      if (addTbody) addTbody.style.display = '';
       return;
     }
 
@@ -561,6 +582,8 @@
       const event = new Event('input');
       searchInput.dispatchEvent(event);
     }
+    // Show add-new row once list is rendered
+    if (addTbody) addTbody.style.display = '';
   }
 
   function openModal(sessionId, index) {
