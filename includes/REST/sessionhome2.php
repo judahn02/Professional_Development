@@ -42,6 +42,10 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 		return new \WP_Error( 'bad_param', 'sessionid must be a positive integer.', [ 'status' => 400 ] );
 	}
 
+	// TEMP: artificial delay to test loading UI in Edit Attendees modal.
+	// Comment out or remove when no longer needed.
+	// sleep(2);
+
 	// 1) Decrypt external DB creds
 	$host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
 	$name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );

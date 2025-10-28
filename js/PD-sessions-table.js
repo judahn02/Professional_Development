@@ -67,7 +67,8 @@ Inline handlers exposed for legacy markup
     utils: (window.PDSessionsUtils || {}),
     // Sessions data + sort state
     rawRows: [],
-    currentSort: { key: null, dir: 'asc' }, // date,title,lengthMin,stype,ceuWeight,ceuConsiderations,ceuCapable,eventType,parentEvent,presenters
+    // Default sort newest-first by date
+    currentSort: { key: 'date', dir: 'desc' }, // date,title,lengthMin,stype,ceuWeight,ceuConsiderations,ceuCapable,eventType,parentEvent,presenters
     _headersBound: false,
     // Live search state
     searchTerm: '',

@@ -269,7 +269,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.63',
+            '0.64',
             true
         );
 
@@ -278,7 +278,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-attendance-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-attendance-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-table-js'),
-            '0.19',
+            '0.22',
             true
         );
 
