@@ -56,6 +56,9 @@ function PD_sessions_page() {
                 </button>
             </div>
 
+            <!-- Pager (top) -->
+            <div id="sessionsPagerTop" class="sessions-pager" aria-label="Pagination controls (top)"></div>
+
             <!-- sessions table -->
             <div class="table-scroll-top" id="sessionsTopScroll"><div class="table-scroll-spacer" id="sessionsTopScrollSpacer"></div></div>
             <div class="table-container" id="sessionsTableContainer">
@@ -81,6 +84,8 @@ function PD_sessions_page() {
                     </tbody>
                 </table>
             </div>
+            <!-- Pager (bottom) -->
+            <div id="sessionsPager" class="sessions-pager" aria-label="Pagination controls (bottom)"></div>
         </div>
     </div>
 

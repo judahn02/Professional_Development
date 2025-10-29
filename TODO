@@ -1,2 +1,3 @@
-- Add a loading line to the attendees table when in the Edit Attendees modal when waiting for the responce from
-    the REST API. Also dont display the 'add new member' line until a responce is back from the REST API.
+- Add a sync to the member page so that members are synced to the database if an issue occurs.
+    - Add an initial sync to installing the plugin so that it works properly.
+

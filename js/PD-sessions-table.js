@@ -65,10 +65,13 @@ Inline handlers exposed for legacy markup
     // Current attendee sort mode: 'name' | 'last' | 'email'
     attendeeSort: (window.PDSessions && window.PDSessions.attendeeSort) || 'name',
     utils: (window.PDSessionsUtils || {}),
-    // Sessions data + sort state
+    // Sessions data + sort/paging/search state
     rawRows: [],
     // Default sort newest-first by date
     currentSort: { key: 'date', dir: 'desc' }, // date,title,lengthMin,stype,ceuWeight,ceuConsiderations,ceuCapable,eventType,parentEvent,presenters
+    currentPage: 1,
+    perPage: 25,
+    _lastFetchCount: 0,
     _headersBound: false,
     // Live search state
     searchTerm: '',
@@ -113,9 +116,40 @@ Inline handlers exposed for legacy markup
       return `${root}/${route}`;
     },
 
+    // Map client sort keys -> REST sort param
+    _toServerSortKey(key) {
+      const map = {
+        date: 'date',
+        title: 'title',
+        lengthMin: 'length',
+        stype: 'stype',
+        ceuWeight: 'ceuWeight',
+        ceuConsiderations: 'ceuConst',
+        ceuCapable: 'ceuCapable',
+        eventType: 'eventType',
+        parentEvent: 'parentEvent',
+        presenters: 'presenters',
+        attendeesCt: 'attendees_ct',
+      };
+      return map[key] || 'date';
+    },
+
     // ----- API -----
     async fetchSessions() {
-      const url = this.getRestUrl();
+      // Build query with server-side sort + paging + search
+      const base = this.getRestUrl();
+      const params = new URLSearchParams();
+      // explicit paging
+      params.set('per_page', String(this.perPage > 0 ? this.perPage : 25));
+      params.set('page', String(this.currentPage > 0 ? this.currentPage : 1));
+      const s = this.currentSort || { key: 'date', dir: 'desc' };
+      if (s && s.key) {
+        params.set('sort', this._toServerSortKey(s.key));
+        params.set('dir', (s.dir || 'desc'));
+      }
+      const q = (this.searchTerm || '').toString().trim();
+      if (q) params.set('q', q);
+      const url = params.toString() ? `${base}?${params.toString()}` : base;
       const res = await fetch(url, {
         method: 'GET',
         credentials: 'same-origin',
@@ -513,6 +547,7 @@ Inline handlers exposed for legacy markup
       this.updateSortArrows();
       this.setupHeaderSorting();
       this.setupTopScrollbar();
+      this.renderPager();
 
       // If another component requested to open a specific session's Details after refresh,
       // honor it and scroll into view smoothly.
@@ -544,28 +579,9 @@ Inline handlers exposed for legacy markup
       } catch (_) {}
     },
 
-    // Build filtered + sorted view of rawRows
+    // Server handles sorting and search; just return current page rows
     getRowsToRender() {
-      let rows = Array.isArray(this.rawRows) ? this.rawRows.slice() : [];
-      const q = (this.searchTerm || '').trim().toLowerCase();
-      if (q) {
-        rows = rows.filter((raw) => {
-          const r = this.normalizeRow(raw);
-          const hay = [
-            r.date || '',
-            r.title || '',
-            r.presenters || '',
-            r.stype || '',
-            r.eventType || '',
-          ].join(' \u2002 ').toLowerCase();
-          return hay.includes(q);
-        });
-      }
-      const { key, dir } = this.currentSort || {};
-      if (key) {
-        rows.sort((a, b) => this.compareRawRows(a, b, key, dir || 'asc'));
-      }
-      return rows;
+      return Array.isArray(this.rawRows) ? this.rawRows.slice() : [];
     },
     refreshTable() {
       const view = this.getRowsToRender();
@@ -586,8 +602,10 @@ Inline handlers exposed for legacy markup
       }
       this._searchTimer = setTimeout(() => {
         this._searchTimer = null;
-        this.refreshTable();
-      }, 1000); // 1 second debounce
+        // Reset to first page on new search and fetch server-side
+        this.currentPage = 1;
+        this.reloadSessionsFromServer();
+      }, 500); // 0.5s debounce
     },
 
     // ----- Header sorting -----
@@ -617,25 +635,36 @@ Inline handlers exposed for legacy markup
       });
     },
     applySort(key) {
-      if (!Array.isArray(this.rawRows) || this.rawRows.length === 0) return;
+      // Cycle: asc -> desc -> none
       const state = this.currentSort || { key: null, dir: 'asc' };
       let dir;
       if (state.key !== key) {
-        // First click on this column => ascending
         dir = 'asc';
+        this.currentSort = { key, dir };
       } else if (state.dir === 'asc') {
-        // Second click => descending
         dir = 'desc';
+        this.currentSort = { key, dir };
       } else if (state.dir === 'desc') {
-        // Third click => clear sort to original order
+        // Clear to no explicit sort; server defaults to date desc
         this.currentSort = { key: null, dir: 'asc' };
-        this.refreshTable();
-        return;
       } else {
-        dir = 'asc';
+        this.currentSort = { key, dir: 'asc' };
       }
-      this.currentSort = { key, dir };
-      this.refreshTable();
+      // Fetch rows from server using current sort
+      this.reloadSessionsFromServer();
+    },
+
+    async reloadSessionsFromServer() {
+      try {
+        const rows = await this.fetchSessions();
+        this._lastFetchCount = Array.isArray(rows) ? rows.length : 0;
+        this.rawRows = Array.isArray(rows) ? rows.slice() : [];
+        this.refreshTable();
+      } catch (err) {
+        console.error(err);
+        // Fallback to current table rendering
+        this.refreshTable();
+      }
     },
     compareRawRows(a, b, key, dir) {
       return this.utils.compareRows(a, b, key, dir, (row) => this.normalizeRow(row));
@@ -685,6 +714,87 @@ Inline handlers exposed for legacy markup
       const container = document.getElementById('sessionsTableContainer');
       const table = document.getElementById('sessionsTable') || document.querySelector('.table');
       this.utils.syncHorizontalScroll(top, container, table, spacer);
+    },
+
+    // ----- Pagination UI -----
+    renderPager() {
+      const canNext = this._lastFetchCount >= this.perPage && this.perPage > 0;
+
+      const ensurePager = (id, insertPosition) => {
+        let el = document.getElementById(id);
+        if (!el) {
+          el = document.createElement('div');
+          el.id = id;
+          el.className = 'sessions-pager';
+          el.style.display = 'flex';
+          el.style.gap = '12px';
+          el.style.alignItems = 'center';
+          el.style.margin = '8px 0 16px';
+          const topScroll = document.getElementById('sessionsTopScroll');
+          const container = document.getElementById('sessionsTableContainer');
+          if (insertPosition === 'top' && topScroll && topScroll.parentNode) {
+            topScroll.parentNode.insertBefore(el, topScroll);
+          } else if (container && container.parentNode) {
+            container.parentNode.insertBefore(el, container.nextSibling);
+          } else {
+            document.body.appendChild(el);
+          }
+        }
+        el.innerHTML = '';
+        return el;
+      };
+
+      const renderInto = (el, suffix) => {
+        const mkBtn = (id, label) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.id = id;
+          b.textContent = label;
+          b.className = 'pager-btn';
+          b.style.padding = '6px 10px';
+          b.style.border = '1px solid #e5e7eb';
+          b.style.background = '#ffffff';
+          b.style.cursor = 'pointer';
+          b.style.borderRadius = '4px';
+          return b;
+        };
+
+        const prev = mkBtn(`sessionsPager${suffix}Prev`, 'Prev');
+        prev.disabled = this.currentPage <= 1;
+        prev.setAttribute('aria-disabled', prev.disabled ? 'true' : 'false');
+        prev.addEventListener('click', () => this.prevPage());
+        el.appendChild(prev);
+
+        const label = document.createElement('span');
+        label.id = `sessionsPager${suffix}Label`;
+        label.textContent = `Page ${this.currentPage}`;
+        el.appendChild(label);
+
+        const next = mkBtn(`sessionsPager${suffix}Next`, 'Next');
+        next.disabled = !canNext;
+        next.setAttribute('aria-disabled', next.disabled ? 'true' : 'false');
+        next.addEventListener('click', () => this.nextPage());
+        el.appendChild(next);
+      };
+
+      // Top pager: before the horizontal top scrollbar
+      const topEl = ensurePager('sessionsPagerTop', 'top');
+      renderInto(topEl, 'Top');
+      // Bottom pager: after the table container (kept legacy id 'sessionsPager')
+      const bottomEl = ensurePager('sessionsPager', 'bottom');
+      renderInto(bottomEl, '');
+    },
+
+    nextPage() {
+      const canNext = this._lastFetchCount >= this.perPage && this.perPage > 0;
+      if (!canNext) return;
+      this.currentPage += 1;
+      this.reloadSessionsFromServer();
+    },
+    prevPage() {
+      if (this.currentPage <= 1) return;
+      this.currentPage -= 1;
+      this.reloadSessionsFromServer();
     },
 
     // ----- Add Session Modal -----
@@ -1155,6 +1265,7 @@ Inline handlers exposed for legacy markup
     async init() {
       try {
         const rows = await this.fetchSessions();
+        this._lastFetchCount = Array.isArray(rows) ? rows.length : 0;
         this.rawRows = Array.isArray(rows) ? rows.slice() : [];
         this.refreshTable();
       } catch (err) {
@@ -1183,7 +1294,8 @@ Inline handlers exposed for legacy markup
     // Immediately set the search term and refresh the visible table (no debounce)
     setSearchImmediate: function(val) {
       Module.searchTerm = (val || '').toString();
-      Module.refreshTable();
+      Module.currentPage = 1;
+      Module.reloadSessionsFromServer();
     },
     prependSessionById: async function(id) {
       const raw = await Module.fetchSessionById(id);

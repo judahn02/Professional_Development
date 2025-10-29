@@ -527,6 +527,40 @@ body {
     cursor: pointer;           /* Pointer cursor */
 }
 
+/* --- Sessions Pager Controls --- */
+.sessions-pager {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem 0;
+}
+.sessions-pager .pager-btn {
+    appearance: none;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #e5e7eb; /* gray-300 */
+    background: #ffffff;
+    color: #374151;            /* gray-700 */
+    border-radius: 0.5rem;
+    cursor: pointer;
+    line-height: 1;
+    font-size: 0.95rem;
+}
+.sessions-pager .pager-btn:hover {
+    background: #f9fafb;       /* gray-50 */
+    border-color: #d1d5db;     /* gray-300 */
+}
+.sessions-pager .pager-btn[aria-disabled="true"],
+.sessions-pager .pager-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.sessions-pager span {
+    color: #6b7280;            /* gray-500 */
+    font-weight: 600;
+    min-width: 6ch;
+    text-align: center;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; }
