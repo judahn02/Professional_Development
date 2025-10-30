@@ -89,6 +89,85 @@ function PD_sessions_page() {
         </div>
     </div>
 
+    <!-- Edit Session modal (mirrors Add Session UI; values are prefilled) -->
+    <div class="modal-overlay" id="editSessionModal" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editSessionTitle">
+            <div class="modal-header">
+                <h2 class="modal-title" id="editSessionTitle">Edit Session</h2>
+                <button type="button" class="close-btn" aria-label="Close modal" onclick="closeEditSessionModal()">&times;</button>
+            </div>
+
+            <form id="editSessionForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-input" id="sessionDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Length (minutes)</label>
+                        <input type="number" class="form-input" id="sessionLength" min="0" step="15" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Session Title</label>
+                    <input type="text" class="form-input" id="sessionTitle" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Parent Event</label>
+                    <input type="text" class="form-input" id="parentEvent" placeholder="Part of confrence or larger event? Otherwise leave blank">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Session Type</label>
+                        <select class="form-select" id="sessionType" required>
+                            <option value="">Select Type</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Event Type</label>
+                        <select class="form-select" id="eventType" required>
+                            <option value="">Select Event Type</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">CEU Weight</label>
+                        <input type="text" class="form-input" id="ceuWeight" value="0" readonly disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Qualify for CEUs?</label>
+                        <select class="form-select" id="qualifyForCeus">
+                            <option value="Yes">Yes</option>
+                            <option value="No" selected>No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="ceuConsiderationsGroup">
+                    <label class="form-label">CEU Considerations</label>
+                    <select class="form-select" id="ceuConsiderations">
+                        <option value="">Select CEU Consideration</option>
+                        <option value="NA">NA</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Presenter(s)</label>
+                    <input type="text" class="form-input" id="editPresenters" placeholder="Enter presenter names" required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditSessionModal()">Cancel</button>
+                    <button type="submit" class="btn-save" id="btnEditSessionSave">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- Add session modal -->
     <div class="modal-overlay" id="addSessionModal">
         <div class="modal">

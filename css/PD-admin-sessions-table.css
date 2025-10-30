@@ -83,6 +83,22 @@
     border-color: #be123c;
 }
 
+/* New: Edit Session button (placed to the left of Edit Attendees) */
+.edit-session-btn {
+    background: #2563eb; /* blue-600 */
+    color: #fff;
+    border: 1px solid #2563eb;
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.edit-session-btn:hover {
+    background: #1d4ed8; /* blue-700 */
+    border-color: #1d4ed8;
+}
+
 /* Responsive: avoid overlay on narrow screens */
 @media (max-width: 768px) {
     .attendee-actions {

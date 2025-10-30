@@ -115,6 +115,11 @@ Inline handlers exposed for legacy markup
       const route = (window.PDSessions && window.PDSessions.sessionsRoute5 || '').replace(/^\/+/, '');
       return `${root}/${route}`;
     },
+    getUpdateSessionUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoutePut) ? String(window.PDSessions.sessionsRoutePut).replace(/^\/+/, '') : 'session';
+      return `${root}/${route}`;
+    },
 
     // Map client sort keys -> REST sort param
     _toServerSortKey(key) {
@@ -373,6 +378,16 @@ Inline handlers exposed for legacy markup
       // Actions (top-right)
       const actions = document.createElement('div');
       actions.className = 'attendee-actions';
+
+      // New: Edit Session button (to the left)
+      const editSessionBtn = document.createElement('button');
+      editSessionBtn.type = 'button';
+      editSessionBtn.className = 'edit-session-btn';
+      editSessionBtn.textContent = 'Edit Details';
+      editSessionBtn.addEventListener('click', (e) => this.onEditSession(e, index));
+      actions.appendChild(editSessionBtn);
+
+      // Existing: Edit Attendees button
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.className = 'edit-attendees-btn';
@@ -394,6 +409,141 @@ Inline handlers exposed for legacy markup
       td.appendChild(block);
       tr.appendChild(td);
       return tr;
+    },
+    onEditSession(event, index) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      const id = this.rowIndexToId ? this.rowIndexToId.get(index) : undefined;
+      if (id == null) return;
+      // Find row data and open edit modal using shared modal logic
+      let raw = null;
+      if (Array.isArray(this.rawRows)) raw = this.rawRows.find(r => (r && r.id != null) ? r.id === id : false) || null;
+      const session = this.normalizeRow(raw || {});
+      if (window.PDEditSessionModal && typeof window.PDEditSessionModal.open === 'function') {
+        window.PDEditSessionModal.open(session);
+      } else {
+        // fallback to legacy inline modal if edit modal lib missing
+        this.openEditSessionModalById(id);
+      }
+    },
+
+    openEditSessionModalById(id) {
+      const overlay = document.getElementById('editSessionModal');
+      if (!overlay) return;
+
+      // Find the raw row by id
+      let raw = null;
+      if (Array.isArray(this.rawRows)) {
+        raw = this.rawRows.find(r => (r && r.id != null) ? r.id === id : false) || null;
+      }
+      const r = this.normalizeRow(raw || {});
+
+      // Prefill fields
+      const setVal = (sel, val) => { const el = overlay.querySelector(sel); if (el) el.value = val || ''; };
+      // Date expects YYYY-MM-DD
+      setVal('#sessionDate', r.date || '');
+      setVal('#sessionTitle', r.title || '');
+      setVal('#sessionLength', String(r.lengthMin || 0));
+      setVal('#parentEvent', r.parentEvent || '');
+      const pres = overlay.querySelector('#editPresenters');
+      if (pres) pres.value = r.presenters || '';
+
+      this.bindEditSessionSave(overlay, id);
+
+      // Open modal
+      overlay.classList.add('active');
+      overlay.setAttribute('aria-hidden', 'false');
+      const onOverlayClick = (e) => { if (e.target === overlay) this.closeEditSessionModal(); };
+      overlay.addEventListener('click', onOverlayClick, { once: true });
+      // ESC close
+      this._escHandlerEdit = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') this.closeEditSessionModal(); };
+      document.addEventListener('keydown', this._escHandlerEdit);
+
+      const first = overlay.querySelector('input, select, textarea, button');
+      if (first && typeof first.focus === 'function') first.focus();
+    },
+    bindEditSessionSave(overlay, id) {
+      if (!overlay || !id) return;
+      const form = overlay.querySelector('#editSessionForm');
+      if (!form || form._pdSubmitBound) return;
+      form._pdSubmitBound = true;
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const btn = overlay.querySelector('#btnEditSessionSave');
+        const orig = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+        try {
+          const val = (sel) => { const el = overlay.querySelector(sel); return el ? el.value : ''; };
+          const selText = (sel) => {
+            const el = overlay.querySelector(sel);
+            if (!el) return '';
+            const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
+            return opt ? (opt.text || opt.textContent || '').trim() : (el.value || '').trim();
+          };
+          const payload = {
+            session_id: id,
+            title: (val('#sessionTitle') || '').trim(),
+            date: (val('#sessionDate') || '').trim(),
+            length: parseInt(val('#sessionLength'), 10) || 0,
+            specific_event: (val('#parentEvent').trim() || null),
+            session_type: selText('#sessionType'),
+            event_type: selText('#eventType'),
+            ceu_consideration: null,
+          };
+          const qualify = val('#qualifyForCeus');
+          if (qualify === 'Yes') {
+            const ceuName = selText('#ceuConsiderations');
+            if (ceuName && ceuName.toLowerCase() !== 'na') payload.ceu_consideration = ceuName;
+          }
+          if (!payload.title || !payload.date || !payload.length || !payload.session_type || !payload.event_type) {
+            throw new Error('Please complete Title, Date, Length, Session Type, and Event Type.');
+          }
+          const url = this.getUpdateSessionUrl();
+          const res = await fetch(url, {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            const txt = await res.text().catch(()=> '');
+            throw new Error(`Update failed (${res.status}): ${txt.slice(0, 300)}`);
+          }
+          this.closeEditSessionModal();
+          const updated = await this.fetchSessionById(id).catch(() => null);
+          if (updated) {
+            if (Array.isArray(this.rawRows)) {
+              this.rawRows = this.rawRows.map(r => {
+                const rid = (r && r.id != null) ? r.id : null;
+                return (rid === id) ? updated : r;
+              });
+            } else {
+              this.rawRows = [updated];
+            }
+            this.refreshTable();
+          } else {
+            await this.reloadSessionsFromServer();
+          }
+        } catch (err) {
+          console.error(err);
+          alert(err && err.message ? err.message : 'Failed to save changes.');
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = orig; }
+        }
+      });
+    },
+    closeEditSessionModal() {
+      const overlay = document.getElementById('editSessionModal');
+      if (!overlay) return;
+      overlay.classList.remove('active');
+      overlay.setAttribute('aria-hidden', 'true');
+      if (this._escHandlerEdit) {
+        document.removeEventListener('keydown', this._escHandlerEdit);
+        this._escHandlerEdit = null;
+      }
     },
     onEditAttendees(event, index) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -888,8 +1038,15 @@ Inline handlers exposed for legacy markup
         this._escHandlerPresenter = null;
       }
     },
-    setupPresenterTokenInput() {
-      const input = document.getElementById('presenters');
+    setupPresenterTokenInput(inputOrSelector) {
+      let input = null;
+      if (typeof inputOrSelector === 'string' && inputOrSelector) {
+        input = document.querySelector(inputOrSelector);
+      } else if (inputOrSelector && inputOrSelector.nodeType === 1) {
+        input = inputOrSelector;
+      } else {
+        input = document.getElementById('presenters');
+      }
       if (!input) return;
 
       // Create wrapper and suggestions list
@@ -931,11 +1088,11 @@ Inline handlers exposed for legacy markup
       }
 
       // Hidden field carries JSON selection on submit/save
-      let hidden = document.getElementById('presentersSelected');
+      let hidden = wrap.querySelector('input.presenters-selected');
       if (!hidden) {
         hidden = document.createElement('input');
         hidden.type = 'hidden';
-        hidden.id = 'presentersSelected';
+        hidden.className = 'presenters-selected';
         hidden.name = 'presentersSelected';
         wrap.appendChild(hidden);
       }
@@ -1146,16 +1303,18 @@ Inline handlers exposed for legacy markup
       };
       input.addEventListener('blur', input._pdBlurHandler);
 
-      // Initial render (if any prefilled value)
+      // Initial render (if any prefilled value): turn CSV text into chips, then clear text box
       if (input.value && input.value.trim() !== '') {
         const names = input.value.split(',').map(s => s.trim()).filter(Boolean);
         wrap._selected = names.map(n => ({ id: 0, name: n }));
+        // Clear the visible text to avoid duplicate display (chips + text)
+        input.value = '';
       }
       renderChips();
       updateHiddenValue();
 
       // On submit, mirror selected names into visible input to satisfy required validation
-      const form = document.getElementById('addSessionForm');
+      const form = input.closest('form');
       if (form && !form._pdPresentersSubmitBound) {
         form._pdPresentersSubmitBound = true;
         form.addEventListener('submit', () => {
@@ -1355,7 +1514,24 @@ Inline handlers exposed for legacy markup
   // Presenter modal handlers (optional inline use)
   window.openAddPresenterModal = Module.openAddPresenterModal.bind(Module);
   window.closeAddPresenterModal = Module.closeAddPresenterModal.bind(Module);
+  // Edit Session modal close handler
+  window.closeEditSessionModal = Module.closeEditSessionModal.bind(Module);
 
   // Auto-init when script loads (footer)
   Module.init();
+
+  // When Edit modal opens, set up token input for its presenters field
+  try {
+    document.addEventListener('pd:edit-session-modal-opened', function(e) {
+      const sel = '#editSessionModal #editPresenters';
+      try { Module.setupPresenterTokenInput(sel); } catch(_) {}
+      // Bind save handler using the session id from event detail if available
+      try {
+        const overlay = document.getElementById('editSessionModal');
+        const session = e && e.detail && e.detail.session ? e.detail.session : null;
+        const sid = session && session.id != null ? session.id : null;
+        if (overlay && sid) Module.bindEditSessionSave(overlay, sid);
+      } catch(_) {}
+    });
+  } catch(_) {}
 })();

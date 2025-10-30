@@ -368,7 +368,7 @@
           ceuSelect.value = 'NA';
         }
       };
-      qualify.value = 'No';
+      // Preserve current selection; just apply visibility based on it
       handler();
       qualify.removeEventListener('change', qualify._pdCeuHandler || (()=>{}));
       qualify._pdCeuHandler = handler;
@@ -475,6 +475,108 @@
     },
   };
 
+  // Edit modal: reuse most of the Add modal logic, but prefill values.
+  const EditModal = {
+    _escHandler: null,
+    async open(session) {
+      const overlay = document.getElementById('editSessionModal');
+      if (!overlay) return;
+      overlay.classList.add('active');
+
+      try {
+        // Populate selects just like Add modal
+        const opts = await Modal.fetchFormOptions();
+        const sessionType = overlay.querySelector('#sessionType');
+        const eventType = overlay.querySelector('#eventType');
+        const ceuSelect  = overlay.querySelector('#ceuConsiderations');
+        if (sessionType) {
+          utils.clearAndFillSelect(sessionType, 'Select Type', opts.session_types || [], 'session_id', 'session_name');
+          Modal.setupAddNewForSelect(sessionType, 'Session Type');
+        }
+        if (eventType) {
+          utils.clearAndFillSelect(eventType, 'Select Event Type', opts.event_types || [], 'event_id', 'event_name');
+          Modal.setupAddNewForSelect(eventType, 'Event Type');
+        }
+        if (ceuSelect) {
+          utils.clearAndFillSelect(ceuSelect, 'Select CEU Consideration', opts.ceu_considerations || [], 'ceu_id', 'ceu_name');
+          if (![...ceuSelect.options].some(o => o.value === 'NA')) {
+            const na = document.createElement('option');
+            na.value = 'NA'; na.textContent = 'NA';
+            ceuSelect.appendChild(na);
+          }
+          Modal.setupAddNewForSelect(ceuSelect, 'CEU Consideration');
+        }
+
+        // Prefill values
+        const setVal = (sel, val) => { const el = overlay.querySelector(sel); if (el) el.value = val || ''; };
+        setVal('#sessionDate', (session && session.date) || '');
+        setVal('#sessionTitle', (session && session.title) || '');
+        setVal('#sessionLength', String((session && session.lengthMin) || 0));
+        setVal('#parentEvent', (session && session.parentEvent) || '');
+
+        // Qualify/CEU
+        const qualify = overlay.querySelector('#qualifyForCeus');
+        const capableStr = (session && session.ceuCapable) || '';
+        if (qualify) {
+          qualify.value = (String(capableStr).toLowerCase() === 'true') ? 'Yes' : 'No';
+        }
+
+        Modal.applyCeuVisibility(overlay);
+        Modal.bindCeuWeight(overlay);
+
+        // Select matching type/event by label
+        const selectByLabel = (select, label) => {
+          if (!select || !label) return;
+          const target = String(label).trim().toLowerCase();
+          for (let i=0; i<select.options.length; i++) {
+            const o = select.options[i];
+            const text = (o && (o.text || o.textContent) || '').trim().toLowerCase();
+            if (text === target) { select.value = o.value; break; }
+          }
+        };
+        selectByLabel(sessionType, (session && session.stype) || '');
+        selectByLabel(eventType,  (session && session.eventType) || '');
+
+        // CEU consideration by label (allow NA)
+        selectByLabel(overlay.querySelector('#ceuConsiderations'), (session && session.ceuConsiderations) || '');
+
+        // CEU Weight prefill if provided
+        setVal('#ceuWeight', (session && session.ceuWeight) || '0');
+
+        // Presenters (token input handled by table module on event)
+        const pres = overlay.querySelector('#editPresenters');
+        if (pres) pres.value = (session && session.presenters) || '';
+      } catch (err) {
+        console.error(err);
+      }
+
+      // Autocomplete for Parent Event
+      Modal.setupParentEventAutocomplete(overlay);
+
+      const onOverlayClick = (e) => { if (e.target === overlay) this.close(); };
+      overlay.addEventListener('click', onOverlayClick, { once: true });
+
+      this._escHandler = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') this.close(); };
+      document.addEventListener('keydown', this._escHandler);
+
+      const first = overlay.querySelector('input, select, textarea, button');
+      if (first && typeof first.focus === 'function') first.focus();
+
+      // Notify listeners so other modules (e.g., token input / save binder) can initialize
+      try { document.dispatchEvent(new CustomEvent('pd:edit-session-modal-opened', { detail: { session: (session || null) } })); } catch(_) {}
+    },
+    close() {
+      const overlay = document.getElementById('editSessionModal');
+      if (!overlay) return;
+      overlay.classList.remove('active');
+      if (this._escHandler) {
+        document.removeEventListener('keydown', this._escHandler);
+        this._escHandler = null;
+      }
+      try { document.dispatchEvent(new CustomEvent('pd:edit-session-modal-closed')); } catch(_) {}
+    }
+  };
+
   Modal.bindAddSessionForm = function(overlay) {
     const form = overlay.querySelector('#addSessionForm');
     if (!form || form._pdSubmitBound) return;
@@ -541,6 +643,7 @@
   };
 
   window.PDSessionsModal = Modal;
+  window.PDEditSessionModal = EditModal;
   // Keep legacy inline handlers working if referenced directly
   window.openAddSessionModal = Modal.open.bind(Modal);
   window.closeAddSessionModal = Modal.close.bind(Modal);

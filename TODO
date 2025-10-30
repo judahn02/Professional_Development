@@ -1,3 +1,44 @@
+
+- add history of sessions for presentor to presentor page.
+- fix Add New Presentor modal to show options for first and last name that can be changed. 
+- add a modal to sessions page to edit session details.
+- refactor the JS of session-table if needed.
+
+- Make sure all REST API's are using procesure calls, sql querrys will be banned in production.
+
 - Add a sync to the member page so that members are synced to the database if an issue occurs.
     - Add an initial sync to installing the plugin so that it works properly.
+    - add to webhooks, deleted_user and user_register. 
 
+- Edit the member facing home page that is responsible for members seeing their own metrics. 
+
+- when making readme, state that the database requires Mroonga to work
+
+## Later
+- Evaluate Triggers for table updates.
+
+
+
+## Ask Jason
+- Ask Jaon if member status for a presentor should be acknoledged?
+
+- Reguarding a possible BEFORE UPDATE trigger in administrative_service, ask Jason if a    
+  person can server in two committies or two boards at the same time?
+
+- For Administrative Service, can a person only ever serve on a Committie or Board?
+
+- For attendees, does every attendee have a unique email and name? Can there be two members that share the same email?
+
+# Completed
+- refactor the database so that its using the proper member id to prevent issues with new    
+    userers taking over the recycled wordpress id's. 
+
+- extract then prepare csv inserts for database.
+
+- fix database to log first and last name of presenters.
+
+- add proper presentor metadetails.
+
+
+# In the next Refactor of the Database
+- Seperate serving_type in administratve_service to its own table or dedicated enum.

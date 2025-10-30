@@ -33,6 +33,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome8.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome9.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome11.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome10.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/PUT_session.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
@@ -144,7 +145,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-sessions-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
                 array(),
-                '0.74',
+                '0.75',
                 'all'
             ) ;
         }
@@ -261,7 +262,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.12',
+            '0.15',
             true
         );
 
@@ -269,7 +270,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.66',
+            '0.71',
             true
         );
 
@@ -299,6 +300,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute9' => 'sessionhome9',
                 'sessionsRoute10' => 'sessionhome10',
                 'sessionsRoute11' => 'sessionhome11',
+                'sessionsRoutePut' => 'session',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000
