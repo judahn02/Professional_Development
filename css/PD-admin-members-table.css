@@ -138,6 +138,48 @@ body {
     border-bottom: none;
 }
 
+/* Clickable member rows emphasis */
+.table tr.member-row {
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.table tr.member-row:hover td {
+    background: #fff1f2; /* slightly stronger than default hover */
+}
+.table tr.member-row:active td {
+    background: #ffe4e6;
+}
+/* Small lift animation similar to the Export button */
+.table tr.member-row:hover {
+    transform: translateY(-2px);
+}
+.table tr.member-row:active {
+    transform: translateY(-1px);
+}
+/* Hint interactivity: underline name cells on hover */
+.table tr.member-row:hover td:first-child,
+.table tr.member-row:hover td:nth-child(2) {
+    text-decoration: underline;
+    text-decoration-color: #f43f5e; /* rose-500 */
+    text-underline-offset: 2px;
+}
+/* Add a subtle chevron in the last cell on hover */
+.table tr.member-row td:last-child {
+    position: relative;
+}
+.table tr.member-row td:last-child::after {
+    content: '›';
+    color: #e11d48; /* rose-600 */
+    font-weight: 700;
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.table tr.member-row:hover td:last-child::after {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
 .details-dropdown {
     color: #e11d48;
     font-weight: 600;

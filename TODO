@@ -1,8 +1,3 @@
-
-- fix Add New Presentor modal to show options for first and last name that can be changed. 
-- add a modal to sessions page to edit session details.
-- refactor the JS of session-table if needed.
-
 - Make sure all REST API's are using procesure calls, sql querrys will be banned in production.
 
 - Add a sync to the member page so that members are synced to the database if an issue occurs.
@@ -18,6 +13,7 @@
 ## Later
 - Evaluate Triggers for table updates.
 
+- refactor the JS of session-table if needed.
 
 
 ## Ask Jason
@@ -40,6 +36,8 @@
 
 - add proper presentor metadetails.
 
+- fix Add New Presentor modal to show options for first and last name that can be changed. 
 
+- add a modal to sessions page to edit session details.
 # In the next Refactor of the Database
 - Seperate serving_type in administratve_service to its own table or dedicated enum.

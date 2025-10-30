@@ -138,7 +138,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-members-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-members-table.css',
                 array(),
-                '0.6',
+                '0.8',
                 'all'
             ) ;
         }
