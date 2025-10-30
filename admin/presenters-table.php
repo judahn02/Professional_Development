@@ -40,7 +40,7 @@ function PD_presenters_table_page() {
                     <input 
                         type="text" 
                         class="search-input" 
-                        placeholder="Search by... name/title/type"
+                        placeholder="Search by... name/email/phone"
                         id="searchInput"
                         oninput="filterPresenters()"
                     >
@@ -53,20 +53,18 @@ function PD_presenters_table_page() {
                 </button>
             </div>
 
+            <!-- Pager (top) -->
+            <div id="presentersPagerTop" class="sessions-pager" aria-label="Pagination controls (top)"></div>
+
             <!-- Presenters Table -->
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th onclick="sortPresenters('firstname')" style="cursor:pointer;">First Name <span id="sort-arrow-firstname"></span></th>
-                            <th onclick="sortPresenters('lastname')" style="cursor:pointer;">Last Name <span id="sort-arrow-lastname"></span></th>
+                            <th onclick="sortPresenters('name')" style="cursor:pointer;">Name <span id="sort-arrow-name"></span></th>
                             <th onclick="sortPresenters('email')" style="cursor:pointer;">Email <span id="sort-arrow-email"></span></th>
-                            <th onclick="sortPresenters('phone')" style="cursor:pointer;">Phone <span id="sort-arrow-phone"></span></th>
-                            <!-- <th onclick="sortPresenters('type')" style="cursor:pointer;">Presenter Type <span id="sort-arrow-type"></span></th> -->
-                            <!-- <th onclick="sortPresenters('organization')" style="cursor:pointer;">Organization <span id="sort-arrow-organization"></span></th> -->
-                            <th onclick="sortPresenters('sessions')" style="cursor:pointer;">Registered Session(s) <span id="sort-arrow-sessions"></span></th>
-                            <!-- <th onclick="sortPresenters('attendanceStatus')" style="cursor:pointer;">Attendance Status <span id="sort-arrow-attendanceStatus"></span></th> -->
-                            <!-- <th onclick="sortPresenters('ceuEligible')" style="cursor:pointer;">CEU Eligible? <span id="sort-arrow-ceuEligible"></span></th> -->
+                            <th onclick="sortPresenters('phone_number')" style="cursor:pointer;">Phone <span id="sort-arrow-phone_number"></span></th>
+                            <th onclick="sortPresenters('session_count')" style="cursor:pointer;">Registered Session Count <span id="sort-arrow-session_count"></span></th>
                         </tr>
                     </thead>
                     <tbody id="presentersTableBody">
@@ -74,6 +72,8 @@ function PD_presenters_table_page() {
                     </tbody>
                 </table>
             </div>
+            <!-- Pager (bottom) -->
+            <div id="presentersPager" class="sessions-pager" aria-label="Pagination controls (bottom)"></div>
         </div>
     </div>
 

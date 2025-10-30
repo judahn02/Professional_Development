@@ -33,6 +33,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome8.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome9.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome11.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome10.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenters_table.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/PUT_session.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
@@ -325,8 +326,11 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             'PDPresenters',
             [
-                'root'  => esc_url_raw( rest_url('profdef/v1/') ),
-                'route' => '/presenters',
+                'root'     => esc_url_raw( rest_url('profdef/v1/') ),
+                'route'    => '/presenters',
+                // v2 list for new presenters table view
+                'listRoot' => esc_url_raw( rest_url('profdef/v2/') ),
+                'listRoute'=> 'presenters_table',
                 'nonce' => wp_create_nonce('wp_rest'),
             ]
         );

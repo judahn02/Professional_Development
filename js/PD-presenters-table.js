@@ -1,5 +1,7 @@
-let presenterSortKey = null;
+let presenterSortKey = 'name';
 let presenterSortAsc = true;
+let presentersCurrentPage = 1;
+let presentersPerPage = 25;
 
 function sortPresenters(key) {
     if (presenterSortKey === key) {
@@ -8,20 +10,13 @@ function sortPresenters(key) {
         presenterSortKey = key;
         presenterSortAsc = true;
     }
-    window.presenters.sort((a, b) => {
-        let valA = (a[key] || '').toLowerCase();
-        let valB = (b[key] || '').toLowerCase();
-        if (valA < valB) return presenterSortAsc ? -1 : 1;
-        if (valA > valB) return presenterSortAsc ? 1 : -1;
-        return 0;
-    });
+    // Sorting is applied at render time over the filtered list
     updatePresenterSortArrows();
     renderPresenters();
 }
 
 function updatePresenterSortArrows() {
-    // const keys = ['firstname','lastname','email','phone','type','organization','sessions','attendanceStatus','ceuEligible'];
-    const keys = ['firstname','lastname','email','phone','sessions'];
+    const keys = ['name','email','phone_number','session_count'];
     keys.forEach(k => {
         const el = document.getElementById('sort-arrow-' + k);
         if (el) {
@@ -40,16 +35,8 @@ function updatePresenterSortArrows() {
 // Show initial sort arrows on load
 document.addEventListener('DOMContentLoaded', updatePresenterSortArrows);
 
-// Dumb data, gets overwritten quickly
-const presenters = [
-    {
-        firstname: "error",
-        lastname: "error",
-        email: "error@example.com",
-        phone: "555-1234",
-        sessions: "ASL Conference 1, Deaf Culture and Community",
-    }
-];
+// Array populated by fetch
+const presenters = [];
 
 window.presenters = presenters;
 
@@ -60,10 +47,7 @@ async function fillPresenters({ debug = true } = {}) {
 
   try {
     // 1) Find REST config localized from PHP
-  const cfg =
-      (typeof pdRest !== 'undefined' && pdRest) ||
-      (typeof PDPresenters !== 'undefined' && PDPresenters) ||
-      null;
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || null;
 
     if (!cfg) {
       errLog('No REST config found. Expected `pdRest` or `PDPresenters` from wp_localize_script.');
@@ -73,9 +57,10 @@ async function fillPresenters({ debug = true } = {}) {
     if (!cfg.root) warn('Config has no `root` property. Value:', cfg);
     if (!cfg.nonce) warn('Config has no `nonce`. You may hit 401/403 if the route requires auth.');
 
-    const base = String(cfg.root || '').replace(/\/+$/, ''); // trim trailing slashes
-    const route = cfg.route || '/presenters';
-    const url = base + route;
+    // Prefer v2 list endpoint when available
+    const listBase = String(cfg.listRoot || '').replace(/\/+$/, '');
+    const listRoute = (cfg.listRoute || 'presenters_table').replace(/^\/+/, '');
+    const url = listBase + '/' + listRoute;
 
     log('Using URL:', url);
     log('Nonce present?', !!cfg.nonce);
@@ -112,14 +97,12 @@ async function fillPresenters({ debug = true } = {}) {
 
     // 3) Map to your presenters shape
     const mapped = rows.map((r, i) => {
-      const { firstname, lastname } = splitName(r.name);
       const obj = {
-        firstname,
-        lastname,
-        email: r.email ?? '',
-        phone: r.phone_number ?? '',
-        sessions: r.session_name ?? '',
         id: r.id ?? null,
+        name: r.name ?? '',
+        email: r.email ?? '',
+        phone_number: r.phone_number ?? '',
+        session_count: Number(r.session_count ?? 0) || 0,
       };
       if (i < 3) log('Mapped sample', i, obj);
       return obj;
@@ -144,14 +127,7 @@ async function fillPresenters({ debug = true } = {}) {
   }
 }
 
-// Helper: split "First Last ..." into { firstname, lastname }
-function splitName(fullName) {
-  const parts = String(fullName || '').trim().split(/\s+/);
-  return {
-    firstname: parts[0] || '',
-    lastname: parts.slice(1).join(' ') || '',
-  };
-}
+// No splitName needed; view provides full name
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
@@ -165,9 +141,30 @@ document.addEventListener('DOMContentLoaded', function() {
 // Render presenters table
 function renderPresenters() {
   const tbody = document.getElementById('presentersTableBody');
-  const data = Array.isArray(window.filteredPresenters) && window.filteredPresenters.length
-    ? window.filteredPresenters
-    : window.presenters;
+  let data = Array.isArray(window.filteredPresenters) && window.filteredPresenters.length
+    ? window.filteredPresenters.slice()
+    : window.presenters.slice();
+
+  // Apply sort
+  data.sort((a, b) => {
+    if (presenterSortKey === 'session_count') {
+      const av = Number(a.session_count||0), bv = Number(b.session_count||0);
+      if (av < bv) return presenterSortAsc ? -1 : 1;
+      if (av > bv) return presenterSortAsc ? 1 : -1;
+      return 0;
+    }
+    const va = String(a[presenterSortKey] || '').toLowerCase();
+    const vb = String(b[presenterSortKey] || '').toLowerCase();
+    if (va < vb) return presenterSortAsc ? -1 : 1;
+    if (va > vb) return presenterSortAsc ? 1 : -1;
+    return 0;
+  });
+
+  // Pagination slice
+  const total = data.length;
+  const start = Math.max(0, (presentersCurrentPage - 1) * presentersPerPage);
+  const end = start + presentersPerPage;
+  const pageItems = data.slice(start, end);
 
   if (!data || data.length === 0) {
     tbody.innerHTML = `
@@ -179,15 +176,16 @@ function renderPresenters() {
     return;
   }
 
-  tbody.innerHTML = data.map((presenter) => `
+  tbody.innerHTML = pageItems.map((presenter) => `
     <tr class="presenter-row" style="cursor:pointer;" onclick="goToPresenterProfile(${presenter.id ?? 'null'})">
-      <td style="font-weight: 600;">${presenter.firstname || ''}</td>
-      <td style="font-weight: 600;">${presenter.lastname || ''}</td>
+      <td style="font-weight: 600;">${presenter.name || ''}</td>
       <td>${presenter.email || ''}</td>
-      <td>${presenter.phone || ''}</td>
-      <td>${presenter.sessions || ''}</td>
+      <td>${presenter.phone_number || ''}</td>
+      <td>${presenter.session_count ?? 0}</td>
     </tr>
   `).join('');
+
+  renderPresentersPager(total);
 }
 
 
@@ -204,22 +202,43 @@ function filterPresenters() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     if (!searchTerm) {
     window.filteredPresenters = null;
+    presentersCurrentPage = 1;
     renderPresenters();
     return;
   }
     
     window.filteredPresenters = window.presenters.filter(presenter => {
         return (
-            (presenter.firstname && presenter.firstname.toLowerCase().includes(searchTerm)) ||
-            (presenter.lastname && presenter.lastname.toLowerCase().includes(searchTerm)) ||
+            (presenter.name && presenter.name.toLowerCase().includes(searchTerm)) ||
             (presenter.email && presenter.email.toLowerCase().includes(searchTerm)) ||
-            (presenter.phone && presenter.phone.toLowerCase().includes(searchTerm)) ||
-            (presenter.sessions && presenter.sessions.toLowerCase().includes(searchTerm))
+            (presenter.phone_number && presenter.phone_number.toLowerCase().includes(searchTerm))
 
         );
     });
-    
+    presentersCurrentPage = 1;
     renderPresenters();
+}
+
+function renderPresentersPager(total) {
+  const canPrev = presentersCurrentPage > 1;
+  const canNext = (presentersCurrentPage * presentersPerPage) < (total || 0);
+  const make = (el) => {
+    el.innerHTML = '';
+    const mkBtn = (id, label, disabled, onClick) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = id; b.textContent = label; b.className = 'pager-btn';
+      b.disabled = !!disabled; b.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      b.style.padding = '6px 10px'; b.style.border = '1px solid #e5e7eb'; b.style.background = '#ffffff'; b.style.cursor = 'pointer'; b.style.borderRadius = '4px';
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    const prev = mkBtn('presentersPagerPrev', 'Prev', !canPrev, () => { if (presentersCurrentPage>1){ presentersCurrentPage--; renderPresenters(); }});
+    const label = document.createElement('span'); label.textContent = `Page ${presentersCurrentPage}`; label.style.minWidth = '6ch'; label.style.textAlign = 'center'; label.style.color = '#6b7280'; label.style.fontWeight = '600';
+    const next = mkBtn('presentersPagerNext', 'Next', !canNext, () => { if (canNext){ presentersCurrentPage++; renderPresenters(); }});
+    el.appendChild(prev); el.appendChild(label); el.appendChild(next);
+  };
+  const top = document.getElementById('presentersPagerTop'); if (top) make(top);
+  const bot = document.getElementById('presentersPager'); if (bot) make(bot);
 }
 
 // Modal functions
