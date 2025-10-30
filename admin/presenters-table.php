@@ -56,15 +56,26 @@ function PD_presenters_table_page() {
             <!-- Pager (top) -->
             <div id="presentersPagerTop" class="sessions-pager" aria-label="Pagination controls (top)"></div>
 
+            <!-- Top horizontal scrollbar (synced) -->
+            <div class="table-scroll-top" id="presentersTopScroll"><div class="table-scroll-spacer" id="presentersTopScrollSpacer"></div></div>
+
             <!-- Presenters Table -->
-            <div class="table-container">
+            <div class="table-container" id="presentersTableContainer">
                 <table class="table">
+                    <colgroup>
+                        <col class="col-name">
+                        <col class="col-email">
+                        <col class="col-phone">
+                        <col class="col-sessions">
+                        <col class="col-actions">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th onclick="sortPresenters('name')" style="cursor:pointer;">Name <span id="sort-arrow-name"></span></th>
                             <th onclick="sortPresenters('email')" style="cursor:pointer;">Email <span id="sort-arrow-email"></span></th>
                             <th onclick="sortPresenters('phone_number')" style="cursor:pointer;">Phone <span id="sort-arrow-phone_number"></span></th>
                             <th onclick="sortPresenters('session_count')" style="cursor:pointer;">Registered Session Count <span id="sort-arrow-session_count"></span></th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="presentersTableBody">

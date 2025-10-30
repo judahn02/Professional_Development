@@ -2,6 +2,7 @@ let presenterSortKey = 'name';
 let presenterSortAsc = true;
 let presentersCurrentPage = 1;
 let presentersPerPage = 25;
+const presenterSessionsCache = new Map(); // id -> { items, at }
 
 function sortPresenters(key) {
     if (presenterSortKey === key) {
@@ -133,6 +134,7 @@ async function fillPresenters({ debug = true } = {}) {
 document.addEventListener('DOMContentLoaded', function() {
     fillPresenters().then(() => {
         renderPresenters();
+        setupTopScrollbar();
     }).catch(console.error);
 
    
@@ -176,16 +178,34 @@ function renderPresenters() {
     return;
   }
 
-  tbody.innerHTML = pageItems.map((presenter) => `
-    <tr class="presenter-row" style="cursor:pointer;" onclick="goToPresenterProfile(${presenter.id ?? 'null'})">
-      <td style="font-weight: 600;">${presenter.name || ''}</td>
+  tbody.innerHTML = pageItems.map((presenter, idx) => {
+    const i = start + idx;
+    return `
+    <tr class="presenter-row">
+      <td style=\"font-weight: 600;\">${presenter.name || ''}</td>
       <td>${presenter.email || ''}</td>
       <td>${presenter.phone_number || ''}</td>
       <td>${presenter.session_count ?? 0}</td>
+      <td>
+        <span class=\"details-dropdown\" data-index=\"${i}\" role=\"button\" tabindex=\"0\" onclick=\"togglePresenterDetails(${i})\">
+          <svg class=\"dropdown-icon\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"#e11d48\" stroke-width=\"2\" viewBox=\"0 0 24 24\" style=\"vertical-align:middle; margin-right:4px;\"><path d=\"M6 9l6 6 6-6\"/></svg>
+          Details
+        </span>
+      </td>
     </tr>
-  `).join('');
+    <tr class=\"presenter-detail-row\" id=\"presenter-detail-row-${i}\" style=\"display:none; background:#fef2f2;\">
+      <td colspan=\"5\" style=\"padding:0; border-top:1px solid #fecaca;\">
+        <div class=\"attendee-list-block\" style=\"padding: 1.0rem 1.25rem;\">
+          <ul id=\"presenter-sessions-${i}\">\n            <li>Click Details to load sessions...</li>\n          </ul>
+        </div>
+      </td>
+    </tr>
+    `;
+  }).join('');
 
   renderPresentersPager(total);
+  // Keep top scrollbar spacer in sync with table width
+  try { setupTopScrollbar(); } catch(_) {}
 }
 
 
@@ -218,6 +238,121 @@ function filterPresenters() {
     presentersCurrentPage = 1;
     renderPresenters();
 }
+
+function setupTopScrollbar() {
+  const top = document.getElementById('presentersTopScroll');
+  const spacer = document.getElementById('presentersTopScrollSpacer');
+  const container = document.getElementById('presentersTableContainer');
+  const table = container ? container.querySelector('.table') : null;
+  if (!top || !spacer || !container || !table) return;
+  // Sync widths
+  spacer.style.width = table.scrollWidth + 'px';
+  const onScrollTop = () => { container.scrollLeft = top.scrollLeft; };
+  const onScrollContainer = () => { top.scrollLeft = container.scrollLeft; };
+  if (!top._pdBound) { top.addEventListener('scroll', onScrollTop); top._pdBound = true; }
+  if (!container._pdBound) { container.addEventListener('scroll', onScrollContainer); container._pdBound = true; }
+  // Observe table width changes
+  if (!table._pdRO) {
+    try {
+      table._pdRO = new ResizeObserver(() => { spacer.style.width = table.scrollWidth + 'px'; });
+      table._pdRO.observe(table);
+    } catch(_) {
+      // Fallback: update spacer after slight delay
+      setTimeout(() => { spacer.style.width = table.scrollWidth + 'px'; }, 100);
+    }
+  }
+}
+
+function getPresenterSessionsUrl(id) {
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const base = String(cfg.listRoot || '').replace(/\/+$/, '');
+  const route = (cfg.presenterSessionsRoute || 'presenter/sessions').replace(/^\/+/, '');
+  return `${base}/${route}?presenter_id=${encodeURIComponent(id)}`;
+}
+
+async function fetchPresenterSessions(id) {
+  const url = getPresenterSessionsUrl(id);
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: { 'Accept': 'application/json', ...(cfg.nonce ? { 'X-WP-Nonce': cfg.nonce } : {}) },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(()=> '');
+    throw new Error(`Sessions fetch failed (${res.status}): ${txt.slice(0,200)}`);
+  }
+  const data = await res.json().catch(()=>[]);
+  return Array.isArray(data) ? data : [];
+}
+
+function renderPresenterSessionsList(ul, items) {
+  ul.innerHTML = '';
+  if (!Array.isArray(items) || items.length === 0) {
+    const li = document.createElement('li'); li.textContent = 'No sessions found for this presenter.'; ul.appendChild(li); return;
+  }
+  const truncate = (text, max) => {
+    const s = String(text || '');
+    const limit = Number(max) || 50;
+    if (s.length <= limit) return s;
+    // keep whole words when possible
+    const cut = s.slice(0, limit);
+    const lastSpace = cut.lastIndexOf(' ');
+    const base = lastSpace > limit - 12 ? cut.slice(0, lastSpace) : cut;
+    return base.replace(/[\s.,-]+$/, '') + '...';
+  };
+  items.forEach((s) => {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    name.className = 'attendee-name';
+    const fullTitle = s.session_title || '';
+    name.textContent = truncate(fullTitle, 50);
+    if (fullTitle) name.title = fullTitle; // hover shows full name
+    const meta = document.createElement('span');
+    meta.className = 'attendee-email';
+    const date = (s.session_date || '').split('T')[0] || (s.session_date || '');
+    const pe = s.session_parent_event ? ` — ${s.session_parent_event}` : '';
+    meta.textContent = `${date}${pe}`;
+    li.appendChild(name);
+    li.appendChild(meta);
+    ul.appendChild(li);
+  });
+}
+
+function togglePresenterDetails(index) {
+  const tbody = document.getElementById('presentersTableBody');
+  if (!tbody) return;
+  // Close others (radio behavior)
+  tbody.querySelectorAll('tr.presenter-detail-row').forEach(row => { if (row.id !== `presenter-detail-row-${index}`) row.style.display = 'none'; });
+  const row = document.getElementById(`presenter-detail-row-${index}`);
+  if (!row) return;
+  const hidden = row.style.display === 'none' || getComputedStyle(row).display === 'none';
+  if (!hidden) { row.style.display = 'none'; return; }
+
+  // Open this row
+  row.style.display = 'table-row';
+  const ul = document.getElementById(`presenter-sessions-${index}`);
+  if (!ul) return;
+
+  // Derive presenter id from current page+index
+  const all = Array.isArray(window.filteredPresenters) && window.filteredPresenters.length ? window.filteredPresenters : window.presenters;
+  const id = (all[index] && all[index].id != null) ? all[index].id : null;
+  if (id == null) { ul.innerHTML = '<li>Unable to determine presenter id.</li>'; return; }
+
+  // If cached and fresh (5 minutes), reuse
+  const entry = presenterSessionsCache.get(id);
+  const fresh = entry && Array.isArray(entry.items) && (Date.now() - (entry.at||0)) < (5*60*1000);
+  if (fresh) { renderPresenterSessionsList(ul, entry.items); return; }
+
+  ul.innerHTML = '<li>Loading sessions...</li>';
+  fetchPresenterSessions(id)
+    .then(items => { presenterSessionsCache.set(id, { items, at: Date.now() }); renderPresenterSessionsList(ul, items); })
+    .catch(err => { console.error(err); ul.innerHTML = '<li>Error loading sessions.</li>'; });
+}
+
+// Expose for inline handler
+window.togglePresenterDetails = togglePresenterDetails;
 
 function renderPresentersPager(total) {
   const canPrev = presentersCurrentPage > 1;
@@ -291,7 +426,11 @@ document.getElementById('addPresenterForm').addEventListener('submit', async fun
     if (!cfg) throw new Error('Missing REST config (pdRest/PDPresenters).');
 
     // POST to REST endpoint
-    const res = await fetch(cfg.root.replace(/\/+$/, '') + (cfg.route || '/presenters'), {
+    // Prefer v2 create endpoint when available
+    const postBase  = String(cfg.postRoot || cfg.listRoot || cfg.root || '').replace(/\/+$/, '');
+    const postRoute = (cfg.postRoute || 'presenter').replace(/^\/+/, '');
+    const postUrl   = postBase + '/' + postRoute;
+    const res = await fetch(postUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

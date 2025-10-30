@@ -34,6 +34,8 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome9.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome11.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome10.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenters_table.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/POST_presenter.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenter_sessions.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/PUT_session.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
@@ -156,7 +158,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-presenters-table-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-presenter-table.css',
                 array(),
-                '0.3',
+                '0.10',
                 'all'
             ) ;
         }
@@ -331,6 +333,11 @@ function slug_specific_admin_js_loader($hook) {
                 // v2 list for new presenters table view
                 'listRoot' => esc_url_raw( rest_url('profdef/v2/') ),
                 'listRoute'=> 'presenters_table',
+                // v2 create presenter endpoint
+                'postRoot' => esc_url_raw( rest_url('profdef/v2/') ),
+                'postRoute'=> 'presenter',
+                // v2 presenter sessions endpoint for Details
+                'presenterSessionsRoute' => 'presenter/sessions',
                 'nonce' => wp_create_nonce('wp_rest'),
             ]
         );

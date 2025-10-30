@@ -103,13 +103,31 @@ body {
     background: white;
     border: 2px solid #e11d48;
     border-radius: 0.75rem;
-    overflow: hidden;
+    /* Allow horizontal scroll on narrow viewports */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .table {
     width: 100%;
+    /* Ensure columns don't squish; enable horizontal scroll */
+    min-width: 1000px;
     border-collapse: collapse;
+    table-layout: fixed; /* keep column widths consistent across pages */
+}
+
+/* Top horizontal scrollbar synced with table */
+.table-scroll-top {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    height: 16px;
+    margin-bottom: 0;
+}
+.table-scroll-top .table-scroll-spacer {
+    height: 1px;
 }
 
 .table th {
@@ -128,6 +146,25 @@ body {
     padding: 1rem;
     border-bottom: 1px solid #fee2e2;
     transition: background-color 0.2s ease;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Column widths (ch-based to cap long content; maintains consistency) */
+.col-name     { width: 30ch; }   /* fits up to ~"Niesha Washington-Shepard" */
+.col-email    { width: 34ch; }
+.col-phone    { width: 16ch; }
+.col-sessions { width: 12ch; }
+.col-actions  { width: 14ch; }
+
+@media (max-width: 1200px) {
+    .col-name     { width: 26ch; }
+    .col-email    { width: 30ch; }
+}
+@media (max-width: 992px) {
+    .col-name     { width: 22ch; }
+    .col-email    { width: 26ch; }
 }
 
 .table tr:hover {
@@ -138,15 +175,64 @@ body {
     border-bottom: none;
 }
 
-.details-dropdown {
-    color: #e11d48;
-    font-weight: 600;
+/* Pager controls spacing (match sessions table spacing) */
+.sessions-pager {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 16px 0;
+}
+.sessions-pager .pager-btn {
+    appearance: none;
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #374151;
+    border-radius: 4px;
     cursor: pointer;
-    transition: color 0.2s ease;
+}
+.sessions-pager .pager-btn[aria-disabled="true"],
+.sessions-pager .pager-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.sessions-pager span {
+    color: #6b7280;
+    font-weight: 600;
+    min-width: 6ch;
+    text-align: center;
 }
 
+.details-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #fef2f2;
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border: 1.5px solid #e11d48;
+    transition: background 0.2s, border 0.2s, color 0.2s;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.25rem;
+    color: #e11d48;
+}
 .details-dropdown:hover {
-    color: #be123c;
+    background: #e11d48;
+    color: #fff;
+    border-color: #be123c;
+}
+.dropdown-icon { transition: transform 0.2s; }
+
+/* Ensure Details pill in Actions column is not clipped */
+.table th:nth-child(5),
+.table td:nth-child(5) {
+    overflow: visible;
+    white-space: nowrap;
+    padding-right: 0.75rem;
 }
 
 /* Modal Styles */
@@ -363,4 +449,47 @@ body {
     border-radius: 0.5rem;
     margin-bottom: 1rem;
     border-left: 4px solid #10b981;
+}
+/* Inline details block (match sessions table attendee look) */
+.attendee-list-block {
+    padding: 1.25rem 2rem 1.25rem 2rem;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    position: relative;
+}
+.attendee-list-block ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+}
+.attendee-list-block li {
+    border-bottom: none;
+    border: 1px solid #fee2e2;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    padding: 0.75rem;
+    flex: 1 1 250px;
+    max-width: calc(25% - 0.75rem);
+}
+.attendee-list-block .attendee-name {
+    display: block;
+    font-weight: 600;
+    color: #e11d48;
+    margin-bottom: 0.1rem;
+}
+.attendee-list-block .attendee-email {
+    display: block;
+    font-size: 0.95em;
+    color: #6b7280;
+    word-break: break-word;
+}
+@media (max-width: 1024px) {
+    .attendee-list-block li { max-width: calc(33.333% - 0.75rem); }
+}
+@media (max-width: 768px) {
+    .attendee-list-block li { flex: 1 1 100%; max-width: 100%; }
 }

@@ -1,5 +1,4 @@
 
-- add history of sessions for presentor to presentor page.
 - fix Add New Presentor modal to show options for first and last name that can be changed. 
 - add a modal to sessions page to edit session details.
 - refactor the JS of session-table if needed.
@@ -13,6 +12,8 @@
 - Edit the member facing home page that is responsible for members seeing their own metrics. 
 
 - when making readme, state that the database requires Mroonga to work
+
+- add buttons to import data to the database.
 
 ## Later
 - Evaluate Triggers for table updates.
