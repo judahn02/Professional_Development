@@ -166,6 +166,38 @@ function downloadAllUsersCSV(filename = 'members_with_metadata.csv') {
   a.remove();
 }
 
+// Administrative Service modal controls
+function openAdminServiceModal() {
+  const overlay = document.getElementById('adminServiceModal');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+  // Close on overlay click
+  const onOverlay = (e) => { if (e.target === overlay) closeAdminServiceModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+  // Close on ESC
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closeAdminServiceModal(); };
+  document._pdEscAdminService && document.removeEventListener('keydown', document._pdEscAdminService);
+  document._pdEscAdminService = onEsc;
+  document.addEventListener('keydown', onEsc);
+}
+function closeAdminServiceModal() {
+  const overlay = document.getElementById('adminServiceModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) {
+    overlay.removeEventListener('click', overlay._pdOverlayHandler);
+    overlay._pdOverlayHandler = null;
+  }
+  if (document._pdEscAdminService) {
+    document.removeEventListener('keydown', document._pdEscAdminService);
+    document._pdEscAdminService = null;
+  }
+}
+
 function csvEscape(v) {
   if (v === null || v === undefined) v = '';
   const s = String(v).replace(/"/g, '""');

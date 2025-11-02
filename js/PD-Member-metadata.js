@@ -236,3 +236,27 @@ if (document.readyState === 'loading') {
 } else {
   setupUI();
 }
+
+// Administrative Service modal (member page)
+function openMemberAdminServiceModal() {
+  const overlay = document.getElementById('memberAdminServiceModal');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+  const onOverlay = (e) => { if (e.target === overlay) closeMemberAdminServiceModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closeMemberAdminServiceModal(); };
+  document._pdEscMemberService && document.removeEventListener('keydown', document._pdEscMemberService);
+  document._pdEscMemberService = onEsc;
+  document.addEventListener('keydown', onEsc);
+}
+function closeMemberAdminServiceModal() {
+  const overlay = document.getElementById('memberAdminServiceModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) { overlay.removeEventListener('click', overlay._pdOverlayHandler); overlay._pdOverlayHandler = null; }
+  if (document._pdEscMemberService) { document.removeEventListener('keydown', document._pdEscMemberService); document._pdEscMemberService = null; }
+}

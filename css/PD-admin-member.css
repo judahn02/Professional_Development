@@ -199,6 +199,55 @@
     margin: 2rem 0;
 }
 
+/* Modal styles for member page (consistent with other admin modals) */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    width: 90%;
+    max-width: 860px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #fee2e2;
+}
+.modal-title { font-size: 1.25rem; font-weight: 700; color: #e11d48; }
+.close-btn {
+    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;
+    padding: 0.25rem 0.5rem; border-radius: 0.5rem; transition: all 0.2s ease;
+}
+.close-btn:hover { background: #f3f4f6; color: #374151; }
+
+/* Reuse attendees-table styles for empty layout */
+.attendees-table-wrap { max-width: 100%; margin: 0 auto 1rem auto; overflow-x: auto; }
+.attendees-table { width: 100%; border-collapse: collapse; }
+.attendees-table th, .attendees-table td { padding: .75rem .9rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+.attendees-table thead th { text-align: left; font-size: .9rem; color: #6b7280; letter-spacing: .02em; }
+.attendees-table tbody tr:hover { background: #fafafa; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-50px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
 @media (max-width: 700px) {
     .profile-header {
         flex-direction: column;

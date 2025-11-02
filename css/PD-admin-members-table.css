@@ -28,6 +28,18 @@ body {
     margin-bottom: 2rem;
 }
 
+/* Title row with right-aligned action button */
+.title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.admin-service-btn {
+    white-space: nowrap;
+}
+
 .nav-links {
     display: flex;
     flex-wrap: wrap;
@@ -327,6 +339,15 @@ body {
     border-color: #be123c;
     transform: translateY(-1px);
 }
+
+/* Edit Attendees-like table styles for empty admin modal */
+.attendees-table-wrap { max-width: 100%; margin: 0 auto 1rem auto; overflow-x: auto; }
+.attendees-table { width: 100%; border-collapse: collapse; }
+.attendees-table caption { text-align: left; font-weight: 600; margin-bottom: .5rem; }
+.attendees-table th, .attendees-table td { padding: .75rem .9rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+.attendees-table thead th { text-align: left; font-size: .9rem; color: #6b7280; letter-spacing: .02em; }
+.attendees-table tbody tr:hover { background: #fafafa; }
+.attendees-table tfoot td { border-top: 1px solid #e5e7eb; }
 
 /* Animations */
 @keyframes fadeIn {

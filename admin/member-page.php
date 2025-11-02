@@ -87,6 +87,7 @@ function PD_member_admin_page() {
                         <div class="profile-name" id="profileName"><?php echo esc_html($display_name); ?></div>
                         <div class="profile-email" id="profileEmail"><?php echo esc_html($member_email); ?></div>
                     </div>
+                    <button type="button" class="btn admin-service-btn" style="margin-left:auto;" onclick="openMemberAdminServiceModal()">Administrative Service</button>
                 </div>
 
                 <!-- Progress Summary -->
@@ -149,6 +150,30 @@ function PD_member_admin_page() {
 
             </div>
         </div>
+    </div>
+
+    <!-- Administrative Service modal -->
+    <div class="modal-overlay" id="memberAdminServiceModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memberAdminServiceTitle">
+        <div class="modal-header">
+          <h2 class="modal-title" id="memberAdminServiceTitle">Administrative Service</h2>
+          <button type="button" class="close-btn" aria-label="Close modal" onclick="closeMemberAdminServiceModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="attendees-table-wrap">
+            <table class="attendees-table">
+              <thead>
+                <tr>
+                  <!-- Placeholder header; table is intentionally empty for now -->
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows will be added later -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <?php

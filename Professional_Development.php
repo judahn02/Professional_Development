@@ -36,6 +36,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome10.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenters_table.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/POST_presenter.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenter_sessions.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_member_admin_service.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/REST/PUT_session.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
@@ -138,7 +139,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-members-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-members-table.css',
                 array(),
-                '0.8',
+                '0.10',
                 'all'
             ) ;
         }
@@ -168,7 +169,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-member-page-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
                 array(),
-                '0.3',
+                '0.4',
                 'all'
             ) ;
         }
@@ -236,7 +237,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.21',
+            '0.23',
             true
         );
 
@@ -349,7 +350,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.22',
+            '0.23',
             true
         );
 
