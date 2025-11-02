@@ -161,16 +161,37 @@ function PD_member_admin_page() {
         </div>
         <div class="modal-body">
           <div class="attendees-table-wrap">
-            <table class="attendees-table">
+            <table class="attendees-table" id="adminServiceTable">
               <thead>
                 <tr>
-                  <!-- Placeholder header; table is intentionally empty for now -->
+                  <th style="cursor:pointer;" onclick="sortAdminService('start')">Start <span id="as-arrow-start"></span></th>
+                  <th style="cursor:pointer;" onclick="sortAdminService('end')">End <span id="as-arrow-end"></span></th>
+                  <th style="cursor:pointer;" onclick="sortAdminService('type')">Type <span id="as-arrow-type"></span></th>
+                  <th style="cursor:pointer;" onclick="sortAdminService('ceu')">CEU Weight <span id="as-arrow-ceu"></span></th>
+                  <th>Delete?</th>
                 </tr>
               </thead>
               <tbody>
-                <!-- Rows will be added later -->
+                <!-- Filled by JS -->
               </tbody>
+              <tfoot>
+                <tr>
+                  <td><input type="date" id="mas-add-start" class="form-input" /></td>
+                  <td><input type="date" id="mas-add-end" class="form-input" /></td>
+                  <td>
+                    <select id="mas-add-type" class="form-select">
+                      <!-- Options filled by JS (getAdminServiceTypes) on modal open -->
+                    </select>
+                  </td>
+                  <td><input type="number" id="mas-add-ceu" class="form-input" step="0.01" min="0" placeholder="0.0" /></td>
+                  <td><button type="button" class="btn btn-sm" onclick="addAdminServiceRow()">Add</button></td>
+                </tr>
+              </tfoot>
             </table>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeMemberAdminServiceModal()">Cancel</button>
+            <button type="button" class="btn" onclick="saveMemberAdminService()">Save</button>
           </div>
         </div>
       </div>

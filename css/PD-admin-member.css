@@ -150,6 +150,43 @@
     background: #be123c;
 }
 
+/* Small button variant for compact actions */
+.btn.sm, .btn.btn-sm {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.9rem;
+}
+
+/* Neutral cancel button to match theme */
+.btn-cancel {
+    padding: 0.5rem 1rem;
+    border: 2px solid #d1d5db;
+    background: #ffffff;
+    color: #6b7280;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+/* Small utility for icon-like delete button */
+.delete-btn {
+    appearance: none;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: .5rem;
+    padding: 0 .75rem;
+    height: 2rem;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.delete-btn:hover { background: #f9fafb; }
+
 .table-container {
     overflow-x: auto;
 }
@@ -186,6 +223,20 @@
     padding: 0.5rem 1rem;
     border: 1px solid #e11d48;
     border-radius: 0.375rem;
+}
+
+/* Form select to match inputs */
+.form-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    background: #fff;
+}
+.form-select:focus {
+    outline: none;
+    border-color: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1);
 }
 
 .filter-buttons {
