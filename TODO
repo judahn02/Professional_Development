@@ -41,3 +41,13 @@
 - add a modal to sessions page to edit session details.
 # In the next Refactor of the Database
 - Seperate serving_type in administratve_service to its own table or dedicated enum.
+
+
+
+# Notes:
+The front end administrative side is complete
+The back end is almost complete, some buggs need ironing out
+Whats left:
+- the member fasing side to allow members to view the sessions they have attended.
+- including a tool that allows data to be imported into the database.
+

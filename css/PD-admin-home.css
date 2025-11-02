@@ -96,6 +96,67 @@
       text-align: center;
   }
 
+  /* Tutorial section overrides */
+  .content-area.tutorial {
+      display: block;
+      align-items: initial;
+      justify-content: initial;
+      color: #374151;
+      font-style: normal;
+      text-align: left;
+  }
+
+  .content-area.tutorial .placeholder-text {
+      text-align: left;
+      color: #374151;
+      font-style: normal;
+      margin-bottom: 1rem;
+  }
+
+  .tutorial-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.75rem;
+  }
+
+  .tutorial-list li a {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: #111827;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      padding: 0.875rem 1rem;
+      border-radius: 0.5rem;
+      transition: all 0.2s ease;
+  }
+
+  .tutorial-list li a::before {
+      content: '➜';
+      color: #e11d48;
+      font-weight: 700;
+  }
+
+  .tutorial-list li a:hover {
+      background: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+      border-color: #f43f5e;
+  }
+
+  .tutorial-list li a:active {
+      transform: translateY(0);
+  }
+
+  @media (min-width: 768px) {
+      .tutorial-list {
+          grid-template-columns: 1fr 1fr;
+      }
+  }
+
   .grid-responsive {
       display: grid;
       gap: 2rem;

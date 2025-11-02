@@ -129,7 +129,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-home-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-home.css',
                 array(),
-                '0.6',
+                '0.7',
                 'all'
             );
         }

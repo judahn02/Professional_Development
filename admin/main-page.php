@@ -85,11 +85,29 @@ function PD_main_admin_page() {
             <!-- Tutorial/Guide Section -->
             <div class="section">
                 <h2 class="section-title">Short Tutorial / Guide</h2>
-                <div class="content-area large">
-                    <div class="placeholder-text">
-                        Quick start guide and tutorial content will be displayed here<br>
-                        <small>Step-by-step instructions for admin tasks</small>
-                    </div>
+                <div class="content-area large tutorial">
+                    <ul class="tutorial-list">
+                        <li>
+                            <a href="https://scribehow.com/viewer/Add_a_New_Presenter_to_the_System__oqVOdsivTiOZ1WOfAw9ydA" target="_blank" rel="noopener noreferrer">
+                                How to Add A New Presentor
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://scribehow.com/viewer/How_to_Export_Member_Data__55LyvFZ5RuOw7ZWk_tr4xQ" target="_blank" rel="noopener noreferrer">
+                                How to Export Member Data
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://scribehow.com/viewer/Access_Member_Administrative_Service__OufYsKA-Q_-fSyYnIOvb0w" target="_blank" rel="noopener noreferrer">
+                                How to Access Member Administrative Service
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://scribehow.com/viewer/Add_session_and_attendes__wnGbHyKGRw-X33dWhxnAFg" target="_blank" rel="noopener noreferrer">
+                                How to add session and attendes
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
