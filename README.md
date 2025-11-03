@@ -17,3 +17,4 @@ Uninstall Behavior
 Notes
 - Admin AJAX endpoints require a valid nonce and capability; front-end requests without a nonce or proper permissions are rejected.
 - Encryption keys are derived per-site from WordPress salts and the site URL by default. If defined, `PS_ENCRYPTION_KEY` is used instead.
+- The Database Requires Mroonga for specific table engines.

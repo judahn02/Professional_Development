@@ -187,7 +187,7 @@ function renderPresenters() {
       <td>${presenter.phone_number || ''}</td>
       <td>${presenter.session_count ?? 0}</td>
       <td>
-        <span class=\"details-dropdown\" data-index=\"${i}\" role=\"button\" tabindex=\"0\" onclick=\"togglePresenterDetails(${i})\">
+        <span class=\"details-dropdown\" data-index=\"${i}\" role=\"button\" tabindex=\"0\" onclick=\"togglePresenterDetails(${presenter.id}, ${i})\">
           <svg class=\"dropdown-icon\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"#e11d48\" stroke-width=\"2\" viewBox=\"0 0 24 24\" style=\"vertical-align:middle; margin-right:4px;\"><path d=\"M6 9l6 6 6-6\"/></svg>
           Details
         </span>
@@ -320,7 +320,7 @@ function renderPresenterSessionsList(ul, items) {
   });
 }
 
-function togglePresenterDetails(index) {
+function togglePresenterDetails(id, index) {
   const tbody = document.getElementById('presentersTableBody');
   if (!tbody) return;
   // Close others (radio behavior)
@@ -335,10 +335,13 @@ function togglePresenterDetails(index) {
   const ul = document.getElementById(`presenter-sessions-${index}`);
   if (!ul) return;
 
-  // Derive presenter id from current page+index
-  const all = Array.isArray(window.filteredPresenters) && window.filteredPresenters.length ? window.filteredPresenters : window.presenters;
-  const id = (all[index] && all[index].id != null) ? all[index].id : null;
-  if (id == null) { ul.innerHTML = '<li>Unable to determine presenter id.</li>'; return; }
+  // Use the provided presenter id directly; avoids sort/filter index desync
+  if (id == null || id === '' || (typeof id === 'number' && !isFinite(id))) {
+    ul.innerHTML = '<li>Unable to determine presenter id.</li>';
+    return;
+  }
+  // Ensure primitive number where possible
+  if (typeof id === 'string' && /^\d+$/.test(id)) id = parseInt(id, 10);
 
   // If cached and fresh (5 minutes), reuse
   const entry = presenterSessionsCache.get(id);

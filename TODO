@@ -6,7 +6,6 @@
 
 - Edit the member facing home page that is responsible for members seeing their own metrics. 
 
-- when making readme, state that the database requires Mroonga to work
 
 - add buttons to import data to the database.
 
@@ -39,6 +38,9 @@
 - fix Add New Presentor modal to show options for first and last name that can be changed. 
 
 - add a modal to sessions page to edit session details.
+
+- when making readme, state that the database requires Mroonga to work
+
 # In the next Refactor of the Database
 - Seperate serving_type in administratve_service to its own table or dedicated enum.
 
