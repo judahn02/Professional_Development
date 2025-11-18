@@ -1,4 +1,4 @@
-- Make sure all REST API's are using procesure calls, sql querrys will be banned in production.
+- add "comfirm old password to overwrite new password"
 
 - Add a sync to the member page so that members are synced to the database if an issue occurs.
     - Add an initial sync to installing the plugin so that it works properly.
@@ -6,6 +6,7 @@
 
 - Edit the member facing home page that is responsible for members seeing their own metrics. 
 
+- Make sure all REST API's are using procesure calls, sql querrys will be banned in production.
 
 - add buttons to import data to the database.
 

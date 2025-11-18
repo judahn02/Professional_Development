@@ -473,6 +473,9 @@ function PD_shortcode_init() {
     add_shortcode('PD_metaData_nonAdmin', 'Professional_Development_show_user_id') ;
     add_shortcode('PD_Member_Info', 'Pofessional_Development_show_member_progress') ;
 
+    // Public test modal shortcode
+    add_shortcode('PD_User_Test_Modal', 'PD_user_test_modal_shortcode');
+
 }
 add_action( 'init', 'PD_shortcode_init') ;
 
@@ -522,4 +525,17 @@ function get_members_callback() {
     }
 
     wp_send_json($members);
+}
+
+// Shortcode handler: renders the public test modal markup
+function PD_user_test_modal_shortcode($atts = [], $content = null, $tag = '') {
+    ob_start();
+    // Include the modal template from public path
+    $modal_path = plugin_dir_path(__FILE__) . 'public/user-modal.php';
+    if (file_exists($modal_path)) {
+        include $modal_path;
+    } else {
+        echo '<!-- PD_User_Test_Modal: template not found -->';
+    }
+    return ob_get_clean();
 }

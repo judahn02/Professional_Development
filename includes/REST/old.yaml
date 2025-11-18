@@ -1,0 +1,681 @@
+openapi: 3.0.3
+info:
+  title: Professional Development REST (Old)
+  description: >-
+    OpenAPI-like documentation for legacy endpoints under includes/REST.
+    This document reflects current behavior observed in code as of 2025-11-09.
+    Some responses intentionally keep flexible shapes to match actual returns.
+  version: 1.0.0
+servers:
+  - url: /wp-json
+paths:
+  /profdef/v2/ping:
+    get:
+      tags: [misc]
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  timestamp: { type: string }
+                  site: { type: string }
+
+  /profdef/v2/sessions:
+    get:
+      tags: [misc]
+      summary: List sessions (static, placeholder)
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+        - in: query
+          name: orderby
+          schema: { type: string, enum: [title, date, name] }
+      responses:
+        '200':
+          description: OK (static demo data)
+          headers:
+            X-WP-Total:
+              schema: { type: string }
+            X-WP-TotalPages:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DemoSession'
+
+  /profdef/v2/sessionhome:
+    get:
+      tags: [sessions]
+      summary: List or fetch sessions (external DB proc)
+      parameters:
+        - in: query
+          name: session_id
+          schema: { type: integer }
+          description: Optional session id to fetch a single row
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: sort
+          schema: { type: string }
+          description: >-
+            Sort key (mapped to DB column). Examples: Date, Title, Length,
+            Session Type, CEU Weight, CEU Const, CEU Capable, Event Type,
+            Parent Event, presenters, attendees_ct.
+        - in: query
+          name: dir
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive substring filter.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  description: Row as returned by stored procedure (dynamic columns)
+                  additionalProperties: true
+
+  /profdef/v2/sessionhome2:
+    get:
+      tags: [sessions]
+      summary: Get attendees for a session (external DB proc)
+      parameters:
+        - in: query
+          name: sessionid
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  minItems: 4
+                  maxItems: 4
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: integer
+                  description: [name, email, Certification Status, members_id]
+        '201':
+          description: No attendees (empty array)
+
+  /profdef/v2/sessionhome3:
+    get:
+      tags: [sessions]
+      summary: Dropdown option data for Add Session form
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_types:
+                    type: array
+                    items: { $ref: '#/components/schemas/IdName' }
+                  event_types:
+                    type: array
+                    items: { $ref: '#/components/schemas/IdName' }
+                  ceu_considerations:
+                    type: array
+                    items: { $ref: '#/components/schemas/IdName' }
+
+  /profdef/v2/sessionhome4:
+    get:
+      tags: [presenters]
+      summary: Search presenters by name (external DB proc)
+      parameters:
+        - in: query
+          name: term
+          required: true
+          schema: { type: string }
+          description: Letters and spaces only; trimmed; <= 255 chars.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IdName' }
+
+  /profdef/v2/sessionhome5:
+    post:
+      tags: [presenters]
+      summary: Add presenter (external DB proc)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email, nullable: true }
+                number: { type: string, nullable: true }
+              required: [name]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  id: { type: integer }
+                  name: { type: string }
+                  email: { type: string, nullable: true }
+                  number: { type: string, nullable: true }
+
+  /profdef/v2/sessionhome6:
+    post:
+      tags: [sessions]
+      summary: Add lookup value (external DB proc)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target:
+                  type: string
+                  enum: [ceu_consideration, event_type, type_of_session]
+                value: { type: string }
+              required: [target, value]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  id: { type: integer }
+                  target: { type: string }
+                  value: { type: string }
+
+  /profdef/v2/sessionhome7:
+    get:
+      tags: [sessions]
+      summary: List distinct parent events
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+
+  /profdef/v2/sessionhome8:
+    post:
+      tags: [sessions]
+      summary: Create session (external DB proc)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_date: { type: string, pattern: '^\n?\n?\n?\n?$' }
+                length_minutes: { type: integer, minimum: 1 }
+                session_title: { type: string }
+                specific_event: { type: string, nullable: true }
+                type_of_session_id: { type: integer, minimum: 1 }
+                event_type_id: { type: integer, minimum: 1 }
+                ceu_id: { type: integer, nullable: true }
+                presenters_csv: { type: string, nullable: true, description: 'CSV of presenter IDs' }
+              required: [session_date, length_minutes, session_title, type_of_session_id, event_type_id]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  id: { type: integer }
+
+  /profdef/v2/sessionhome9:
+    post:
+      tags: [sessions]
+      summary: Register attendance entries (external DB proc; transactional)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              description: Array of [member_id, session_id, status]
+              items:
+                type: array
+                minItems: 3
+                maxItems: 3
+                items:
+                  oneOf:
+                    - type: integer
+                    - type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  added: { type: integer }
+                  failed: { type: integer }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index: { type: integer }
+                        ok: { type: boolean }
+
+  /profdef/v2/sessionhome10:
+    get:
+      tags: [members]
+      summary: Search members by name with WP validation
+      parameters:
+        - in: query
+          name: search_p
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 200 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  minItems: 3
+                  maxItems: 3
+                  items:
+                    oneOf:
+                      - type: string
+                      - type: integer
+                  description: [resolved_name, members_id, email]
+        '201':
+          description: No matches (empty array)
+        '422':
+          description: Name mismatches detected (WP vs external)
+
+  /profdef/v2/sessionhome11:
+    put:
+      tags: [sessions]
+      summary: Batch update attendees (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id: { type: integer, minimum: 1 }
+                attendees:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      member_id: { type: integer, minimum: 1 }
+                      status:
+                        type: string
+                        enum: ['Certified', 'Master', 'None', '']
+              required: [session_id, attendees]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id: { type: integer }
+                  added: { type: integer }
+                  updated: { type: integer }
+                  deleted: { type: integer }
+                  total: { type: integer }
+                  attendees:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        member_id: { type: integer }
+                        status: { type: string }
+    post:
+      tags: [sessions]
+      summary: Batch update attendees (POST alias)
+      requestBody:
+        $ref: '#/components/requestBodies/Sessionhome11Body'
+      responses:
+        '200':
+          $ref: '#/components/responses/Sessionhome11Ok'
+
+  /profdef/v2/session:
+    put:
+      tags: [sessions]
+      summary: Update session (external DB proc; admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id: { type: integer, minimum: 1 }
+                title: { type: string, maxLength: 256 }
+                date: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+                length: { type: integer, minimum: 1 }
+                specific_event: { type: string, nullable: true }
+                session_type: { type: string }
+                ceu_consideration: { type: string, nullable: true }
+                event_type: { type: string }
+              required: [session_id, title, date, length, session_type, event_type]
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  session_id: { type: integer }
+                  rows_updated: { type: integer }
+    post:
+      tags: [sessions]
+      summary: Update session (POST alias)
+      requestBody:
+        $ref: '#/components/requestBodies/PutSessionBody'
+      responses:
+        '200':
+          $ref: '#/components/responses/PutSessionOk'
+
+  /profdef/v2/presenters_table:
+    get:
+      tags: [presenters]
+      summary: Presenters table view
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Filter by name/email/phone (case-insensitive).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PresenterRow' }
+
+  /profdef/v2/presenter/sessions:
+    get:
+      tags: [presenters]
+      summary: Sessions for a presenter (external DB proc)
+      parameters:
+        - in: query
+          name: presenter_id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PresenterSession' }
+
+  /profdef/v2/presenter:
+    post:
+      tags: [presenters]
+      summary: Create presenter (external DB proc)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                firstname: { type: string }
+                lastname: { type: string }
+                email: { type: string, format: email, nullable: true }
+                phone: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  id: { type: integer }
+                  name: { type: string }
+                  email: { type: string, nullable: true }
+                  phone_number: { type: string, nullable: true }
+
+  /profdef/v2/membershome:
+    get:
+      tags: [members]
+      summary: Member totals (external DB proc)
+      parameters:
+        - in: query
+          name: members_id
+          schema: { type: integer }
+          description: Optional member id; when omitted, returns all.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+
+  /profdef/v2/memberspage:
+    get:
+      tags: [members]
+      summary: Sessions attended by a member (external DB proc)
+      parameters:
+        - in: query
+          name: members_id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members_id: { type: integer }
+                  count: { type: integer }
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      description: Fields as returned by procedure; includes keys with spaces
+                      properties:
+                        'Session Id': { type: integer }
+                        'Date': { type: string }
+                        'Title': { type: string }
+                        'Session Type': { type: string }
+                        'Length': { type: integer, nullable: true }
+                        'CEU Capable': { type: boolean }
+                        'CEU Weight': { type: number, format: float, nullable: true }
+                        'Parent Event': { type: string, nullable: true }
+                        'Event Type': { type: string }
+                        'Members_id': { type: integer, nullable: true }
+
+  /profdef/v2/member/administrative_service:
+    get:
+      tags: [members]
+      summary: Member administrative service (external DB proc; admin only)
+      parameters:
+        - in: query
+          name: members_id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminServiceRow' }
+
+components:
+  schemas:
+    DemoSession:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        date: { type: string }
+        length: { type: string }
+        Attached_Event: { type: string }
+        Session_Type: { type: string }
+        CEU_Consideration: { type: string }
+        Event_Type: { type: string }
+        CEU_Weight: { type: number }
+
+    IdName:
+      type: object
+      properties:
+        session_id: { type: integer, nullable: true }
+        event_id: { type: integer, nullable: true }
+        ceu_id: { type: integer, nullable: true }
+        id: { type: integer, nullable: true }
+        name: { type: string }
+
+    PresenterRow:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, nullable: true }
+        phone_number: { type: string, nullable: true }
+        session_count: { type: integer }
+
+    PresenterSession:
+      type: object
+      properties:
+        session_id: { type: integer }
+        session_title: { type: string }
+        session_date: { type: string }
+        session_parent_event: { type: string, nullable: true }
+
+    AdminServiceRow:
+      type: object
+      properties:
+        start_service: { type: string, nullable: true }
+        end_service: { type: string, nullable: true }
+        type: { type: string }
+        ceu_weight: { type: string }
+
+  requestBodies:
+    Sessionhome11Body:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              session_id: { type: integer, minimum: 1 }
+              attendees:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    member_id: { type: integer, minimum: 1 }
+                    status: { type: string, enum: ['Certified', 'Master', 'None', ''] }
+            required: [session_id, attendees]
+
+    PutSessionBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              session_id: { type: integer, minimum: 1 }
+              title: { type: string, maxLength: 256 }
+              date: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+              length: { type: integer, minimum: 1 }
+              specific_event: { type: string, nullable: true }
+              session_type: { type: string }
+              ceu_consideration: { type: string, nullable: true }
+              event_type: { type: string }
+            required: [session_id, title, date, length, session_type, event_type]
+
+  responses:
+    Sessionhome11Ok:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              session_id: { type: integer }
+              added: { type: integer }
+              updated: { type: integer }
+              deleted: { type: integer }
+              total: { type: integer }
+              attendees:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    member_id: { type: integer }
+                    status: { type: string }
+

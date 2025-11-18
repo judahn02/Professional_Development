@@ -8,10 +8,16 @@ function PD_main_admin_page() {
     if (isset($_POST['ProfessionalDevelopment_save'])) {
         check_admin_referer('ProfessionalDevelopment_save_db_config');
 
+        // Save host/name/user as provided
         update_option('ProfessionalDevelopment_db_host', ProfessionalDevelopment_encrypt(sanitize_text_field($_POST['db_host'])));
         update_option('ProfessionalDevelopment_db_name', ProfessionalDevelopment_encrypt(sanitize_text_field($_POST['db_name'])));
         update_option('ProfessionalDevelopment_db_user', ProfessionalDevelopment_encrypt(sanitize_text_field($_POST['db_user'])));
-        update_option('ProfessionalDevelopment_db_pass', ProfessionalDevelopment_encrypt(sanitize_text_field($_POST['db_pass'])));
+
+        // Only update password if it is not the placeholder value shown in the form
+        $posted_pass = isset($_POST['db_pass']) ? sanitize_text_field($_POST['db_pass']) : '';
+        if ($posted_pass !== 'no...stoop :(') {
+            update_option('ProfessionalDevelopment_db_pass', ProfessionalDevelopment_encrypt($posted_pass));
+        }
 
         echo '<div class="updated"><p>Saved!</p></div>';
     }
@@ -70,7 +76,7 @@ function PD_main_admin_page() {
                                         class="regular-text" /></td>
                             </tr>
                             <tr>
-                                <th><label for="db_pass">DB Password</label></th>
+                                <th><label for="db_pass">DB Password (Do Not Change)</label></th>
                                 <td><input type="password" name="db_pass" value="no...stoop :("
                                         class="regular-text" /></td>
                             </tr>

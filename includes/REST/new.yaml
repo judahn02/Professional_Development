@@ -1,0 +1,757 @@
+openapi: 3.0.3
+info:
+  title: Professional Development REST (Proposed v3)
+  description: >-
+    Proposed, resource-oriented API to replace legacy endpoints. Focuses on
+    consistent nouns, HTTP verbs, predictable status codes, and stable schemas.
+    Designed to sit under the WordPress REST base at /wp-json.
+  version: 3.0.0-proposal
+servers:
+  - url: /wp-json
+tags:
+  - name: sessions
+    description: Manage sessions (create, list, update, retrieve)
+  - name: attendees
+    description: Manage attendees within a session
+  - name: presenters
+    description: Manage presenters and query their sessions
+  - name: members
+    description: Query members, their sessions, and admin service
+  - name: lookups
+    description: Reference data (session types, event types, CEU considerations, parent events)
+  - name: misc
+    description: Health checks and utility endpoints
+
+paths:
+  /profdef/v3/ping:
+    get:
+      tags: [misc]
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  timestamp: { type: string, format: date-time }
+                  site: { type: string }
+
+  /profdef/v3/sessions:
+    get:
+      tags: [sessions]
+      summary: List sessions
+      description: Filterable list with pagination and basic full-text query over title/event/presenters.
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [date, title, length_minutes, attendees_count, presenters_count, session_type, event_type, ceu_weight]
+          description: Sort key.
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc], default: desc }
+          description: Sort direction.
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive substring match across common session fields.
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+        - in: query
+          name: session_type_id
+          schema: { type: integer }
+        - in: query
+          name: event_type_id
+          schema: { type: integer }
+        - in: query
+          name: ceu_consideration_id
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSessionsResponse'
+    post:
+      tags: [sessions]
+      summary: Create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+
+  /profdef/v3/sessions/{session_id}:
+    parameters:
+      - in: path
+        name: session_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [sessions]
+      summary: Get a session by id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [sessions]
+      summary: Update fields on a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [sessions]
+      summary: Delete a session
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /profdef/v3/sessions/{session_id}/presenters:
+    parameters:
+      - in: path
+        name: session_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [presenters]
+      summary: List presenters assigned to a session
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Presenter' }
+    put:
+      tags: [presenters]
+      summary: Replace presenters assigned to a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                presenter_ids:
+                  type: array
+                  items: { type: integer, minimum: 1 }
+              required: [presenter_ids]
+      responses:
+        '200':
+          description: Updated set
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Presenter' }
+
+  /profdef/v3/sessions/{session_id}/attendees:
+    parameters:
+      - in: path
+        name: session_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [attendees]
+      summary: List attendees for a session
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/AttendeeStatus'
+          description: Optional filter by status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attendee' }
+    post:
+      tags: [attendees]
+      summary: Add an attendee to a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                member_id: { type: integer, minimum: 1 }
+                status:
+                  allOf:
+                    - $ref: '#/components/schemas/AttendeeStatus'
+                  nullable: true
+              required: [member_id]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendee' }
+
+  /profdef/v3/sessions/{session_id}/attendees/{member_id}:
+    parameters:
+      - in: path
+        name: session_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+      - in: path
+        name: member_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    patch:
+      tags: [attendees]
+      summary: Update attendee status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  allOf:
+                    - $ref: '#/components/schemas/AttendeeStatus'
+                  nullable: true
+              required: [status]
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendee' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [attendees]
+      summary: Remove an attendee from the session
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /profdef/v3/sessions/{session_id}/attendees:bulk:
+    post:
+      tags: [attendees]
+      summary: Apply a bulk set of attendee operations (add/update/remove)
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operations:
+                  type: array
+                  items: { $ref: '#/components/schemas/AttendeeOperation' }
+              required: [operations]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  added: { type: integer }
+                  updated: { type: integer }
+                  removed: { type: integer }
+                  total: { type: integer }
+
+  /profdef/v3/presenters:
+    get:
+      tags: [presenters]
+      summary: List presenters
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Search by name/email/phone.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListPresentersResponse'
+    post:
+      tags: [presenters]
+      summary: Create presenter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PresenterCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Presenter' }
+
+  /profdef/v3/presenters/{presenter_id}:
+    parameters:
+      - in: path
+        name: presenter_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [presenters]
+      summary: Get a presenter by id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Presenter' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [presenters]
+      summary: Update a presenter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PresenterUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Presenter' }
+
+  /profdef/v3/presenters/{presenter_id}/sessions:
+    parameters:
+      - in: path
+        name: presenter_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [presenters]
+      summary: List sessions for a presenter
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSessionsResponse'
+
+  /profdef/v3/members:
+    get:
+      tags: [members]
+      summary: Search members
+      description: Returns WordPress-resolved names with optional external name and mismatch indicator.
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive substring match on name.
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: include_mismatch
+          schema: { type: boolean, default: false }
+          description: Include external_name and mismatch fields when true.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMembersResponse'
+
+  /profdef/v3/members/{members_id}:
+    parameters:
+      - in: path
+        name: members_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [members]
+      summary: Get a member by id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /profdef/v3/members/{members_id}/sessions:
+    parameters:
+      - in: path
+        name: members_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [members]
+      summary: Sessions attended by a member
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSessionsResponse'
+
+  /profdef/v3/members/{members_id}/administrative-service:
+    parameters:
+      - in: path
+        name: members_id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [members]
+      summary: Administrative service records for a member
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminService' }
+
+  /profdef/v3/lookups/session-types:
+    get:
+      tags: [lookups]
+      summary: List session types
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IdName' }
+    post:
+      tags: [lookups]
+      summary: Create a session type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+              required: [name]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdName' }
+
+  /profdef/v3/lookups/event-types:
+    get:
+      tags: [lookups]
+      summary: List event types
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IdName' }
+    post:
+      tags: [lookups]
+      summary: Create an event type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+              required: [name]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdName' }
+
+  /profdef/v3/lookups/ceu-considerations:
+    get:
+      tags: [lookups]
+      summary: List CEU consideration types
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/IdName' }
+    post:
+      tags: [lookups]
+      summary: Create a CEU consideration type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+              required: [name]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdName' }
+
+  /profdef/v3/lookups/parent-events:
+    get:
+      tags: [lookups]
+      summary: List distinct parent events (session "specific_event")
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Optional filter by substring.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+
+components:
+  schemas:
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        total_pages: { type: integer }
+
+    Session:
+      type: object
+      properties:
+        id: { type: integer }
+        session_date: { type: string, format: date }
+        length_minutes: { type: integer }
+        session_title: { type: string }
+        specific_event: { type: string, nullable: true }
+        session_type_id: { type: integer }
+        session_type: { type: string, nullable: true }
+        event_type_id: { type: integer }
+        event_type: { type: string, nullable: true }
+        ceu_consideration_id: { type: integer, nullable: true }
+        ceu_consideration: { type: string, nullable: true }
+        ceu_weight: { type: number, format: float, nullable: true }
+        presenters_count: { type: integer, nullable: true }
+        attendees_count: { type: integer, nullable: true }
+
+    SessionCreate:
+      type: object
+      properties:
+        session_date: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+        length_minutes: { type: integer, minimum: 1 }
+        session_title: { type: string }
+        specific_event: { type: string, nullable: true }
+        session_type_id: { type: integer, minimum: 1 }
+        event_type_id: { type: integer, minimum: 1 }
+        ceu_consideration_id: { type: integer, nullable: true }
+        presenter_ids:
+          type: array
+          items: { type: integer, minimum: 1 }
+      required: [session_date, length_minutes, session_title, session_type_id, event_type_id]
+
+    SessionUpdate:
+      type: object
+      properties:
+        session_date: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+        length_minutes: { type: integer, minimum: 1 }
+        session_title: { type: string }
+        specific_event: { type: string, nullable: true }
+        session_type_id: { type: integer, minimum: 1 }
+        event_type_id: { type: integer, minimum: 1 }
+        ceu_consideration_id: { type: integer, nullable: true }
+
+    Presenter:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, nullable: true }
+        phone_number: { type: string, nullable: true }
+        session_count: { type: integer, nullable: true }
+
+    PresenterCreate:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string, format: email, nullable: true }
+        phone: { type: string, nullable: true }
+      required: [name]
+
+    PresenterUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string, format: email, nullable: true }
+        phone: { type: string, nullable: true }
+
+    Attendee:
+      type: object
+      properties:
+        member_id: { type: integer }
+        name: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        status:
+          allOf:
+            - $ref: '#/components/schemas/AttendeeStatus'
+          nullable: true
+
+    AttendeeStatus:
+      type: string
+      enum: ['Certified', 'Master', 'None']
+
+    AttendeeOperation:
+      type: object
+      properties:
+        op: { type: string, enum: [add, update, remove] }
+        member_id: { type: integer, minimum: 1 }
+        status:
+          allOf:
+            - $ref: '#/components/schemas/AttendeeStatus'
+          nullable: true
+      required: [op, member_id]
+
+    Member:
+      type: object
+      properties:
+        members_id: { type: integer }
+        name: { type: string }
+        email: { type: string, nullable: true }
+        external_name: { type: string, nullable: true }
+        mismatch: { type: boolean, nullable: true, description: true if external_name != WP-resolved name }
+
+    AdminService:
+      type: object
+      properties:
+        start_service: { type: string, nullable: true }
+        end_service: { type: string, nullable: true }
+        type: { type: string }
+        ceu_weight: { type: string }
+
+    IdName:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+
+    Error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+
+    ListSessionsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Session' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+    ListPresentersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Presenter' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+    ListMembersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Member' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
