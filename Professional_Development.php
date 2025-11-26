@@ -13,6 +13,8 @@ defined('ABSPATH') || exit ;
 
 //Initialize
 
+// use Firebase\JWT\JWT;
+// require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_metaData.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_client.php' ;
@@ -45,6 +47,15 @@ require_once plugin_dir_path( __FILE__ ) . 'admin/sessions-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/session-page.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/presenters-table.php' ;
 require_once plugin_dir_path( __FILE__ ) . 'admin/presenter-page.php' ;
+// Utility/test admin helper
+require_once plugin_dir_path( __FILE__ ) . 'admin/skeleton2.php' ;
+
+require_once plugin_dir_path( __FILE__ ) . 'includes/ApiRequestSigner.php' ;
+
+
+// define( 'ASLTA_API_BASE_URL', 'https://aslta.parallelsolvit.com' );
+// define( 'ASLTA_API_CLIENT_ID', 'wp-plugin' );
+// define( 'ASLTA_API_SECRET', 'Wp5v2fRtVtjUUFmxkT-tMiCCPX1DJUrT5SvUq7WZfC-9mplRnp_O4BuDMNdayvViSBnNdd_RPJlOFPWeGLcFiw' );
 
 
 // section to add new admin pages to admin menu.
@@ -86,6 +97,16 @@ function Professional_Development_admin_menu_page() {
         'manage_options', 
         'profdef_presenters_table', 
         'PD_presenters_table_page', 
+        4 
+    ) ;
+
+    add_submenu_page( 
+        'profdef_home', 
+        'Test Connection', 
+        'Test Connection', 
+        'manage_options', 
+        'testing_connection_to_db', 
+        'Testing_Connection_To_DB', 
         4 
     ) ;
 
@@ -539,3 +560,51 @@ function PD_user_test_modal_shortcode($atts = [], $content = null, $tag = '') {
     }
     return ob_get_clean();
 }
+
+// function aslta_build_jwt_for_current_user() {
+//     $user_id = get_current_user_id();
+//     $user    = $user_id ? get_userdata( $user_id ) : null;
+
+//     $role = 'guest';
+//     if ( $user && ! empty( $user->roles ) ) {
+//         $role = $user->roles[0];
+//     }
+
+//     $now = time();
+
+//     $payload = [
+//         'client_id' => ASLTA_API_CLIENT_ID,
+//         'exp'       => $now + 300,
+//         'user_id'   => $user_id ?: 0,
+//         'user_role' => $role,
+//     ];
+
+//     return JWT::encode( $payload, ASLTA_API_SECRET, 'HS256' );
+// }
+
+// function aslta_test_secure_endpoint() {
+//     $token = aslta_build_jwt_for_current_user();
+
+//     $response = wp_remote_get(
+//         trailingslashit( ASLTA_API_BASE_URL ) . 'secure-test',
+//         [
+//             'headers'   => [
+//                 'Authorization' => 'Bearer ' . $token,
+//             ],
+//             // TEMPORARY: ignore SSL issues while testing
+//             'sslverify' => false,
+//             'timeout'   => 10,
+//         ]
+//     );
+
+//     if ( is_wp_error( $response ) ) {
+//         error_log( 'ASLTA API error: ' . $response->get_error_message() );
+//         return;
+//     }
+
+//     $code = wp_remote_retrieve_response_code( $response );
+//     $body = wp_remote_retrieve_body( $response );
+
+//     error_log( 'ASLTA API HTTP ' . $code . ' body: ' . $body );
+// }
+// add_action( 'admin_init', 'aslta_test_secure_endpoint' );
