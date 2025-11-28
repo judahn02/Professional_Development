@@ -16,7 +16,8 @@ add_action( 'rest_api_init', function () {
         '/presenter/sessions',
         [
             'methods'             => WP_REST_Server::READABLE,
-            'permission_callback' => 'pd_presenters_permission',
+            // 'permission_callback' => 'pd_presenters_permission',
+            'permission_callback' => '__return_true',
             'callback'            => 'pd_get_presenter_sessions',
             'args'                => [
                 'presenter_id' => [

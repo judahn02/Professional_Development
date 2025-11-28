@@ -10,6 +10,21 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Minimal SQL string escaper for values embedded into a query/statement.
+ * Uses simple backslash + single-quote escaping, assuming MySQL-compatible syntax.
+ *
+ * @param string|null $value
+ * @return string SQL literal or NULL
+ */
+function pd_sessionhome10_sql_quote( ?string $value ): string {
+    if ( $value === null ) {
+        return 'NULL';
+    }
+    $escaped = str_replace( ['\\', '\''], ['\\\\', '\\\''], $value );
+    return '\'' . $escaped . '\'';
+}
+
 add_action( 'rest_api_init', function () {
     register_rest_route(
         'profdef/v2',
@@ -35,16 +50,7 @@ add_action( 'rest_api_init', function () {
 } );
 
 function aslta_get_members_names_check( WP_REST_Request $request ) {
-    // 1) Decrypt external DB creds
-    $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
-    $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
-    $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
-    $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
-    if ( ! $host || ! $name || ! $user ) {
-        return new \WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
-    }
-
-    // 2) Parse params
+    // 1) Parse params
     $search_raw = (string) $request->get_param( 'search_p' );
     $search_raw = is_string( $search_raw ) ? $search_raw : '';
     $search_raw = trim( $search_raw );
@@ -62,55 +68,104 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
     $limit_in     = (int) $request->get_param( 'limit' );
     $limit        = ( $limit_in > 0 && $limit_in <= 1000 ) ? $limit_in : 200;
 
-    // 3) Connect external DB
-    $conn = @new mysqli( $host, $user, $pass, $name );
-    if ( $conn->connect_error ) {
-        return new \WP_Error( 'mysql_not_connect', 'Database connection failed.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->connect_error : null ) ] );
-    }
-    $conn->set_charset( 'utf8mb4' );
-
-    // 4) Build and run query
-    // Use LIKE with backslash-escaped pattern; omit ESCAPE clause for broader MySQL/MariaDB compatibility
-    $sql         = "SELECT A.name, A.members_id, A.email FROM members AS A WHERE (A.name LIKE ? OR A.name IS NULL OR TRIM(A.name) = '') LIMIT " . (int) $limit;
-    $bind_types  = 's';
-    $bind_values = [];
-
-    // Escape LIKE wildcards in search and wrap with % ... %
+    // 2) Build SQL against beta_2.person using CONCAT_WS(first_name, last_name) as name.
+    // Use LIKE with backslash-escaped pattern; omit ESCAPE clause for broader MySQL/MariaDB compatibility.
     $escape_like = function( $s ) {
         $s = str_replace( '\\', '\\\\', $s ); // escape backslash first
         $s = str_replace( '%', '\\%', $s );
         $s = str_replace( '_', '\\_', $s );
         return $s;
     };
-    $pattern = '%' . $escape_like( $search_clean ) . '%';
-    $bind_values[] = $pattern;
-
-    $stmt = $conn->prepare( $sql );
-    if ( ! $stmt ) {
-        $conn->close();
-        return new \WP_Error( 'profdef_prepare_failed', 'Failed to prepare query.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->error : null ) ] );
-    }
-    $stmt->bind_param( $bind_types, ...$bind_values );
-    if ( ! $stmt->execute() ) {
-        $err = $stmt->error ?: $conn->error;
-        $stmt->close();
-        $conn->close();
-        return new \WP_Error( 'profdef_execute_failed', 'Failed to execute query.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $err : null ) ] );
-    }
+    $pattern     = '%' . $escape_like( $search_clean ) . '%';
+    $pattern_lit = pd_sessionhome10_sql_quote( $pattern );
 
     $rows = [];
-    if ( $result = $stmt->get_result() ) {
-        while ( $row = $result->fetch_assoc() ) {
-            $rows[] = [
-                'name'       => ( isset( $row['name'] ) ? trim( (string) $row['name'] ) : '' ),
-                'members_id' => (int) ( $row['members_id'] ?? 0 ),
-                'email'      => ( isset( $row['email'] ) ? trim( (string) $row['email'] ) : '' ),
-            ];
+
+    // New implementation: use the signed API connection defined in admin/skeleton2.php.
+    // Note: the members table is now beta_2.person; we derive a full name from first_name/last_name.
+    $sql = 'SELECT '
+         . 'CONCAT_WS(" ", A.first_name, A.last_name) AS name, '
+         . 'A.id AS members_id, '
+         . 'A.email '
+         . 'FROM beta_2.person AS A '
+         . 'WHERE (CONCAT_WS(" ", A.first_name, A.last_name) LIKE ' . $pattern_lit
+         . ' OR CONCAT_WS(" ", A.first_name, A.last_name) IS NULL '
+         . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "") '
+         . 'LIMIT ' . (int) $limit;
+
+    try {
+        if ( ! function_exists( 'aslta_signed_query' ) ) {
+            // Fallback: try to load the helper if, for some reason, the main plugin file has not.
+            $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
+            $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+            if ( is_readable( $skeleton_path ) ) {
+                require_once $skeleton_path;
+            }
         }
-        $result->free();
+
+        if ( ! function_exists( 'aslta_signed_query' ) ) {
+            return new \WP_Error(
+                'aslta_helper_missing',
+                'Signed query helper is not available.',
+                [ 'status' => 500 ]
+            );
+        }
+
+        $result = aslta_signed_query( $sql );
+    } catch ( \Throwable $e ) {
+        return new \WP_Error(
+            'aslta_remote_error',
+            'Failed to query members via remote API.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? $e->getMessage() : null ),
+            ]
+        );
     }
-    $stmt->close();
-    $conn->close();
+
+    if ( $result['status'] < 200 || $result['status'] >= 300 ) {
+        return new \WP_Error(
+            'aslta_remote_http_error',
+            'Remote members endpoint returned an HTTP error.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? [ 'http_code' => $result['status'], 'body' => $result['body'] ] : null ),
+            ]
+        );
+    }
+
+    $decoded = json_decode( $result['body'], true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        return new \WP_Error(
+            'aslta_json_error',
+            'Failed to decode members JSON response.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? json_last_error_msg() : null ),
+            ]
+        );
+    }
+
+    // Normalise to a list of row arrays.
+    if ( isset( $decoded['rows'] ) && is_array( $decoded['rows'] ) ) {
+        $rows_raw = $decoded['rows'];
+    } elseif ( is_array( $decoded ) && array_keys( $decoded ) === range( 0, count( $decoded ) - 1 ) ) {
+        $rows_raw = $decoded;
+    } else {
+        $rows_raw = [ $decoded ];
+    }
+
+    foreach ( $rows_raw as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
+        }
+
+        $rows[] = [
+            'name'       => isset( $row['name'] ) ? trim( (string) $row['name'] ) : '',
+            'members_id' => isset( $row['members_id'] ) ? (int) $row['members_id'] : 0,
+            'email'      => isset( $row['email'] ) ? trim( (string) $row['email'] ) : '',
+        ];
+    }
 
     // 5) Compute WP names and validate
     $wp_name_for = function ( $uid ) {

@@ -11,6 +11,21 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Minimal SQL string escaper for values embedded into a CALL statement.
+ * Uses simple backslash + single-quote escaping, assuming MySQL-compatible syntax.
+ *
+ * @param string|null $value
+ * @return string SQL literal or NULL
+ */
+function pd_sessionhome9_sql_quote( ?string $value ): string {
+    if ( $value === null ) {
+        return 'NULL';
+    }
+    $escaped = str_replace( ['\\', '\''], ['\\\\', '\\\''], $value );
+    return '\'' . $escaped . '\'';
+}
+
 add_action( 'rest_api_init', function () {
     register_rest_route(
         'profdef/v2',
@@ -68,61 +83,64 @@ function pd_sessionhome9_register_attendance( WP_REST_Request $req ) {
         $normalized[] = [ $mid, $sid, $status ];
     }
 
-    // 1) Decrypt external DB creds
-    $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
-    $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
-    $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
-    $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
-
-    if ( ! $host || ! $name || ! $user ) {
-        return new WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
+    // Execute each registration via the signed API.
+    // Note: previously this was wrapped in a single DB transaction; now each
+    // sp_register_attendance call is executed independently via the remote API.
+    // The function still fails fast on the first error and reports the index.
+    if ( ! function_exists( 'aslta_signed_query' ) ) {
+        $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
+        $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+        if ( is_readable( $skeleton_path ) ) {
+            require_once $skeleton_path;
+        }
     }
 
-    // 2) Connect to external DB
-    $conn = @new mysqli( $host, $user, $pass, $name );
-    if ( $conn->connect_error ) {
+    if ( ! function_exists( 'aslta_signed_query' ) ) {
         return new WP_Error(
-            'mysql_not_connect',
-            'Database connection failed.',
-            [ 'status' => 500, 'debug' => WP_DEBUG ? $conn->connect_error : null ]
+            'aslta_helper_missing',
+            'Signed query helper is not available.',
+            [ 'status' => 500 ]
         );
     }
-    $conn->set_charset( 'utf8mb4' );
 
-    // 3) Start transaction + prepare the stored procedure call once
-    $conn->begin_transaction();
-    $stmt = $conn->prepare( 'CALL Test_Database.sp_register_attendance(?, ?, ?)' );
-    if ( ! $stmt ) {
-        $conn->rollback();
-        $conn->close();
-        return new WP_Error( 'profdef_prepare_failed', 'Failed to prepare stored procedure.', [ 'status' => 500, 'debug' => WP_DEBUG ? $conn->error : null ] );
-    }
-    // Execute all-or-nothing
+    // Execute all items; stop on first failure.
     foreach ( $normalized as $idx => $triple ) {
-        [$mid, $sid, $status] = $triple;
-        if ( ! $stmt->bind_param( 'iis', $mid, $sid, $status ) ) {
-            $err = $stmt->error ?: $conn->error;
-            $stmt->close();
-            $conn->rollback();
-            $conn->close();
-            return new WP_Error( 'profdef_bind_failed', 'Failed to bind parameters.', [ 'status' => 500, 'index' => $idx, 'debug' => WP_DEBUG ? $err : null ] );
+        [ $mid, $sid, $status ] = $triple;
+
+        $status_lit = pd_sessionhome9_sql_quote( $status );
+        $sql        = sprintf(
+            'CALL beta_2.sp_register_attendance(%d, %d, %s);',
+            $mid,
+            $sid,
+            $status_lit
+        );
+
+        try {
+            $result = aslta_signed_query( $sql );
+        } catch ( \Throwable $e ) {
+            return new WP_Error(
+                'aslta_remote_error',
+                'Attendance registration failed via remote API.',
+                [
+                    'status' => 400,
+                    'index'  => $idx,
+                    'debug'  => ( WP_DEBUG ? $e->getMessage() : null ),
+                ]
+            );
         }
-        if ( ! $stmt->execute() ) {
-            $err = $stmt->error ?: $conn->error;
-            $stmt->close();
-            $conn->rollback();
-            $conn->close();
-            return new WP_Error( 'transaction_rollback', 'Attendance registration failed. Transaction rolled back.', [ 'status' => 400, 'index' => $idx, 'debug' => WP_DEBUG ? $err : null ] );
-        }
-        // Drain any result sets (if driver produces them)
-        while ( $stmt->more_results() && $stmt->next_result() ) {
-            if ( $extra = $stmt->get_result() ) { $extra->free(); }
+
+        if ( $result['status'] < 200 || $result['status'] >= 300 ) {
+            return new WP_Error(
+                'aslta_remote_http_error',
+                'Attendance registration failed via remote API.',
+                [
+                    'status' => 400,
+                    'index'  => $idx,
+                    'debug'  => ( WP_DEBUG ? [ 'http_code' => $result['status'], 'body' => $result['body'] ] : null ),
+                ]
+            );
         }
     }
-
-    $stmt->close();
-    $conn->commit();
-    $conn->close();
 
     return new WP_REST_Response( [
         'success' => true,

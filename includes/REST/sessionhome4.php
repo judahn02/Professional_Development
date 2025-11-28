@@ -11,6 +11,18 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Minimal SQL string escaper for values embedded into a CALL statement.
+ * Uses simple backslash + single-quote escaping, assuming MySQL-compatible syntax.
+ *
+ * @param string $value
+ * @return string SQL literal
+ */
+function pd_sessionhome4_sql_quote( string $value ): string {
+    $escaped = str_replace( ['\\', '\''], ['\\\\', '\\\''], $value );
+    return '\'' . $escaped . '\'';
+}
+
 // Sanitize callback: allow letters and spaces; collapse whitespace; trim; cap to 255.
 function pd_sessionhome4_letters_only( $value ) {
     $term = (string) $value;
@@ -64,68 +76,158 @@ function pd_sessionhome4_search_presenters( WP_REST_Request $request ) {
         return new WP_Error( 'bad_param', 'term cannot be empty.', [ 'status' => 400 ] );
     }
 
-    // 1) Decrypt external DB creds
-    $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
-    $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
-    $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
-    $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
+    // New implementation: use the signed API connection defined in admin/skeleton2.php.
+    // Build CALL statement with safely quoted term, matching sp_search_presentor(IN p_term).
+    $term_lit = pd_sessionhome4_sql_quote( $term );
+    $sql      = sprintf( 'CALL beta_2.sp_search_presentor(%s);', $term_lit );
 
-    if ( ! $host || ! $name || ! $user ) {
-        return new WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
-    }
+    try {
+        if ( ! function_exists( 'aslta_signed_query' ) ) {
+            // Fallback: try to load the helper if, for some reason, the main plugin file has not.
+            $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
+            $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+            if ( is_readable( $skeleton_path ) ) {
+                require_once $skeleton_path;
+            }
+        }
 
-    // 2) Connect to external DB
-    $conn = @new mysqli( $host, $user, $pass, $name );
-    if ( $conn->connect_error ) {
+        if ( ! function_exists( 'aslta_signed_query' ) ) {
+            return new WP_Error(
+                'aslta_helper_missing',
+                'Signed query helper is not available.',
+                [ 'status' => 500 ]
+            );
+        }
+
+        $result = aslta_signed_query( $sql );
+    } catch ( \Throwable $e ) {
         return new WP_Error(
-            'mysql_not_connect',
-            'Database connection failed.',
-            [ 'status' => 500, 'debug' => WP_DEBUG ? $conn->connect_error : null ]
+            'aslta_remote_error',
+            'Failed to search presenters via remote API.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? $e->getMessage() : null ),
+            ]
         );
     }
-    $conn->set_charset( 'utf8mb4' );
 
-    // 3) Prepare + execute stored procedure sp_search_presentor
-    // Qualify DB like other endpoints do with Test_Database.*
-    $stmt = $conn->prepare( 'CALL Test_Database.sp_search_presentor(?)' );
-    if ( ! $stmt ) {
-        $conn->close();
-        return new WP_Error( 'profdef_prepare_failed', 'Failed to prepare stored procedure.', [ 'status' => 500, 'debug' => WP_DEBUG ? $conn->error : null ] );
+    if ( $result['status'] < 200 || $result['status'] >= 300 ) {
+        return new WP_Error(
+            'aslta_remote_http_error',
+            'Remote presenter search endpoint returned an HTTP error.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? [ 'http_code' => $result['status'], 'body' => $result['body'] ] : null ),
+            ]
+        );
     }
 
-    $stmt->bind_param( 's', $term );
-    if ( ! $stmt->execute() ) {
-        $err = $stmt->error ?: $conn->error;
-        $stmt->close();
-        $conn->close();
-        return new WP_Error( 'profdef_execute_failed', 'Failed to execute stored procedure.', [ 'status' => 500, 'debug' => WP_DEBUG ? $err : null ] );
+    $decoded = json_decode( $result['body'], true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        return new WP_Error(
+            'aslta_json_error',
+            'Failed to decode presenter search JSON response.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? json_last_error_msg() : null ),
+            ]
+        );
     }
 
-    // 4) Collect result rows
+    // Normalise to a list of row arrays.
+    if ( isset( $decoded['rows'] ) && is_array( $decoded['rows'] ) ) {
+        $rows_raw = $decoded['rows'];
+    } elseif ( is_array( $decoded ) && array_keys( $decoded ) === range( 0, count( $decoded ) - 1 ) ) {
+        $rows_raw = $decoded;
+    } else {
+        $rows_raw = [ $decoded ];
+    }
+
     $rows = [];
-    if ( $result = $stmt->get_result() ) {
-        while ( $row = $result->fetch_assoc() ) {
-            // Normalize types
-            if ( isset( $row['id'] ) ) {
-                $row['id'] = (int) $row['id'];
-            }
-            $rows[] = [
-                'id'   => $row['id'] ?? 0,
-                'name' => isset( $row['name'] ) ? (string) $row['name'] : '',
-            ];
+    foreach ( $rows_raw as $row ) {
+        if ( ! is_array( $row ) ) {
+            continue;
         }
-        $result->free();
-    }
 
-    // 5) Drain any additional result sets if driver returns them
-    while ( $stmt->more_results() && $stmt->next_result() ) {
-        if ( $extra = $stmt->get_result() ) {
-            $extra->free();
-        }
-    }
+        $id   = isset( $row['id'] ) ? (int) $row['id'] : 0;
+        $name = isset( $row['name'] ) ? (string) $row['name'] : '';
 
-    $stmt->close();
-    $conn->close();
+        $rows[] = [
+            'id'   => $id,
+            'name' => $name,
+        ];
+    }
 
     return new WP_REST_Response( $rows, 200 );
+
+    /*
+     * Previous implementation (direct MySQL connection and stored procedure call)
+     * kept for reference. This has been replaced by the signed remote API
+     * connection wired through admin/skeleton2.php (aslta_signed_query()).
+     *
+     * // 1) Decrypt external DB creds
+     * $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
+     * $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
+     * $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
+     * $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
+     *
+     * if ( ! $host || ! $name || ! $user ) {
+     *     return new WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
+     * }
+     *
+     * // 2) Connect to external DB
+     * $conn = @new mysqli( $host, $user, $pass, $name );
+     * if ( $conn->connect_error ) {
+     *     return new WP_Error(
+     *         'mysql_not_connect',
+     *         'Database connection failed.',
+     *         [ 'status' => 500, 'debug' => WP_DEBUG ? $conn->connect_error : null ]
+     *     );
+     * }
+     * $conn->set_charset( 'utf8mb4' );
+     *
+     * // 3) Prepare + execute stored procedure sp_search_presentor
+     * // Qualify DB like other endpoints do with Test_Database.*
+     * $stmt = $conn->prepare( 'CALL Test_Database.sp_search_presentor(?)' );
+     * if ( ! $stmt ) {
+     *     $conn->close();
+     *     return new WP_Error( 'profdef_prepare_failed', 'Failed to prepare stored procedure.', [ 'status' => 500, 'debug' => WP_DEBUG ? $conn->error : null ] );
+     * }
+     *
+     * $stmt->bind_param( 's', $term );
+     * if ( ! $stmt->execute() ) {
+     *     $err = $stmt->error ?: $conn->error;
+     *     $stmt->close();
+     *     $conn->close();
+     *     return new WP_Error( 'profdef_execute_failed', 'Failed to execute stored procedure.', [ 'status' => 500, 'debug' => WP_DEBUG ? $err : null ] );
+     * }
+     *
+     * // 4) Collect result rows
+     * $rows = [];
+     * if ( $result = $stmt->get_result() ) {
+     *     while ( $row = $result->fetch_assoc() ) {
+     *         // Normalize types
+     *         if ( isset( $row['id'] ) ) {
+     *             $row['id'] = (int) $row['id'];
+     *         }
+     *         $rows[] = [
+     *             'id'   => $row['id'] ?? 0,
+     *             'name' => isset( $row['name'] ) ? (string) $row['name'] : '',
+     *         ];
+     *     }
+     *     $result->free();
+     * }
+     *
+     * // 5) Drain any additional result sets if driver returns them
+     * while ( $stmt->more_results() && $stmt->next_result() ) {
+     *     if ( $extra = $stmt->get_result() ) {
+     *         $extra->free();
+     *     }
+     * }
+     *
+     * $stmt->close();
+     * $conn->close();
+     *
+     * return new WP_REST_Response( $rows, 200 );
+     */
 }

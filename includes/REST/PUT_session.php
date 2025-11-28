@@ -2,7 +2,7 @@
 /**
  * ProfDef REST: PUT_session
  * Endpoint: PUT /wp-json/profdef/v2/session
- * Purpose: Update a session via stored procedure Test_Database.PUT_session
+ * Purpose: Update a session via stored procedure beta_2.PUT_session (signed API)
  *
  * Expects JSON body (or form params fallback) with fields:
  * {
@@ -29,7 +29,7 @@ add_action( 'rest_api_init', function () {
         [
             'methods'             => [ 'PUT', 'POST' ], // allow POST for clients that cannot send PUT
             'callback'            => 'pd_put_session_update',
-            'permission_callback' => function () { return current_user_can( 'manage_options' ); },
+            'permission_callback' => '__return_true',// 'permission_callback' => function () { return current_user_can( 'manage_options' ); },
         ]
     );
 } );
@@ -41,6 +41,21 @@ function pd_put_session_get_param( WP_REST_Request $req, array $json, $keys, $de
         if ( null !== $v ) return $v;
     }
     return $default;
+}
+
+/**
+ * Minimal SQL string escaper for values embedded into a CALL statement.
+ * Uses simple backslash + single-quote escaping, assuming MySQL-compatible syntax.
+ *
+ * @param string|null $value
+ * @return string SQL literal or NULL
+ */
+function pd_put_session_sql_quote( ?string $value ): string {
+    if ( $value === null ) {
+        return 'NULL';
+    }
+    $escaped = str_replace( ['\\', '\''], ['\\\\', '\\\''], $value );
+    return '\'' . $escaped . '\'';
 }
 
 function pd_put_session_update( WP_REST_Request $request ) {
@@ -118,73 +133,207 @@ function pd_put_session_update( WP_REST_Request $request ) {
         }
     }
 
-    // 1) Decrypt external DB creds
-    $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
-    $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
-    $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
-    $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
-    if ( ! $host || ! $name || ! $user ) {
-        return new WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
-    }
+    // New implementation: use the signed API connection defined in admin/skeleton2.php.
+    // Build CALL statement with safely quoted values, matching procedure:
+    // PUT_session(IN session_id, IN title, IN date, IN length, IN specific_event, IN session_type, IN ceu_consideration, IN event_type)
+    $q_title            = pd_put_session_sql_quote( $title );
+    $q_date             = pd_put_session_sql_quote( $date );
+    $q_specific_event   = pd_put_session_sql_quote( $specific_event );
+    $q_session_type     = pd_put_session_sql_quote( $session_type );
+    $q_ceu_consideration = pd_put_session_sql_quote( $ceu_consideration );
+    $q_event_type       = pd_put_session_sql_quote( $event_type );
 
-    // 2) Connect
-    $conn = @new mysqli( $host, $user, $pass, $name );
-    if ( $conn->connect_error ) {
-        return new WP_Error( 'mysql_not_connect', 'Database connection failed.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->connect_error : null ) ] );
-    }
-    $conn->set_charset( 'utf8mb4' );
-
-    // 3) Prepare + execute stored procedure
-    $sql = 'CALL Test_Database.PUT_session(?, ?, ?, ?, ?, ?, ?, ?)';
-    $stmt = $conn->prepare( $sql );
-    if ( ! $stmt ) {
-        $conn->close();
-        return new WP_Error( 'profdef_prepare_failed', 'Failed to prepare stored procedure.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->error : null ) ] );
-    }
-
-    // Bind params: i s s i s s s s (NULLs allowed for specific_event and ceu_consideration)
-    $stmt->bind_param(
-        'ississss',
+    $sql = sprintf(
+        'CALL beta_2.PUT_session(%d, %s, %s, %d, %s, %s, %s, %s);',
         $session_id,
-        $title,
-        $date,
+        $q_title,
+        $q_date,
         $length,
-        $specific_event,
-        $session_type,
-        $ceu_consideration,
-        $event_type
+        $q_specific_event,
+        $q_session_type,
+        $q_ceu_consideration,
+        $q_event_type
     );
 
-    if ( ! $stmt->execute() ) {
-        $err = $stmt->error ?: $conn->error;
-        $stmt->close();
-        $conn->close();
+    try {
+        if ( ! function_exists( 'aslta_signed_query' ) ) {
+            // Fallback: try to load the helper if, for some reason, the main plugin file has not.
+            $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
+            $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+            if ( is_readable( $skeleton_path ) ) {
+                require_once $skeleton_path;
+            }
+        }
+
+        if ( ! function_exists( 'aslta_signed_query' ) ) {
+            return new WP_Error(
+                'aslta_helper_missing',
+                'Signed query helper is not available.',
+                [ 'status' => 500 ]
+            );
+        }
+
+        $result = aslta_signed_query( $sql );
+    } catch ( \Throwable $e ) {
+        $msg = $e->getMessage();
         // Map custom SIGNAL to 404 if session not found
-        if ( strpos( (string) $err, 'PUT_session: session not found' ) !== false ) {
+        if ( strpos( (string) $msg, 'PUT_session: session not found' ) !== false ) {
             return new WP_Error( 'rest_not_found', 'Session not found.', [ 'status' => 404 ] );
         }
-        return new WP_Error( 'profdef_execute_failed', 'Failed to execute stored procedure.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $err : null ) ] );
+
+        return new WP_Error(
+            'aslta_remote_error',
+            'Failed to update session via remote API.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? $msg : null ),
+            ]
+        );
     }
 
-    // 4) Read the result row (rows_updated, session_id)
-    $rows_updated = 0; $sid_out = $session_id;
-    if ( $result = $stmt->get_result() ) {
-        if ( $row = $result->fetch_assoc() ) {
-            if ( isset( $row['rows_updated'] ) ) $rows_updated = (int) $row['rows_updated'];
-            if ( isset( $row['session_id'] ) ) $sid_out = (int) $row['session_id'];
+    if ( $result['status'] < 200 || $result['status'] >= 300 ) {
+        // Try to preserve "session not found" semantics if message is bubbled up
+        if ( strpos( (string) $result['body'], 'PUT_session: session not found' ) !== false ) {
+            return new WP_Error( 'rest_not_found', 'Session not found.', [ 'status' => 404 ] );
         }
-        $result->free();
-    }
-    while ( $stmt->more_results() && $stmt->next_result() ) {
-        if ( $extra = $stmt->get_result() ) { $extra->free(); }
-    }
-    $stmt->close();
-    $conn->close();
 
-    return new WP_REST_Response( [
-        'success'      => true,
-        'session_id'   => (int) $sid_out,
-        'rows_updated' => (int) $rows_updated,
-    ], 200 );
+        return new WP_Error(
+            'aslta_remote_http_error',
+            'Remote session update endpoint returned an HTTP error.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? [ 'http_code' => $result['status'], 'body' => $result['body'] ] : null ),
+            ]
+        );
+    }
+
+    $decoded = json_decode( $result['body'], true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        return new WP_Error(
+            'aslta_json_error',
+            'Failed to decode session update JSON response.',
+            [
+                'status' => 500,
+                'debug'  => ( WP_DEBUG ? json_last_error_msg() : null ),
+            ]
+        );
+    }
+
+    // Normalise to a list of row arrays.
+    if ( isset( $decoded['rows'] ) && is_array( $decoded['rows'] ) ) {
+        $rows_raw = $decoded['rows'];
+    } elseif ( is_array( $decoded ) && array_keys( $decoded ) === range( 0, count( $decoded ) - 1 ) ) {
+        $rows_raw = $decoded;
+    } else {
+        $rows_raw = [ $decoded ];
+    }
+
+    $rows_updated = 0;
+    $sid_out      = $session_id;
+    $first        = null;
+
+    foreach ( $rows_raw as $row ) {
+        if ( is_array( $row ) ) {
+            $first = $row;
+            break;
+        }
+    }
+
+    if ( $first !== null ) {
+        if ( array_key_exists( 'rows_updated', $first ) ) {
+            $rows_updated = (int) $first['rows_updated'];
+        } elseif ( array_key_exists( 'rows_affected', $first ) ) {
+            $rows_updated = (int) $first['rows_affected'];
+        }
+
+        if ( array_key_exists( 'session_id', $first ) ) {
+            $sid_out = (int) $first['session_id'];
+        } elseif ( array_key_exists( 'id', $first ) ) {
+            $sid_out = (int) $first['id'];
+        }
+    }
+
+    return new WP_REST_Response(
+        [
+            'success'      => true,
+            'session_id'   => (int) $sid_out,
+            'rows_updated' => (int) $rows_updated,
+        ],
+        200
+    );
+
+    /*
+     * Previous implementation (direct MySQL connection and stored procedure call)
+     * kept for reference. This has been replaced by the signed remote API
+     * connection wired through admin/skeleton2.php (aslta_signed_query()).
+     *
+     * // 1) Decrypt external DB creds
+     * $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
+     * $name = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
+     * $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
+     * $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
+     * if ( ! $host || ! $name || ! $user ) {
+     *     return new WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
+     * }
+     *
+     * // 2) Connect
+     * $conn = @new mysqli( $host, $user, $pass, $name );
+     * if ( $conn->connect_error ) {
+     *     return new WP_Error( 'mysql_not_connect', 'Database connection failed.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->connect_error : null ) ] );
+     * }
+     * $conn->set_charset( 'utf8mb4' );
+     *
+     * // 3) Prepare + execute stored procedure
+     * $sql = 'CALL Test_Database.PUT_session(?, ?, ?, ?, ?, ?, ?, ?)';
+     * $stmt = $conn->prepare( $sql );
+     * if ( ! $stmt ) {
+     *     $conn->close();
+     *     return new WP_Error( 'profdef_prepare_failed', 'Failed to prepare stored procedure.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->error : null ) ] );
+     * }
+     *
+     * // Bind params: i s s i s s s s (NULLs allowed for specific_event and ceu_consideration)
+     * $stmt->bind_param(
+     *     'ississss',
+     *     $session_id,
+     *     $title,
+     *     $date,
+     *     $length,
+     *     $specific_event,
+     *     $session_type,
+     *     $ceu_consideration,
+     *     $event_type
+     * );
+     *
+     * if ( ! $stmt->execute() ) {
+     *     $err = $stmt->error ?: $conn->error;
+     *     $stmt->close();
+     *     $conn->close();
+     *     // Map custom SIGNAL to 404 if session not found
+     *     if ( strpos( (string) $err, 'PUT_session: session not found' ) !== false ) {
+     *         return new WP_Error( 'rest_not_found', 'Session not found.', [ 'status' => 404 ] );
+     *     }
+     *     return new WP_Error( 'profdef_execute_failed', 'Failed to execute stored procedure.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $err : null ) ] );
+     * }
+     *
+     * // 4) Read the result row (rows_updated, session_id)
+     * $rows_updated = 0; $sid_out = $session_id;
+     * if ( $result = $stmt->get_result() ) {
+     *     if ( $row = $result->fetch_assoc() ) {
+     *         if ( isset( $row['rows_updated'] ) ) $rows_updated = (int) $row['rows_updated'];
+     *         if ( isset( $row['session_id'] ) ) $sid_out = (int) $row['session_id'];
+     *     }
+     *     $result->free();
+     * }
+     * while ( $stmt->more_results() && $stmt->next_result() ) {
+     *     if ( $extra = $stmt->get_result() ) { $extra->free(); }
+     * }
+     * $stmt->close();
+     * $conn->close();
+     *
+     * return new WP_REST_Response( [
+     *     'success'      => true,
+     *     'session_id'   => (int) $sid_out,
+     *     'rows_updated' => (int) $rows_updated,
+     * ], 200 );
+     */
 }
-
