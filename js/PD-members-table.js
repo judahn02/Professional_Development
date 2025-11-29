@@ -1,7 +1,6 @@
 // Simple, unified implementation for the Members table
-// - Fetches identities via admin-ajax (`get_members`)
-// - Fetches totals via REST (`/wp-json/profdef/v2/membershome/0`)
-// - Merges results, supports sorting and filtering, and renders 6 columns
+// - Fetches member rows (identity + totals) via REST (`/wp-json/profdef/v2/membershome`)
+// - Supports sorting, filtering, CSV export, and navigation to member profile
 
 let memberSortKey = 'id';
 let memberSortAsc = true;
@@ -61,16 +60,25 @@ function renderMembers() {
     return;
   }
 
-  tbody.innerHTML = filteredMembers.map(m => `
-    <tr class="member-row" style="cursor:pointer;" onclick="goToMemberProfile(${m.id})">
-      <td style="font-weight:600;">${m.firstname ?? ''}</td>
-      <td style="font-weight:600;">${m.lastname ?? ''}</td>
-      <td>${m.email ?? ''}</td>
-      <td>${m.id ?? ''}</td>
-      <td>${getTotalHours(m)}</td>
-      <td>${getTotalCEUs(m)}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = filteredMembers.map(m => {
+    const idNum = Number(m.id || 0);
+    const hasWpId = Number.isFinite(idNum) && idNum > 0;
+    const idDisplay = hasWpId ? idNum : 'not linked';
+    const rowAttrs = hasWpId
+      ? `class="member-row" style="cursor:pointer;" onclick="goToMemberProfile(${idNum})"`
+      : 'class="member-row"';
+
+    return `
+      <tr ${rowAttrs}>
+        <td style="font-weight:600;">${m.firstname ?? ''}</td>
+        <td style="font-weight:600;">${m.lastname ?? ''}</td>
+        <td>${m.email ?? ''}</td>
+        <td>${idDisplay}</td>
+        <td>${getTotalHours(m)}</td>
+        <td>${getTotalCEUs(m)}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function sortMembers(key) {
@@ -105,7 +113,8 @@ function filterMembers() {
     (m.firstname && m.firstname.toLowerCase().includes(term)) ||
     (m.lastname && m.lastname.toLowerCase().includes(term)) ||
     (m.email && m.email.toLowerCase().includes(term)) ||
-    (m.id != null && String(m.id).toLowerCase().includes(term))
+    (m.id != null && String(m.id).toLowerCase().includes(term)) ||
+    (!m.id && 'not linked'.includes(term))
   );
 
   renderMembers();
@@ -115,55 +124,6 @@ function goToMemberProfile(id) {
   try { localStorage.setItem('members', JSON.stringify(members)); } catch (e) {}
   const base = (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
   window.location.href = base.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&member=' + id);
-}
-
-// Debugging / CSV export
-function downloadAllUsersCSV(filename = 'members_with_metadata.csv') {
-  if (!Array.isArray(members) || members.length === 0) {
-    alert('No members to export.');
-    return;
-  }
-
-  const flattenedMetaPerMember = members.map(a => {
-    let m = a.metaData ?? a.metadata ?? a.meta ?? {};
-    if (typeof m === 'string') {
-      try { m = JSON.parse(m); } catch { m = { metaData: m }; }
-    }
-    return flattenObject(m);
-  });
-
-  const metaKeys = Array.from(
-    flattenedMetaPerMember.reduce((set, obj) => {
-      Object.keys(obj).forEach(k => set.add(k));
-      return set;
-    }, new Set())
-  ).sort();
-
-  const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Total Hours', 'Total CEUs', ...metaKeys];
-
-  const rows = members.map((a, i) => {
-    const meta = flattenedMetaPerMember[i];
-    return [
-      a.id ?? '',
-      a.firstname ?? '',
-      a.lastname ?? '',
-      a.email ?? '',
-      getTotalHours(a),
-      getTotalCEUs(a),
-      ...metaKeys.map(k => meta[k] ?? '')
-    ];
-  });
-
-  const csv = [headers, ...rows].map(r => r.map(csvEscape).join(',')).join('\r\n');
-  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
-
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  URL.revokeObjectURL(a.href);
-  a.remove();
 }
 
 // Administrative Service modal controls
@@ -198,73 +158,107 @@ function closeAdminServiceModal() {
   }
 }
 
-function csvEscape(v) {
-  if (v === null || v === undefined) v = '';
-  const s = String(v).replace(/"/g, '""');
-  return /[",\r\n]/.test(s) ? `"${s}"` : s;
-}
-
-function flattenObject(obj, prefix = '', out = {}) {
-  if (!obj || typeof obj !== 'object') return out;
-
-  for (const [k, v] of Object.entries(obj)) {
-    const key = prefix ? `${prefix}.${k}` : k;
-
-    if (v && typeof v === 'object') {
-      if (Array.isArray(v)) {
-        out[key] = JSON.stringify(v);
-      } else {
-        flattenObject(v, key, out);
-      }
-    } else {
-      out[key] = v;
-    }
-  }
-  return out;
-}
-
 // Data loading (identities + totals)
-function fetchIdentities() {
-  const endpoint = (typeof PDMembers !== 'undefined' && PDMembers.ajaxurl)
-    ? PDMembers.ajaxurl
-    : (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
-  const payload = { action: 'get_members' };
-  if (typeof PDMembers !== 'undefined' && PDMembers.nonce) payload.nonce = PDMembers.nonce;
-  return jQuery.post(endpoint, payload);
+function normalizeMembersFromRest(totalRows) {
+  const rows = Array.isArray(totalRows) ? totalRows : [];
+
+  const pickFirst = (obj, keys) => {
+    for (const k of keys) {
+      if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null && obj[k] !== '') {
+        return obj[k];
+      }
+    }
+    return null;
+  };
+
+  return rows
+    .filter(r => r && typeof r === 'object')
+    .map(row => {
+      const out = { ...row };
+
+      // Normalise ID: prefer explicit WordPress ID (wp_id).
+      const rawWpId = pickFirst(row, ['wp_id', 'wpId', 'WP_ID']);
+      if (rawWpId !== null && rawWpId !== '') {
+        const n = Number(rawWpId);
+        if (Number.isFinite(n) && n > 0) {
+          out.id = n;
+          out.wp_id = n;
+        } else {
+          out.id = null;
+        }
+      } else {
+        out.id = null;
+      }
+
+      // Normalise name + email fields if missing.
+      if (typeof out.firstname === 'undefined' || out.firstname === null || out.firstname === '') {
+        out.firstname = pickFirst(row, [
+          'firstname',
+          'first_name',
+          'FirstName',
+          'firstName',
+          'FIRST_NAME',
+          'first',
+          'First',
+          'First Name'
+        ]);
+      }
+
+      if (typeof out.lastname === 'undefined' || out.lastname === null || out.lastname === '') {
+        out.lastname = pickFirst(row, [
+          'lastname',
+          'last_name',
+          'LastName',
+          'lastName',
+          'LAST_NAME',
+          'last',
+          'Last',
+          'Last Name'
+        ]);
+      }
+
+      if (typeof out.email === 'undefined' || out.email === null || out.email === '') {
+        out.email = pickFirst(row, [
+          'email',
+          'Email',
+          'EMAIL',
+          'user_email',
+          'userEmail'
+        ]);
+      }
+
+      // Provide canonical totals in minutes for consumers that expect totalHours/totalCEUs.
+      if (typeof out.totalHours === 'undefined') {
+        if (typeof row.total_length !== 'undefined') {
+          out.totalHours = num(row.total_length);
+        } else if (typeof row.totalHours !== 'undefined') {
+          out.totalHours = num(row.totalHours);
+        }
+      }
+
+      if (typeof out.totalCEUs === 'undefined') {
+        if (typeof row.total_ceu !== 'undefined') {
+          out.totalCEUs = num(row.total_ceu);
+        } else if (typeof row.totalCEUs !== 'undefined') {
+          out.totalCEUs = num(row.totalCEUs);
+        }
+      }
+
+      return out;
+    });
 }
 
 async function fetchTotals() {
-  // Use id=0 to request totals for all members
+  // Use REST API to request totals (and identity data) for all members.
   const res = await fetch('/wp-json/profdef/v2/membershome', { credentials: 'same-origin' });
   if (!res.ok) throw new Error('Failed to load member totals');
-  return await res.json();
-}
-
-function mergeIdentitiesWithTotals(identityRows, totalRows) {
-  const totalsById = new Map();
-  (Array.isArray(totalRows) ? totalRows : []).forEach(r => {
-    const id = r.members_id ?? r.id ?? null;
-    if (id == null) return;
-    totalsById.set(Number(id), {
-      totalHours: num(r.total_length),
-      totalCEUs: num(r.total_ceu)
-    });
-  });
-
-  return (Array.isArray(identityRows) ? identityRows : []).map(row => {
-    const id = Number(row.id);
-    const totals = totalsById.get(id) || { totalHours: 0, totalCEUs: 0 };
-    return { ...row, ...totals };
-  });
+  const data = await res.json();
+  return normalizeMembersFromRest(data);
 }
 
 async function loadAndRenderMembers() {
   try {
-    const [ids, totals] = await Promise.all([
-      fetchIdentities(),
-      fetchTotals()
-    ]);
-    members = mergeIdentitiesWithTotals(ids, totals);
+    members = await fetchTotals();
     filteredMembers = members.slice();
     sortMembers('id'); // sets arrows + renders
   } catch (e) {

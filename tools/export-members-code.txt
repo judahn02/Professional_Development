@@ -1,0 +1,97 @@
+Export Members functionality (archived)
+======================================
+
+Source: admin/members-table.php
+--------------------------------
+
+Original button in the controls section:
+
+<button class="add-member-btn" onclick="downloadAllUsersCSV()">
+  <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd"
+          d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+          clip-rule="evenodd" />
+  </svg>
+  Export Members
+</button>
+
+
+Source: js/PD-members-table.js
+------------------------------
+
+Debugging / CSV export helper:
+
+// Debugging / CSV export
+function downloadAllUsersCSV(filename = 'members_with_metadata.csv') {
+  if (!Array.isArray(members) || members.length === 0) {
+    alert('No members to export.');
+    return;
+  }
+
+  const flattenedMetaPerMember = members.map(a => {
+    let m = a.metaData ?? a.metadata ?? a.meta ?? {};
+    if (typeof m === 'string') {
+      try { m = JSON.parse(m); } catch { m = { metaData: m }; }
+    }
+    return flattenObject(m);
+  });
+
+  const metaKeys = Array.from(
+    flattenedMetaPerMember.reduce((set, obj) => {
+      Object.keys(obj).forEach(k => set.add(k));
+      return set;
+    }, new Set())
+  ).sort();
+
+  const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Total Hours', 'Total CEUs', ...metaKeys];
+
+  const rows = members.map((a, i) => {
+    const meta = flattenedMetaPerMember[i];
+    return [
+      a.id ?? '',
+      a.firstname ?? '',
+      a.lastname ?? '',
+      a.email ?? '',
+      getTotalHours(a),
+      getTotalCEUs(a),
+      ...metaKeys.map(k => meta[k] ?? '')
+    ];
+  });
+
+  const csv = [headers, ...rows].map(r => r.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+}
+
+function csvEscape(v) {
+  if (v === null || v === undefined) v = '';
+  const s = String(v).replace(/"/g, '""');
+  return /[",\r\n]/.test(s) ? `"${s}"` : s;
+}
+
+function flattenObject(obj, prefix = '', out = {}) {
+  if (!obj || typeof obj !== 'object') return out;
+
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}.${k}` : k;
+
+    if (v && typeof v === 'object') {
+      if (Array.isArray(v)) {
+        out[key] = JSON.stringify(v);
+      } else {
+        flattenObject(v, key, out);
+      }
+    } else {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+

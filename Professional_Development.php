@@ -258,7 +258,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.23',
+            '0.26',
             true
         );
 
@@ -512,42 +512,6 @@ register_deactivation_hook(__FILE__, function () {
 
 }) ;
 
-
-// Ajax POST handlers for dynamic JS calls
-add_action('wp_ajax_get_members', 'get_members_callback');
-
-function get_members_callback() {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(['error' => 'Access denied.'], 403);
-    }
-
-    if (!check_ajax_referer('pd_members_nonce', 'nonce', false)) {
-        wp_send_json_error(['error' => 'Invalid request.'], 400);
-    }
-
-    $args = array(
-        'orderby'  => 'last_name',
-        'order'    => 'ASC',
-    );
-
-    $user_query = new WP_User_Query($args);
-
-    $members = array();
-
-    foreach ($user_query->get_results() as $user) {
-        $members[] = array(
-            'id'               => $user->ID,
-            'firstname'        => get_user_meta($user->ID, 'first_name', true),
-            'lastname'         => get_user_meta($user->ID, 'last_name', true),
-            'email'            => $user->user_email,
-            // 'certificationType'=> get_user_meta($user->ID, 'certificationType', true),
-            // 'totalHours'       => get_user_meta($user->ID, 'totalHours', true),
-        );
-    }
-
-    wp_send_json($members);
-}
-
 // Shortcode handler: renders the public test modal markup
 function PD_user_test_modal_shortcode($atts = [], $content = null, $tag = '') {
     ob_start();
@@ -560,51 +524,3 @@ function PD_user_test_modal_shortcode($atts = [], $content = null, $tag = '') {
     }
     return ob_get_clean();
 }
-
-// function aslta_build_jwt_for_current_user() {
-//     $user_id = get_current_user_id();
-//     $user    = $user_id ? get_userdata( $user_id ) : null;
-
-//     $role = 'guest';
-//     if ( $user && ! empty( $user->roles ) ) {
-//         $role = $user->roles[0];
-//     }
-
-//     $now = time();
-
-//     $payload = [
-//         'client_id' => ASLTA_API_CLIENT_ID,
-//         'exp'       => $now + 300,
-//         'user_id'   => $user_id ?: 0,
-//         'user_role' => $role,
-//     ];
-
-//     return JWT::encode( $payload, ASLTA_API_SECRET, 'HS256' );
-// }
-
-// function aslta_test_secure_endpoint() {
-//     $token = aslta_build_jwt_for_current_user();
-
-//     $response = wp_remote_get(
-//         trailingslashit( ASLTA_API_BASE_URL ) . 'secure-test',
-//         [
-//             'headers'   => [
-//                 'Authorization' => 'Bearer ' . $token,
-//             ],
-//             // TEMPORARY: ignore SSL issues while testing
-//             'sslverify' => false,
-//             'timeout'   => 10,
-//         ]
-//     );
-
-//     if ( is_wp_error( $response ) ) {
-//         error_log( 'ASLTA API error: ' . $response->get_error_message() );
-//         return;
-//     }
-
-//     $code = wp_remote_retrieve_response_code( $response );
-//     $body = wp_remote_retrieve_body( $response );
-
-//     error_log( 'ASLTA API HTTP ' . $code . ' body: ' . $body );
-// }
-// add_action( 'admin_init', 'aslta_test_secure_endpoint' );
