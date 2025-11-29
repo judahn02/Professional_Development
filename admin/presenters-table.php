@@ -30,7 +30,7 @@ function PD_presenters_table_page() {
             <!-- Navigation Links -->
             <div class="nav-links">
                 <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Session Table</a>
-                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Member Table</a>
+                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Attendee Table</a>
                 <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>
 

@@ -78,7 +78,7 @@ function PD_member_admin_page() {
     ?>
     <div class="container">
         <div class="max-width">
-            <a href="<?php echo esc_url($members_table_url); ?>" class="back-link">&larr; Back to Members Table</a>
+            <a href="<?php echo esc_url($members_table_url); ?>" class="back-link">&larr; Back to Attendees Table</a>
             <div class="profile-container">
                 <!-- Profile Header -->
                 <div class="profile-header">

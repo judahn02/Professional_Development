@@ -24,7 +24,7 @@ function PD_session_individual_page() {
         <div class="max-width">
             <div class="nav-links">
                 <a href="<?php echo esc_url($sessions_table_url); ?>" class="nav-link">Back to Sessions</a>
-                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Member Table</a>
+                <a href="<?php echo esc_url($members_table_url); ?>" class="nav-link">Attendee Table</a>
                 <a href="<?php echo esc_url($presenters_table_url); ?>" class="nav-link">Presenter Table</a>
                 <a href="<?php echo esc_url($PD_home_url); ?>" class="nav-link">Home</a>
             </div>

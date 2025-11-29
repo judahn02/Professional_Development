@@ -45,7 +45,7 @@ function PD_main_admin_page() {
                     SESSION TABLE
                 </a>
                 <a href="<?php echo esc_url($members_table_url); ?>" class="nav-button" id="memberTableBtn">
-                    MEMBER TABLE
+                    ATTENDEES TABLE
                 </a>
                 <a href="<?php echo esc_url($presenters_table_url); ?>" class="nav-button" id="presenterTableBtn">
                     PRESENTER TABLE

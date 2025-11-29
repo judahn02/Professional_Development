@@ -72,8 +72,8 @@ function Professional_Development_admin_menu_page() {
 
     add_submenu_page(
         'profdef_home',
-        'Members Page',
-        'Members Page',
+        'Attendees Page',
+        'Attendees Page',
         "manage_options",
         "profdef_members_table",
         "PD_members_table_admin_page",
@@ -112,8 +112,8 @@ function Professional_Development_admin_menu_page() {
 
     add_submenu_page( 
         null, 
-        'Member Page', 
-        'Member Page', 
+        'Attendee Page', 
+        'Attendee Page', 
         'manage_options', 
         'profdef_member_page', 
         'PD_member_admin_page', 
