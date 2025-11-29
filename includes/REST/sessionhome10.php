@@ -86,7 +86,8 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
     $sql = 'SELECT '
          . 'CONCAT_WS(" ", A.first_name, A.last_name) AS name, '
          . 'A.id AS members_id, '
-         . 'A.email '
+         . 'A.email, '
+         . 'A.wp_id AS wp_id '
          . 'FROM beta_2.person AS A '
          . 'WHERE (CONCAT_WS(" ", A.first_name, A.last_name) LIKE ' . $pattern_lit
          . ' OR CONCAT_WS(" ", A.first_name, A.last_name) IS NULL '
@@ -163,6 +164,7 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
         $rows[] = [
             'name'       => isset( $row['name'] ) ? trim( (string) $row['name'] ) : '',
             'members_id' => isset( $row['members_id'] ) ? (int) $row['members_id'] : 0,
+            'wp_id'      => isset( $row['wp_id'] ) ? (int) $row['wp_id'] : 0,
             'email'      => isset( $row['email'] ) ? trim( (string) $row['email'] ) : '',
         ];
     }
@@ -190,15 +192,23 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
     $mismatches = [];
     $out        = [];
     foreach ( $rows as $r ) {
-        $ext   = $r['name'];
-        $uid   = (int) $r['members_id'];
-        $email = (string) $r['email'];
-        $wpnm  = $wp_name_for( $uid );
-        if ( $ext !== '' && $norm( $ext ) !== $norm( $wpnm ) ) {
-            $mismatches[] = [ 'members_id' => $uid, 'external_name' => $ext, 'wp_name' => $wpnm ];
+        $ext    = $r['name'];
+        $person = (int) $r['members_id']; // beta_2.person.id (external person id)
+        $wp_id  = isset( $r['wp_id'] ) ? (int) $r['wp_id'] : 0; // WordPress user ID, when linked
+        $email  = (string) $r['email'];
+        $wpnm   = $wp_name_for( $wp_id );
+
+        // Only treat as mismatch when there is a linked WP user with a non-empty name that differs.
+        if ( $wp_id > 0 && $ext !== '' && $wpnm !== '' && $norm( $ext ) !== $norm( $wpnm ) ) {
+            $mismatches[] = [
+                'members_id'    => $person,
+                'wp_id'         => $wp_id,
+                'external_name' => $ext,
+                'wp_name'       => $wpnm,
+            ];
         }
         // Use WordPress name to fill output (prefer WP over external when no mismatch)
-        $out[] = [ $wpnm !== '' ? $wpnm : $ext, $uid, $email ];
+        $out[] = [ $wpnm !== '' ? $wpnm : $ext, $person, $email ];
     }
 
     // Final filter by search_p against filled (WP) names

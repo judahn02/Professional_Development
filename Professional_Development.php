@@ -258,7 +258,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.28',
+            '0.29',
             true
         );
 
@@ -373,7 +373,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.27',
+            '0.28',
             true
         );
 
@@ -385,8 +385,9 @@ function slug_specific_admin_js_loader($hook) {
                 'root'  => esc_url_raw( rest_url('profdef/v2/') ), // note trailing slash
                 'route' => 'memberspage',
                 'nonce' => wp_create_nonce('wp_rest'),
-                // Prefer "member" param used by navigation; fallback to legacy "members_id"; otherwise current user
-                'id'    => isset($_GET['member']) ? (int) $_GET['member'] : ( isset($_GET['members_id']) ? (int) $_GET['members_id'] : get_current_user_id() ),
+                // Prefer "member" param used by navigation; fallback to legacy "members_id"
+                // This value is the external person_id from beta_2.person, not a WordPress user ID.
+                'id'    => isset($_GET['member']) ? (int) $_GET['member'] : ( isset($_GET['members_id']) ? (int) $_GET['members_id'] : 0 ),
             ]
         );
     }

@@ -61,11 +61,19 @@ function renderMembers() {
   }
 
   tbody.innerHTML = filteredMembers.map(m => {
-    const idNum = Number(m.id || 0);
-    const hasWpId = Number.isFinite(idNum) && idNum > 0;
-    const idDisplay = hasWpId ? idNum : 'not linked';
-    const rowAttrs = hasWpId
-      ? `class="member-row" style="cursor:pointer;" onclick="goToMemberProfile(${idNum})"`
+    const wpId = Number(m.id || 0);
+    const memberId = Number(
+      (m.members_id != null ? m.members_id :
+       m.member_id  != null ? m.member_id  :
+       m.person_id  != null ? m.person_id  :
+       0)
+    ) || 0;
+    const hasMemberId = Number.isFinite(memberId) && memberId > 0;
+    const idDisplay = (Number.isFinite(wpId) && wpId > 0)
+      ? wpId
+      : 'not linked';
+    const rowAttrs = hasMemberId
+      ? `class="member-row" style="cursor:pointer;" onclick="goToMemberProfile(${memberId})"`
       : 'class="member-row"';
 
     return `
@@ -113,8 +121,11 @@ function filterMembers() {
     (m.firstname && m.firstname.toLowerCase().includes(term)) ||
     (m.lastname && m.lastname.toLowerCase().includes(term)) ||
     (m.email && m.email.toLowerCase().includes(term)) ||
-    (m.id != null && String(m.id).toLowerCase().includes(term)) ||
-    (!m.id && 'not linked'.includes(term))
+    (m.members_id != null && String(m.members_id).toLowerCase().includes(term)) ||
+    (m.member_id  != null && String(m.member_id).toLowerCase().includes(term)) ||
+    (m.person_id  != null && String(m.person_id).toLowerCase().includes(term)) ||
+    (m.id         != null && String(m.id).toLowerCase().includes(term)) ||
+    ((m.members_id == null && m.member_id == null && m.person_id == null && !m.id) && 'not linked'.includes(term))
   );
 
   renderMembers();
@@ -288,7 +299,7 @@ function normalizeMembersFromRest(totalRows) {
     .map(row => {
       const out = { ...row };
 
-      // Normalise ID: prefer explicit WordPress ID (wp_id).
+      // Normalise WordPress user ID when available (wp_id).
       const rawWpId = pickFirst(row, ['wp_id', 'wpId', 'WP_ID']);
       if (rawWpId !== null && rawWpId !== '') {
         const n = Number(rawWpId);
@@ -300,6 +311,22 @@ function normalizeMembersFromRest(totalRows) {
         }
       } else {
         out.id = null;
+      }
+
+      // Normalise external member/person ID when available.
+      const rawMemberId = pickFirst(row, [
+        'members_id',
+        'member_id',
+        'person_id',
+        'Members_id',
+        'MembersId',
+        'MEMBERS_ID'
+      ]);
+      if (rawMemberId !== null && rawMemberId !== '') {
+        const mid = Number(rawMemberId);
+        if (Number.isFinite(mid) && mid > 0) {
+          out.members_id = mid;
+        }
       }
 
       // Normalise name + email fields if missing.

@@ -34,14 +34,14 @@ function PD_member_admin_page() {
         return;
     }
 
-    // add any post handles here.
-
-    // https://aslta.judahsbase.com/wp-admin/admin.php?page=profdef_member_page&member=2
     // Variables for use inside HTML
     $members_table_url = admin_url("admin.php?page=profdef_members_table");
-    $member_id = isset($_GET['member']) ? absint($_GET['member']) : 0;
 
-    if (!$member_id) {
+    // For this page, the "member" query param is the external person_id
+    // from beta_2.person, not a WordPress user ID.
+    $person_id = isset($_GET['member']) ? absint($_GET['member']) : 0;
+
+    if (!$person_id) {
         printf(
             '<div class="notice notice-error"><p>%s</p></div>',
             esc_html__('Missing member ID.', 'professional-development')
@@ -49,31 +49,89 @@ function PD_member_admin_page() {
         return;
     }
 
-    $member_user = get_userdata($member_id);
+    // Look up the member from the external beta_2.person table via the signed API.
+    $person_row = null;
+    try {
+        if (!function_exists('aslta_signed_query')) {
+            $plugin_root   = dirname(dirname(__DIR__)); // .../Professional_Development
+            $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+            if (is_readable($skeleton_path)) {
+                require_once $skeleton_path;
+            }
+        }
 
-    if (!$member_user) {
+        if (function_exists('aslta_signed_query')) {
+            $sql = sprintf(
+                'SELECT id, first_name, last_name, email, phone_number, wp_id FROM beta_2.person WHERE id = %d',
+                $person_id
+            );
+            $result = aslta_signed_query($sql);
+
+            if ($result['status'] >= 200 && $result['status'] < 300) {
+                $decoded = json_decode($result['body'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    if (isset($decoded['rows']) && is_array($decoded['rows'])) {
+                        $rows_raw = $decoded['rows'];
+                    } elseif (is_array($decoded) && array_keys($decoded) === range(0, count($decoded) - 1)) {
+                        $rows_raw = $decoded;
+                    } else {
+                        $rows_raw = [$decoded];
+                    }
+
+                    foreach ($rows_raw as $row) {
+                        if (is_array($row)) {
+                            $person_row = $row;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (\Throwable $e) {
+        $person_row = null;
+    }
+
+    if (!$person_row) {
         printf(
             '<div class="notice notice-error"><p>%s</p></div>',
-            esc_html__('Member not found.', 'professional-development')
+            esc_html__('Member not found in external database.', 'professional-development')
         );
         return;
     }
 
-    $first_name = (string) $member_user->first_name;
-    $last_name = (string) $member_user->last_name;
-    $display_name = trim($first_name . ' ' . $last_name);
+    // Derive display name + email, preferring external data and falling back to linked WP user when present.
+    $first_name   = isset($person_row['first_name']) ? trim((string) $person_row['first_name']) : '';
+    $last_name    = isset($person_row['last_name']) ? trim((string) $person_row['last_name']) : '';
+    $member_email = isset($person_row['email']) ? trim((string) $person_row['email']) : '';
 
+    $wp_user = null;
+    if (isset($person_row['wp_id']) && (int) $person_row['wp_id'] > 0) {
+        $wp_user = get_userdata((int) $person_row['wp_id']);
+        if ($wp_user instanceof WP_User) {
+            if ($first_name === '' && !empty($wp_user->first_name)) {
+                $first_name = (string) $wp_user->first_name;
+            }
+            if ($last_name === '' && !empty($wp_user->last_name)) {
+                $last_name = (string) $wp_user->last_name;
+            }
+            if ($member_email === '' && !empty($wp_user->user_email)) {
+                $member_email = (string) $wp_user->user_email;
+            }
+        }
+    }
+
+    $display_name = trim($first_name . ' ' . $last_name);
+    if ($display_name === '' && $wp_user instanceof WP_User) {
+        $display_name = $wp_user->display_name ?: $wp_user->user_login;
+    }
     if ($display_name === '') {
-        $display_name = $member_user->display_name ?: $member_user->user_login;
+        $display_name = __('Member', 'professional-development');
     }
 
     $member_initials = pd_member_get_initials($display_name);
-
-    if ($member_initials === '') {
-        $member_initials = strtoupper(substr($member_user->user_login, 0, 1));
+    if ($member_initials === '' && $member_email !== '') {
+        $member_initials = strtoupper(substr($member_email, 0, 1));
     }
-
-    $member_email = $member_user->user_email;
 
     ?>
     <div class="container">

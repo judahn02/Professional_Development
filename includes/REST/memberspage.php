@@ -23,13 +23,8 @@ add_action('rest_api_init', function () {
 
 function pd_members_page_callback(\WP_REST_Request $request) {
     $id = filter_var($request->get_param('members_id'), FILTER_VALIDATE_INT);
-    if ($id === false) {
-        return new \WP_Error('invalid_members_id', 'Parameter "members_id" must be an integer.', ['status' => 400]);
-    }
-
-    // Validate member exists in WP users (adjust if your "members" are elsewhere)
-    if (!get_user_by('ID', $id)) {
-        return new \WP_Error('member_not_found', 'No WordPress user found with that ID.', ['status' => 404]);
+    if ($id === false || $id <= 0) {
+        return new \WP_Error('invalid_members_id', 'Parameter "members_id" must be a positive integer.', ['status' => 400]);
     }
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.

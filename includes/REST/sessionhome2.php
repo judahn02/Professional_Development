@@ -117,7 +117,7 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
             continue;
         }
 
-        $uid = (int) ( $row['members_id'] ?? $row['member_id'] ?? 0 );
+        $uid = (int) ( $row['person_id'] ?? $row['members_id'] ?? $row['member_id'] ?? 0 );
         if ( $uid <= 0 ) {
             // Flag rows with missing member id; handled after draining results
             $missing_member_id = true;
@@ -156,10 +156,13 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
             }
         }
 
-        // Certification Status from proc (may be null)
+        // Certification Status from proc (may be null).
+        // Support both legacy label and raw column name.
         $status = '';
         if ( array_key_exists( 'Certification Status', $row ) ) {
             $status = trim( (string) $row['Certification Status'] );
+        } elseif ( array_key_exists( 'certification_status', $row ) ) {
+            $status = trim( (string) $row['certification_status'] );
         }
 
         // Include attendee even if one of name/email is missing; keep both fields present
