@@ -11,46 +11,46 @@ License:
 
 defined('ABSPATH') || exit ;
 
-//Initialize
+// Initialize
+$plugin_dir = plugin_dir_path(__FILE__);
 
-// use Firebase\JWT\JWT;
-// require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_metaData.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'includes/short_code_client.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'includes/ar_member_usrID.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'includes/rest-presenters.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/rest-sessions.php';
-// require_once plugin_dir_path( __FILE__ ) . '/includes/REST/registers.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/membershome.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/memberspage.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome2.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome3.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome4.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome5.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome6.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome7.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome8.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome9.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome11.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/sessionhome10.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenters_table.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/POST_presenter.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_presenter_sessions.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/GET_member_admin_service.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/REST/PUT_session.php';
-require_once plugin_dir_path( __FILE__ ) . 'admin/main-page.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/members-table.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/member-page.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/sessions-table.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/session-page.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/presenters-table.php' ;
-require_once plugin_dir_path( __FILE__ ) . 'admin/presenter-page.php' ;
+require_once $plugin_dir . 'includes/functions.php' ;
+require_once $plugin_dir . 'includes/short_code_metaData.php' ;
+require_once $plugin_dir . 'includes/short_code_client.php' ;
+require_once $plugin_dir . 'includes/ar_member_usrID.php' ;
+require_once $plugin_dir . 'includes/rest-presenters.php';
+require_once $plugin_dir . 'includes/rest-sessions.php';
+require_once $plugin_dir . 'includes/REST/membershome.php';
+require_once $plugin_dir . 'includes/REST/memberspage.php';
+require_once $plugin_dir . 'includes/REST/sessionhome.php';
+require_once $plugin_dir . 'includes/REST/sessionhome2.php';
+require_once $plugin_dir . 'includes/REST/sessionhome3.php';
+require_once $plugin_dir . 'includes/REST/sessionhome4.php';
+require_once $plugin_dir . 'includes/REST/sessionhome5.php';
+require_once $plugin_dir . 'includes/REST/sessionhome6.php';
+require_once $plugin_dir . 'includes/REST/sessionhome7.php';
+require_once $plugin_dir . 'includes/REST/sessionhome8.php';
+require_once $plugin_dir . 'includes/REST/sessionhome9.php';
+require_once $plugin_dir . 'includes/REST/sessionhome11.php';
+require_once $plugin_dir . 'includes/REST/sessionhome10.php';
+require_once $plugin_dir . 'includes/REST/GET_presenters_table.php';
+require_once $plugin_dir . 'includes/REST/POST_presenter.php';
+require_once $plugin_dir . 'includes/REST/POST_attendee.php';
+require_once $plugin_dir . 'includes/REST/GET_presenter_sessions.php';
+require_once $plugin_dir . 'includes/REST/GET_member_admin_service.php';
+require_once $plugin_dir . 'includes/REST/PUT_session.php';
+require_once $plugin_dir . 'admin/main-page.php' ;
+require_once $plugin_dir . 'admin/members-table.php' ;
+require_once $plugin_dir . 'admin/member-page.php' ;
+require_once $plugin_dir . 'admin/sessions-table.php' ;
+require_once $plugin_dir . 'admin/session-page.php' ;
+require_once $plugin_dir . 'admin/presenters-table.php' ;
+require_once $plugin_dir . 'admin/presenter-page.php' ;
+
 // Utility/test admin helper
-require_once plugin_dir_path( __FILE__ ) . 'admin/skeleton2.php' ;
+require_once $plugin_dir . 'admin/skeleton2.php' ;
 
-require_once plugin_dir_path( __FILE__ ) . 'includes/ApiRequestSigner.php' ;
+require_once $plugin_dir . 'includes/ApiRequestSigner.php' ;
 
 
 // define( 'ASLTA_API_BASE_URL', 'https://aslta.parallelsolvit.com' );
@@ -258,7 +258,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.26',
+            '0.28',
             true
         );
 
@@ -266,8 +266,10 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             'PDMembers',
             array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce'   => wp_create_nonce('pd_members_nonce')
+                'ajaxurl'   => admin_url('admin-ajax.php'),
+                'nonce'     => wp_create_nonce('pd_members_nonce'),
+                'restRoot'  => esc_url_raw( rest_url( 'profdef/v2/' ) ),
+                'restNonce' => wp_create_nonce( 'wp_rest' ),
             )
         );
     }
@@ -341,7 +343,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            filemtime(plugin_dir_path( __FILE__ ) . 'js/PD-presenters-table.js'),
+            filemtime($plugin_dir . 'js/PD-presenters-table.js'),
             true
         );
 
@@ -516,7 +518,7 @@ register_deactivation_hook(__FILE__, function () {
 function PD_user_test_modal_shortcode($atts = [], $content = null, $tag = '') {
     ob_start();
     // Include the modal template from public path
-    $modal_path = plugin_dir_path(__FILE__) . 'public/user-modal.php';
+    $modal_path = $plugin_dir . 'public/user-modal.php';
     if (file_exists($modal_path)) {
         include $modal_path;
     } else {

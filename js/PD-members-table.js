@@ -126,6 +126,118 @@ function goToMemberProfile(id) {
   window.location.href = base.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&member=' + id);
 }
 
+// Add Member modal controls
+function openAddMemberModal() {
+  const overlay = document.getElementById('addMemberModal');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  // Reset form fields
+  const form = overlay.querySelector('#addMemberForm');
+  if (form) form.reset();
+
+  // Focus first field
+  const first = overlay.querySelector('#memberFirstName');
+  if (first) {
+    try { first.focus(); } catch (e) {}
+  }
+
+  // Close on overlay click
+  const onOverlay = (e) => { if (e.target === overlay) closeAddMemberModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+
+  // Close on ESC
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closeAddMemberModal(); };
+  document._pdEscAddMember && document.removeEventListener('keydown', document._pdEscAddMember);
+  document._pdEscAddMember = onEsc;
+  document.addEventListener('keydown', onEsc);
+}
+
+function closeAddMemberModal() {
+  const overlay = document.getElementById('addMemberModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) {
+    overlay.removeEventListener('click', overlay._pdOverlayHandler);
+    overlay._pdOverlayHandler = null;
+  }
+  if (document._pdEscAddMember) {
+    document.removeEventListener('keydown', document._pdEscAddMember);
+    document._pdEscAddMember = null;
+  }
+}
+
+async function handleAddMemberSubmit(event) {
+  if (!event) return;
+  event.preventDefault();
+
+  const form = event.target;
+  const first = (form.memberFirstName?.value || '').trim();
+  const last = (form.memberLastName?.value || '').trim();
+  const email = (form.memberEmail?.value || '').trim();
+  const phone = (form.memberPhone?.value || '').trim();
+
+  if (!first || !last || !email) {
+    alert('First name, last name, and email are required.');
+    return;
+  }
+
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  const root = String(cfg.restRoot || '').replace(/\/+$/, '') || '/wp-json/profdef/v2';
+  const url  = root.replace(/\/+$/, '') + '/attendee';
+
+  const payload = {
+    first_name: first,
+    last_name: last,
+    email,
+    phone
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WP-Nonce': cfg.restNonce || cfg.nonce || ''
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      let msg = 'Failed to create member.';
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          msg = errJson.message;
+        }
+      } catch (_) {
+        // ignore parse errors; use default msg
+      }
+      alert(msg);
+      return;
+    }
+
+    const data = await res.json();
+    console.log('[AddMember] Created', data);
+    alert('Member created successfully.');
+
+    closeAddMemberModal();
+    try {
+      await loadAndRenderMembers();
+    } catch (e) {
+      console.error('Failed to refresh members after create', e);
+    }
+  } catch (err) {
+    console.error('[AddMember] Network or server error', err);
+    alert('Unexpected error while creating member.');
+  }
+}
+
 // Administrative Service modal controls
 function openAdminServiceModal() {
   const overlay = document.getElementById('adminServiceModal');
@@ -271,3 +383,9 @@ async function loadAndRenderMembers() {
 }
 
 document.addEventListener('DOMContentLoaded', loadAndRenderMembers);
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('addMemberForm');
+  if (form) {
+    form.addEventListener('submit', handleAddMemberSubmit);
+  }
+});

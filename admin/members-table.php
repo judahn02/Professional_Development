@@ -29,7 +29,7 @@ function PD_members_table_admin_page() {
             <input type="text" class="search-input" placeholder="Search by... name/title/type" id="searchInput"
                    oninput="filterMembers()">
           </div>
-          <button class="add-member-btn">
+          <button class="add-member-btn" onclick="openAddMemberModal()">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd"
                     d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -60,6 +60,49 @@ function PD_members_table_admin_page() {
       </div>
     </div>
 
-    
+    <!-- Add Member Modal -->
+    <div class="modal-overlay" id="addMemberModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addMemberTitle">
+        <div class="modal-header">
+          <h2 class="modal-title" id="addMemberTitle">Add New Member</h2>
+          <button type="button" class="close-btn" aria-label="Close modal" onclick="closeAddMemberModal()">&times;</button>
+        </div>
+
+        <form id="addMemberForm" autocomplete="off" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="memberFirstName">First Name</label>
+              <input type="text" class="form-input" id="memberFirstName"
+                     name="first_name" maxlength="60" autocomplete="given-name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="memberLastName">Last Name</label>
+              <input type="text" class="form-input" id="memberLastName"
+                     name="last_name" maxlength="60" autocomplete="family-name" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="memberEmail">Email</label>
+              <input type="email" class="form-input" id="memberEmail"
+                     name="email" maxlength="254" autocomplete="email" inputmode="email" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="memberPhone">Phone Number</label>
+              <input type="tel" class="form-input" id="memberPhone"
+                     name="phone" maxlength="20" autocomplete="tel" inputmode="tel"
+                     pattern="^[0-9()+.\\-\\s]{7,20}$" title="7–20 digits and ().-+ spaces">
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeAddMemberModal()">Cancel</button>
+            <button type="submit" class="btn-save">Save Member</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <?php
 }
