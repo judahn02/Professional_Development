@@ -42,12 +42,16 @@ function pd_get_presenters_table_view( WP_REST_Request $request ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     try {
+        $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
         // Fetch full presenters table; search is applied in PHP for safety.
-        // Join beta_2.person to expose wp_id (ARMember account link) for each presenter.
-        $sql = 'SELECT t.idPresentor AS id, t.name, t.email, t.phone_number, t.session_count, p.wp_id
-                FROM beta_2.GET_presenters_table AS t
-                LEFT JOIN beta_2.person AS p ON p.id = t.idPresentor
-                ORDER BY t.name ASC;';
+        // Join {schema}.person to expose wp_id (ARMember account link) for each presenter.
+        $sql = sprintf(
+            'SELECT t.idPresentor AS id, t.name, t.email, t.phone_number, t.session_count, p.wp_id
+                FROM %1$s.GET_presenters_table AS t
+                LEFT JOIN %1$s.person AS p ON p.id = t.idPresentor
+                ORDER BY t.name ASC;',
+            $schema
+        );
 
         if ( ! function_exists( 'aslta_signed_query' ) ) {
             // Fallback: try to load the helper if, for some reason, the main plugin file has not.

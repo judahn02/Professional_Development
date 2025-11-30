@@ -110,10 +110,12 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
         );
     }
 
-    // Load existing rows for session from beta_2.attending
+    // Load existing rows for session from {schema}.attending
     $existing = [];
+    $schema   = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql_sel  = sprintf(
-        'SELECT person_id, COALESCE(certification_status, "") AS status FROM beta_2.attending WHERE sessions_id = %d',
+        'SELECT person_id, COALESCE(certification_status, "") AS status FROM %s.attending WHERE sessions_id = %d',
+        $schema,
         $session_id
     );
 
@@ -215,7 +217,8 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
     foreach ( $to_insert as $mid => $st ) {
         $status_lit = ( $st === '' ) ? 'NULL' : pd_sessionhome11_sql_quote( $st );
         $sql_ins    = sprintf(
-            'INSERT INTO beta_2.attending (person_id, sessions_id, certification_status) VALUES (%d, %d, %s);',
+            'INSERT INTO %s.attending (person_id, sessions_id, certification_status) VALUES (%d, %d, %s);',
+            $schema,
             (int) $mid,
             $session_id,
             $status_lit
@@ -250,7 +253,8 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
     foreach ( $to_update as $mid => $st ) {
         $status_lit = ( $st === '' ) ? 'NULL' : pd_sessionhome11_sql_quote( $st );
         $sql_upd    = sprintf(
-            'UPDATE beta_2.attending SET certification_status = %s WHERE sessions_id = %d AND person_id = %d;',
+            'UPDATE %s.attending SET certification_status = %s WHERE sessions_id = %d AND person_id = %d;',
+            $schema,
             $status_lit,
             $session_id,
             (int) $mid
@@ -284,7 +288,8 @@ function aslta_update_session_attendees_batch( WP_REST_Request $request ) {
     // Deletes
     foreach ( $to_delete as $mid ) {
         $sql_del = sprintf(
-            'DELETE FROM beta_2.attending WHERE sessions_id = %d AND person_id = %d;',
+            'DELETE FROM %s.attending WHERE sessions_id = %d AND person_id = %d;',
+            $schema,
             $session_id,
             (int) $mid
         );

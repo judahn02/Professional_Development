@@ -108,8 +108,10 @@ function pd_sessionhome5_add_presenter( WP_REST_Request $req ) {
     $q_email = pd_sessionhome5_sql_quote( $email === '' ? null : $email );
     $q_phone = pd_sessionhome5_sql_quote( $phone === '' ? null : $phone );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.sp_add_presentor(%s, %s, %s, %s);',
+        'CALL %s.sp_add_presentor(%s, %s, %s, %s);',
+        $schema,
         $q_first,
         $q_last,
         $q_email,

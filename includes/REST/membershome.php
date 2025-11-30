@@ -35,10 +35,11 @@ function pd_members_home_callback( WP_REST_Request $request) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     try {
+        $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
         if ($id !== null && $id > 0) {
-            $sql = sprintf('CALL beta_2.get_member_totals(%d);', $id);
+            $sql = sprintf('CALL %s.get_member_totals(%d);', $schema, $id);
         } else {
-            $sql = 'CALL beta_2.get_member_totals(NULL);';
+            $sql = sprintf('CALL %s.get_member_totals(NULL);', $schema);
         }
 
         if (!function_exists('aslta_signed_query')) {

@@ -45,8 +45,9 @@ function pd_sessionhome7_get_parent_events( WP_REST_Request $request ) {
     $events = [];
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
-    // Query distinct specific_event values from beta_2.session; keep SQL semantics the same.
-    $sql = 'SELECT DISTINCT parent_event FROM beta_2.sessions ORDER BY parent_event';
+    // Query distinct specific_event values from {schema}.sessions; keep SQL semantics the same.
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+    $sql    = 'SELECT DISTINCT parent_event FROM ' . $schema . '.sessions ORDER BY parent_event';
 
     try {
         if ( ! function_exists( 'aslta_signed_query' ) ) {

@@ -165,8 +165,10 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
     $q_email = pd_post_attendee_sql_quote( $email );
     $q_phone = pd_post_attendee_sql_quote( $phone );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.POST_attendee(%s, %s, %s, %s, @new_member_id);',
+        'CALL %s.POST_attendee(%s, %s, %s, %s, @new_member_id);',
+        $schema,
         $q_first,
         $q_last,
         $q_email,
@@ -317,4 +319,3 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
         201
     );
 }
-

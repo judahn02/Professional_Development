@@ -14,6 +14,12 @@ defined('ABSPATH') || exit ;
 // Initialize
 $plugin_dir = plugin_dir_path(__FILE__);
 
+// Centralized external DB schema name used in signed SQL queries.
+// Change this value if the schema name changes on the remote DB.
+if ( ! defined( 'PD_DB_SCHEMA' ) ) {
+    define( 'PD_DB_SCHEMA', 'beta_2' );
+}
+
 require_once $plugin_dir . 'includes/functions.php' ;
 require_once $plugin_dir . 'includes/short_code_metaData.php' ;
 require_once $plugin_dir . 'includes/short_code_client.php' ;
@@ -363,7 +369,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.28',
+            '0.31',
             true
         );
 
@@ -416,7 +422,7 @@ function slug_specific_shortcode_js_loader() {
             'PD-Member_Info-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.1',
+            '0.2',
             true
         );
 

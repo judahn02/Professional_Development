@@ -140,8 +140,10 @@ function pd_post_presenter_create( WP_REST_Request $req ) {
     $q_email = pd_post_presenter_sql_quote( $email );
     $q_phone = pd_post_presenter_sql_quote( $phone );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.POST_presenter(%s, %s, %s, %s, @new_id);',
+        'CALL %s.POST_presenter(%s, %s, %s, %s, @new_id);',
+        $schema,
         $q_first,
         $q_last,
         $q_email,

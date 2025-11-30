@@ -49,7 +49,8 @@ function aslta_get_session_attendees_by_query( WP_REST_Request $request ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     try {
-        $sql = sprintf( 'CALL beta_2.sp_get_session_attendees(%d);', $session_id );
+        $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+        $sql = sprintf( 'CALL %s.sp_get_session_attendees(%d);', $schema, $session_id );
 
         if ( ! function_exists( 'aslta_signed_query' ) ) {
             // Fallback: try to load the helper if, for some reason, the main plugin file has not.

@@ -69,8 +69,10 @@ function pd_member_mark_presenter( WP_REST_Request $request ) {
 
     // Build a simple UPDATE statement; if the row already has presenter=1
     // this is effectively a no-op.
-    $sql = sprintf(
-        'UPDATE beta_2.person SET presenter = 1 WHERE id = %d;',
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+    $sql    = sprintf(
+        'UPDATE %s.person SET presenter = 1 WHERE id = %d;',
+        $schema,
         $person_id
     );
 
@@ -122,4 +124,3 @@ function pd_member_mark_presenter( WP_REST_Request $request ) {
         200
     );
 }
-

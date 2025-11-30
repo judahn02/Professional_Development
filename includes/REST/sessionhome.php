@@ -123,8 +123,10 @@ function pd_sessions_home_callback( WP_REST_Request $request ) {
     $dir_literal   = pd_sessionhome_sql_quote( $dir );
     $search_literal = pd_sessionhome_sql_quote( $q );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.get_sessions3_f(%s, %s, %s, %d, %d, %s);',
+        'CALL %s.get_sessions3_f(%s, %s, %s, %d, %d, %s);',
+        $schema,
         $sid_literal,
         $sort_literal,
         $dir_literal,

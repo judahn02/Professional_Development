@@ -134,8 +134,10 @@ function pd_sessionhome6_add_lookup_value( WP_REST_Request $req ) {
     $q_target = pd_sessionhome6_sql_quote( $target );
     $q_value  = pd_sessionhome6_sql_quote( $value );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.sp_add_lookup_value(%s, %s);',
+        'CALL %s.sp_add_lookup_value(%s, %s);',
+        $schema,
         $q_target,
         $q_value
     );

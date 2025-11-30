@@ -75,7 +75,7 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
     $only_att_np  = $request->get_param( 'only_attendees_non_presenters' );
     $only_att_np  = ! empty( $only_att_np );
 
-    // 2) Build SQL against beta_2.person using CONCAT_WS(first_name, last_name) as name.
+    // 2) Build SQL against {schema}.person using CONCAT_WS(first_name, last_name) as name.
     // Use LIKE with backslash-escaped pattern; omit ESCAPE clause for broader MySQL/MariaDB compatibility.
     $escape_like = function( $s ) {
         $s = str_replace( '\\', '\\\\', $s ); // escape backslash first
@@ -98,12 +98,13 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
         $where .= ' AND A.attendee = 1 AND A.presenter = 0';
     }
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = 'SELECT '
          . 'CONCAT_WS(" ", A.first_name, A.last_name) AS name, '
          . 'A.id AS members_id, '
          . 'A.email, '
          . 'A.wp_id AS wp_id '
-         . 'FROM beta_2.person AS A '
+         . 'FROM ' . $schema . '.person AS A '
          . 'WHERE ' . $where . ' '
          . 'LIMIT ' . (int) $limit;
 

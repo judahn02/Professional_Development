@@ -193,8 +193,10 @@ function pd_sessionhome8_create_session( WP_REST_Request $req ) {
     $q_ceu       = pd_sessionhome8_sql_quote( $ceu_id === null ? null : (string) (int) $ceu_id );
     $q_presenter = pd_sessionhome8_sql_quote( $presenters_csv );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.sp_create_session(%s, %d, %s, %s, %d, %d, %s, %s);',
+        'CALL %s.sp_create_session(%s, %d, %s, %s, %d, %d, %s, %s);',
+        $schema,
         $q_date,
         $length_minutes,
         $q_title,

@@ -29,7 +29,8 @@ function pd_members_page_callback(\WP_REST_Request $request) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     try {
-        $sql = sprintf('CALL beta_2.get_sessions_by_member(%d);', $id);
+        $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+        $sql = sprintf('CALL %s.get_sessions_by_member(%d);', $schema, $id);
 
         if (!function_exists('aslta_signed_query')) {
             // Fallback: try to load the helper if, for some reason, the main plugin file has not.

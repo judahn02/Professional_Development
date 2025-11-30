@@ -143,8 +143,10 @@ function pd_put_session_update( WP_REST_Request $request ) {
     $q_ceu_consideration = pd_put_session_sql_quote( $ceu_consideration );
     $q_event_type       = pd_put_session_sql_quote( $event_type );
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL beta_2.PUT_session(%d, %s, %s, %d, %s, %s, %s, %s);',
+        'CALL %s.PUT_session(%d, %s, %s, %d, %s, %s, %s, %s);',
+        $schema,
         $session_id,
         $q_title,
         $q_date,

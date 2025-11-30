@@ -84,7 +84,8 @@ function pd_sessionhome4_search_presenters( WP_REST_Request $request ) {
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Build CALL statement with safely quoted term, matching sp_search_presentor(IN p_term).
     $term_lit = pd_sessionhome4_sql_quote( $term );
-    $sql      = sprintf( 'CALL beta_2.sp_search_presentor(%s);', $term_lit );
+    $schema   = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+    $sql      = sprintf( 'CALL %s.sp_search_presentor(%s);', $schema, $term_lit );
 
     try {
         if ( ! function_exists( 'aslta_signed_query' ) ) {
@@ -178,7 +179,8 @@ function pd_sessionhome4_search_presenters( WP_REST_Request $request ) {
 
         if ( ! empty( $ids ) ) {
             $id_list = implode( ',', array_map( 'intval', $ids ) );
-            $sql2    = 'SELECT id, attendee, presenter FROM beta_2.person WHERE id IN (' . $id_list . ');';
+            $schema2 = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+            $sql2    = 'SELECT id, attendee, presenter FROM ' . $schema2 . '.person WHERE id IN (' . $id_list . ');';
 
             try {
                 if ( ! function_exists( 'aslta_signed_query' ) ) {

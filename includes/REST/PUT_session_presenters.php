@@ -40,13 +40,13 @@ add_action(
 				},
 				'args'                => array(
 					'session_id'    => array(
-						'description' => 'Session id in beta_2.sessions.',
+						'description' => 'Session id in external sessions table.',
 						'type'        => 'integer',
 						'required'    => false, // Validated per-method in callback.
 					),
 					'presenter_ids' => array(
 						/* phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine */
-						'description'       => 'Array of presenter ids (beta_2.person.id) to assign to this session.',
+						'description'       => 'Array of presenter ids (external person.id) to assign to this session.',
 						'type'              => 'array',
 						'items'             => array(
 							'type' => 'integer',
@@ -121,12 +121,14 @@ function pd_get_session_presenters( WP_REST_Request $request ) {
 		return new WP_Error( 'bad_param', 'session_id must be a positive integer.', array( 'status' => 400 ) );
 	}
 
-	$sql = sprintf(
+	$schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+	$sql    = sprintf(
 		'SELECT p.id, p.first_name, p.last_name, p.email, p.phone_number
-         FROM beta_2.presenting AS pr
-         INNER JOIN beta_2.person AS p ON p.id = pr.person_id
-         WHERE pr.sessions_id = %d
+         FROM %1$s.presenting AS pr
+         INNER JOIN %1$s.person AS p ON p.id = pr.person_id
+         WHERE pr.sessions_id = %2$d
          ORDER BY p.last_name, p.first_name, p.id;',
+		$schema,
 		$session_id
 	);
 
@@ -312,7 +314,7 @@ function pd_put_session_presenters( WP_REST_Request $request ) {
 		}
 
 		// Optional existence check to return 404 for unknown sessions.
-		$sql_check = sprintf( 'SELECT id FROM beta_2.sessions WHERE id = %d;', $session_id );
+		$sql_check = sprintf( 'SELECT id FROM %s.sessions WHERE id = %d;', $schema, $session_id );
 		$result    = aslta_signed_query( $sql_check );
 		if ( $result['status'] < 200 || $result['status'] >= 300 ) {
 			return new WP_Error(
@@ -365,7 +367,7 @@ function pd_put_session_presenters( WP_REST_Request $request ) {
 		}
 
 		// 1) Clear existing presenter links for this session.
-		$sql_delete = sprintf( 'DELETE FROM beta_2.presenting WHERE sessions_id = %d;', $session_id );
+		$sql_delete = sprintf( 'DELETE FROM %s.presenting WHERE sessions_id = %d;', $schema, $session_id );
 		$del_result = aslta_signed_query( $sql_delete );
 		if ( $del_result['status'] < 200 || $del_result['status'] >= 300 ) {
 			return new WP_Error(
@@ -384,7 +386,11 @@ function pd_put_session_presenters( WP_REST_Request $request ) {
 			foreach ( $presenter_ids as $pid ) {
 				$values[] = sprintf( '(%d, %d)', (int) $pid, $session_id );
 			}
-			$sql_insert = 'INSERT INTO beta_2.presenting (person_id, sessions_id) VALUES ' . implode( ', ', $values ) . ';';
+			$sql_insert = sprintf(
+				'INSERT INTO %s.presenting (person_id, sessions_id) VALUES %s;',
+				$schema,
+				implode( ', ', $values )
+			);
 			$ins_result = aslta_signed_query( $sql_insert );
 			if ( $ins_result['status'] < 200 || $ins_result['status'] >= 300 ) {
 				return new WP_Error(
@@ -417,4 +423,3 @@ function pd_put_session_presenters( WP_REST_Request $request ) {
 		200
 	);
 }
-

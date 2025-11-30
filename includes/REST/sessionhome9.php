@@ -108,8 +108,10 @@ function pd_sessionhome9_register_attendance( WP_REST_Request $req ) {
         [ $mid, $sid, $status ] = $triple;
 
         $status_lit = pd_sessionhome9_sql_quote( $status );
+        $schema     = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
         $sql        = sprintf(
-            'CALL beta_2.sp_register_attendance(%d, %d, %s);',
+            'CALL %s.sp_register_attendance(%d, %d, %s);',
+            $schema,
             $mid,
             $sid,
             $status_lit

@@ -94,8 +94,10 @@ function pd_member_link_wp( WP_REST_Request $request ) {
     }
 
     // Build UPDATE; when $wp_id is null we clear the link.
-    $sql = sprintf(
-        'UPDATE beta_2.person SET wp_id = %s WHERE id = %d;',
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+    $sql    = sprintf(
+        'UPDATE %s.person SET wp_id = %s WHERE id = %d;',
+        $schema,
         $wp_id === null ? 'NULL' : (int) $wp_id,
         $person_id
     );

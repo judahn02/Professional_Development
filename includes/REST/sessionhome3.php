@@ -106,9 +106,14 @@ function pd_sessionhome3_get_options( WP_REST_Request $request ) {
     $event_types   = [];
     $ceu_options   = [];
 
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+
     // Remote query 1: session types
     $rows1 = pd_sessionhome3_remote_query(
-        'SELECT id AS session_id, name AS session_name FROM beta_2.session_type;'
+        sprintf(
+            'SELECT id AS session_id, name AS session_name FROM %s.session_type;',
+            $schema
+        )
     );
     if ( is_wp_error( $rows1 ) ) {
         return $rows1;
@@ -123,7 +128,10 @@ function pd_sessionhome3_get_options( WP_REST_Request $request ) {
 
     // Remote query 2: event types
     $rows2 = pd_sessionhome3_remote_query(
-        'SELECT id AS event_id, name AS event_name FROM beta_2.event_type;'
+        sprintf(
+            'SELECT id AS event_id, name AS event_name FROM %s.event_type;',
+            $schema
+        )
     );
     if ( is_wp_error( $rows2 ) ) {
         return $rows2;
@@ -138,7 +146,10 @@ function pd_sessionhome3_get_options( WP_REST_Request $request ) {
 
     // Remote query 3: CEU considerations
     $rows3 = pd_sessionhome3_remote_query(
-        'SELECT id AS ceu_id, name AS ceu_name FROM beta_2.ceu_type;'
+        sprintf(
+            'SELECT id AS ceu_id, name AS ceu_name FROM %s.ceu_type;',
+            $schema
+        )
     );
     if ( is_wp_error( $rows3 ) ) {
         return $rows3;

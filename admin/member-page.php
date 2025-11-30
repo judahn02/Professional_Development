@@ -61,8 +61,10 @@ function PD_member_admin_page() {
         }
 
         if (function_exists('aslta_signed_query')) {
+            $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
             $sql = sprintf(
-                'SELECT id, first_name, last_name, email, phone_number, wp_id FROM beta_2.person WHERE id = %d',
+                'SELECT id, first_name, last_name, email, phone_number, wp_id FROM %s.person WHERE id = %d',
+                $schema,
                 $person_id
             );
             $result = aslta_signed_query($sql);
@@ -201,7 +203,7 @@ function PD_member_admin_page() {
                         <tbody id="sessionsTable"></tbody>
                         </table>
                         <div id="emptyState" class="empty-state" style="display: none;">
-                            No sessions found matching your criteria.
+                            No sessions logged for this person.
                         </div>
                     </div>
                 </div>
