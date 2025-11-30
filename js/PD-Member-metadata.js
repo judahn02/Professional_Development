@@ -5,10 +5,6 @@
 
 // Session data (fallback until REST loads)
 let sessions = [
-  { date: "3/14/2025", title: "ASL Conference 1", type: "Workshops", hours: 8 },
-  { date: "2/15/2025", title: "Advanced Fingerspelling", type: "Training", hours: 4 },
-  { date: "1/20/2025", title: "Deaf Culture Seminar", type: "Conference", hours: 6 },
-  { date: "12/10/2024", title: "Teaching Methods Workshop", type: "Workshops", hours: 5 }
 ];
 
 let currentFilter = "all";

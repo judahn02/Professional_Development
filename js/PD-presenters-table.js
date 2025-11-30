@@ -104,7 +104,7 @@ async function fillPresenters({ debug = true } = {}) {
       log('Row[0] keys:', Object.keys(rows[0]));
     }
 
-    // 3) Map to your presenters shape
+    // 3) Map to your presenters shape (include wp_id so ARMember links work)
     const mapped = rows.map((r, i) => {
       const obj = {
         id: r.id ?? null,
@@ -112,6 +112,7 @@ async function fillPresenters({ debug = true } = {}) {
         email: r.email ?? '',
         phone_number: r.phone_number ?? '',
         session_count: Number(r.session_count ?? 0) || 0,
+        wp_id: r.wp_id != null ? (Number(r.wp_id) || 0) : null,
       };
       if (i < 3) log('Mapped sample', i, obj);
       return obj;

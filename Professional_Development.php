@@ -333,7 +333,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            34,
+            36,
             true
         );
 
