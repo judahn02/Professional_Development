@@ -6,6 +6,7 @@ let memberSortKey = 'id';
 let memberSortAsc = true;
 let members = [];
 let filteredMembers = [];
+let presenterSearchState = { timer: null, selectedId: null, results: [] };
 
 const minutesToHours = m => Math.round((Number(m || 0) / 60) * 100) / 100; // 2-dec float
 
@@ -27,6 +28,12 @@ function getTotalCEUs(member) {
   if (typeof member.totalCEUs !== 'undefined') return num(member.totalCEUs);
   if (typeof member.total_ceu !== 'undefined') return num(member.total_ceu);
   return 0;
+}
+
+function getRestRoot() {
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  const root = String(cfg.restRoot || '/wp-json/profdef/v2/').replace(/\/+$/, '');
+  return root;
 }
 
 function updateMemberSortArrows() {
@@ -135,6 +142,206 @@ function goToMemberProfile(id) {
   try { localStorage.setItem('members', JSON.stringify(members)); } catch (e) {}
   const base = (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
   window.location.href = base.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&member=' + id);
+}
+
+// Presenter → Attendee helper modal
+async function searchPresentersForMembers(term) {
+  const cleaned = String(term || '')
+    .replace(/[^a-zA-Z\s]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return [];
+
+  const root = getRestRoot();
+  const q = encodeURIComponent(cleaned);
+  const url = `${root}/sessionhome4?term=${q}&only_non_attendees=1`;
+
+  const headers = { 'Accept': 'application/json' };
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  if (cfg.restNonce || cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.restNonce || cfg.nonce;
+  }
+
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => []);
+  if (!Array.isArray(data)) return [];
+  return data
+    .map(r => ({ id: Number(r.id) || 0, name: String(r.name || '') }))
+    .filter(r => r.id > 0 && r.name);
+}
+
+function renderPresenterSearchResults(items) {
+  const container = document.getElementById('presenterSearchResults');
+  if (!container) return;
+  presenterSearchState.results = Array.isArray(items) ? items.slice() : [];
+  presenterSearchState.selectedId = null;
+
+  if (!items || !items.length) {
+    container.innerHTML = '<div style="color:#6b7280;">No registered presenter found matching that name.</div>';
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'presenter-results-list';
+
+  items.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.textContent = item.name;
+    li.dataset.id = String(item.id);
+    li.className = 'presenter-result-item';
+    if (idx === 0) {
+      li.classList.add('selected');
+      presenterSearchState.selectedId = item.id;
+    }
+    li.addEventListener('click', () => {
+      const all = list.querySelectorAll('li.presenter-result-item');
+      all.forEach(el => el.classList.remove('selected'));
+      li.classList.add('selected');
+      presenterSearchState.selectedId = item.id;
+    });
+    list.appendChild(li);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
+function bindPresenterSearchInput() {
+  const input = document.getElementById('presenterSearchInput');
+  if (!input || input._pdBound) return;
+  input._pdBound = true;
+
+  const container = document.getElementById('presenterSearchResults');
+  if (container) {
+    container.innerHTML = '<div style="color:#6b7280;">Start typing a presenter name...</div>';
+  }
+
+  input.addEventListener('input', () => {
+    const term = input.value || '';
+    if (presenterSearchState.timer) {
+      clearTimeout(presenterSearchState.timer);
+    }
+    presenterSearchState.timer = setTimeout(async () => {
+      const cleaned = term.replace(/[^a-zA-Z\s]+/g, '').replace(/\s+/g, ' ').trim();
+      if (!cleaned || cleaned.length < 2) {
+        if (container) {
+          container.innerHTML = '<div style="color:#6b7280;">Type at least 2 letters.</div>';
+        }
+        presenterSearchState.results = [];
+        presenterSearchState.selectedId = null;
+        return;
+      }
+      try {
+        const items = await searchPresentersForMembers(cleaned);
+        renderPresenterSearchResults(items);
+      } catch (err) {
+        console.error('Presenter search failed', err);
+        if (container) {
+          container.innerHTML = '<div style="color:#b91c1c;">Error searching presenters.</div>';
+        }
+      }
+    }, 300);
+  });
+}
+
+function openPresenterCheckModal() {
+  const overlay = document.getElementById('checkPresenterModal');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  presenterSearchState.selectedId = null;
+  presenterSearchState.results = [];
+
+  bindPresenterSearchInput();
+
+  const input = document.getElementById('presenterSearchInput');
+  const container = document.getElementById('presenterSearchResults');
+  if (input) {
+    input.value = '';
+    setTimeout(() => { try { input.focus(); } catch (_) {} }, 10);
+  }
+  if (container) {
+    container.innerHTML = '<div style="color:#6b7280;">Start typing a presenter name...</div>';
+  }
+
+  const onOverlay = (e) => { if (e.target === overlay) closePresenterCheckModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closePresenterCheckModal(); };
+  document._pdEscPresenterCheck && document.removeEventListener('keydown', document._pdEscPresenterCheck);
+  document._pdEscPresenterCheck = onEsc;
+  document.addEventListener('keydown', onEsc);
+}
+
+function closePresenterCheckModal() {
+  const overlay = document.getElementById('checkPresenterModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) {
+    overlay.removeEventListener('click', overlay._pdOverlayHandler);
+    overlay._pdOverlayHandler = null;
+  }
+  if (document._pdEscPresenterCheck) {
+    document.removeEventListener('keydown', document._pdEscPresenterCheck);
+    document._pdEscPresenterCheck = null;
+  }
+}
+
+async function markPresenterAsAttendee() {
+  const results = presenterSearchState.results || [];
+  if (!presenterSearchState.selectedId && results.length === 1) {
+    presenterSearchState.selectedId = results[0].id;
+  }
+  const personId = presenterSearchState.selectedId;
+  if (!personId || !Number.isFinite(Number(personId))) {
+    alert('Please select a presenter from the list first.');
+    return;
+  }
+
+  const root = getRestRoot();
+  const url = `${root}/member/mark_attendee`;
+
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  };
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  if (cfg.restNonce || cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.restNonce || cfg.nonce;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ person_id: Number(personId) })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Failed to mark as attendee (${res.status}): ${txt.slice(0,200)}`);
+    }
+    closePresenterCheckModal();
+    try {
+      await loadAndRenderMembers();
+    } catch (e) {
+      console.error('Failed to refresh members after marking attendee', e);
+    }
+    alert('Presenter marked as attendee. They will now appear in the attendees table.');
+  } catch (err) {
+    console.error(err);
+    alert(err && err.message ? err.message : 'Failed to mark presenter as attendee.');
+  }
 }
 
 // Add Member modal controls

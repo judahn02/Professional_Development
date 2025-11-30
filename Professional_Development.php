@@ -39,6 +39,7 @@ require_once $plugin_dir . 'includes/REST/POST_attendee.php';
 require_once $plugin_dir . 'includes/REST/GET_presenter_sessions.php';
 require_once $plugin_dir . 'includes/REST/GET_member_admin_service.php';
 require_once $plugin_dir . 'includes/REST/PUT_session.php';
+require_once $plugin_dir . 'includes/REST/PUT_member_mark_attendee.php';
 require_once $plugin_dir . 'admin/main-page.php' ;
 require_once $plugin_dir . 'admin/members-table.php' ;
 require_once $plugin_dir . 'admin/member-page.php' ;
@@ -258,7 +259,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.29',
+            '0.30',
             true
         );
 

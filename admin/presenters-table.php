@@ -155,13 +155,6 @@ function PD_presenters_table_page() {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="presenterSessions">Registered Session(s)</label>
-                    <input type="text" class="form-input" id="presenterSessions"
-                        value="Add presenters to session in the sessions page"
-                        disabled aria-disabled="true">
-                </div>
-
                 <!-- Honeypot: real users never see/fill this -->
                 <div class="hp-wrap" aria-hidden="true" style="position:absolute;left:-9999px;">
                     <label for="pd_hp">Leave this field empty</label>

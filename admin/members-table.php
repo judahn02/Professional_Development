@@ -69,6 +69,14 @@ function PD_members_table_admin_page() {
         </div>
 
         <form id="addMemberForm" autocomplete="off" novalidate>
+          <div class="form-group">
+            <button type="button"
+                    class="btn-save"
+                    style="width:100%;"
+                    onclick="openPresenterCheckModal();">
+              Are they a registered Presenter?
+            </button>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="memberFirstName">First Name</label>
@@ -101,6 +109,33 @@ function PD_members_table_admin_page() {
             <button type="submit" class="btn-save">Save Member</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Check Presenter Modal -->
+    <div class="modal-overlay" id="checkPresenterModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkPresenterTitle">
+        <div class="modal-header">
+          <h2 class="modal-title" id="checkPresenterTitle">Registered Presenter Check</h2>
+          <button type="button" class="close-btn" aria-label="Close modal" onclick="closePresenterCheckModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="presenterSearchInput">Presenter Name</label>
+            <input type="text"
+                   class="form-input"
+                   id="presenterSearchInput"
+                   placeholder="Start typing a presenter name..."
+                   autocomplete="off">
+          </div>
+          <div id="presenterSearchResults" style="max-height: 240px; overflow-y: auto;">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closePresenterCheckModal()">Close</button>
+          <button type="button" class="btn-save" onclick="markPresenterAsAttendee()">Mark as Attendee</button>
+        </div>
       </div>
     </div>
 
