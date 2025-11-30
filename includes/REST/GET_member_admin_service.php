@@ -16,8 +16,7 @@ add_action( 'rest_api_init', function () {
         '/member/administrative_service',
         [
             'methods'             => WP_REST_Server::READABLE,
-            // 'permission_callback' => function () { return current_user_can( 'manage_options' ); },
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'callback'            => 'pd_get_member_admin_service',
             'args'                => [
                 'members_id' => [

@@ -17,7 +17,7 @@ add_action( 'rest_api_init', function () {
         [
             'methods'             => [ 'PUT', 'POST' ], // allow POST for clients without PUT
             'callback'            => 'aslta_update_session_attendees_batch',
-            'permission_callback' => '__return_true', // 'permission_callback' => function () { return current_user_can( 'manage_options' ); },
+            'permission_callback' => 'pd_presenters_permission',
         ]
     );
 } );

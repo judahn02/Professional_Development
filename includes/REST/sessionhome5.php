@@ -31,8 +31,7 @@ add_action( 'rest_api_init', function () {
         '/sessionhome5',
         [
             'methods'             => WP_REST_Server::CREATABLE, // POST
-            // 'permission_callback' => 'pd_sessions_permission',
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'callback'            => 'pd_sessionhome5_add_presenter',
             'args'                => [
                 'name' => [

@@ -31,8 +31,7 @@ add_action( 'rest_api_init', function () {
         '/sessionhome6',
         [
             'methods'             => WP_REST_Server::CREATABLE, // POST
-            // 'permission_callback' => 'pd_sessions_permission',
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'callback'            => 'pd_sessionhome6_add_lookup_value',
             'args'                => [
                 'target' => [
@@ -173,6 +172,41 @@ function pd_sessionhome6_add_lookup_value( WP_REST_Request $req ) {
     }
 
     if ( $result['status'] < 200 || $result['status'] >= 300 ) {
+        $body_str = isset( $result['body'] ) ? (string) $result['body'] : '';
+        $detail   = $body_str;
+
+        if ( $body_str !== '' ) {
+            $inner = json_decode( $body_str, true );
+            if ( json_last_error() === JSON_ERROR_NONE && is_array( $inner ) && isset( $inner['detail'] ) ) {
+                $detail = (string) $inner['detail'];
+            }
+        }
+
+        // Detect duplicate-key error from remote API (MySQL error 1062 on name_UNIQUE).
+        if ( strpos( (string) $detail, '1062' ) !== false && strpos( (string) $detail, 'Duplicate entry' ) !== false ) {
+            $label_map = [
+                'type_of_session'   => 'Session Type',
+                'event_type'        => 'Event Type',
+                'ceu_consideration' => 'CEU Consideration',
+            ];
+            $label = isset( $label_map[ $target ] ) ? $label_map[ $target ] : 'lookup value';
+
+            $message = sprintf(
+                "The %s '%s' already exists.",
+                $label,
+                $value
+            );
+
+            return new WP_Error(
+                'lookup_conflict',
+                $message,
+                [
+                    'status' => 409,
+                    'debug'  => ( WP_DEBUG ? [ 'http_code' => $result['status'], 'body' => $result['body'] ] : null ),
+                ]
+            );
+        }
+
         return new WP_Error(
             'aslta_remote_http_error',
             'Remote lookup creation endpoint returned an HTTP error.',

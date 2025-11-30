@@ -12,8 +12,7 @@ add_action('rest_api_init', function() {
         '/membershome',
         [ 
             'methods'  => \WP_REST_Server::READABLE, // GET
-            'permission_callback' => '__return_true',
-            // 'permission_callback' => 'pd_sessions_permission',
+            'permission_callback' => 'pd_presenters_permission',
             'callback' => 'pd_members_home_callback',
             'args' => [
                 'members_id' => [

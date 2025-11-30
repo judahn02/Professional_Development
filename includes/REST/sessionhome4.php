@@ -47,7 +47,7 @@ add_action( 'rest_api_init', function () {
         '/sessionhome4',
         [
             'methods'             => WP_REST_Server::READABLE, // GET
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'callback'            => 'pd_sessionhome4_search_presenters',
             'args'                => [
                 'term' => [

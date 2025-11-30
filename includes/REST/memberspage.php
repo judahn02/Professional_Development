@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) exit;
 add_action('rest_api_init', function () {
     register_rest_route('profdef/v2', '/memberspage', [
         'methods'  => \WP_REST_Server::READABLE,
-        'permission_callback' => '__return_true', // flip to pd_members_permission() later
+        'permission_callback' => 'pd_presenters_permission',
         'callback' => 'pd_members_page_callback',
         'args' => [
             'members_id' => [

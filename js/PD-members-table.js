@@ -886,7 +886,12 @@ function normalizeMembersFromRest(totalRows) {
 
 async function fetchTotals() {
   // Use REST API to request totals (and identity data) for all members.
-  const res = await fetch('/wp-json/profdef/v2/membershome', { credentials: 'same-origin' });
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  const root = String(cfg.restRoot || '/wp-json/profdef/v2/').replace(/\/+$/, '');
+  const url = `${root}/membershome`;
+  const headers = {};
+  if (cfg.restNonce) headers['X-WP-Nonce'] = cfg.restNonce;
+  const res = await fetch(url, { credentials: 'same-origin', headers });
   if (!res.ok) throw new Error('Failed to load member totals');
   const data = await res.json();
   return normalizeMembersFromRest(data);

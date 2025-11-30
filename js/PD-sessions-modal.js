@@ -56,8 +56,19 @@
         body: JSON.stringify({ target, value })
       });
       if (!res.ok) {
+        let msg = `Add lookup failed (${res.status})`;
         const body = await res.text().catch(()=> '');
-        throw new Error(`Add lookup failed ${res.status}: ${body.slice(0,300)}`);
+        if (body) {
+          try {
+            const json = JSON.parse(body);
+            if (json && json.message) {
+              msg = String(json.message);
+            }
+          } catch (_) {
+            msg = `${msg}: ${body.slice(0,300)}`;
+          }
+        }
+        throw new Error(msg);
       }
       return res.json();
     },
@@ -338,7 +349,8 @@
           select.focus();
         } catch (err) {
           console.error(err);
-          alert('Failed to add value.');
+          const msg = err && err.message ? err.message : 'Failed to add value.';
+          alert(msg);
         }
       });
     },

@@ -32,7 +32,7 @@ add_action( 'rest_api_init', function () {
         [
             'methods'             => 'GET',
             'callback'            => 'aslta_get_members_names_check',
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'args'                => [
                 'search_p' => [
                     'description' => 'Partial name search. Matches members.name via LIKE.',

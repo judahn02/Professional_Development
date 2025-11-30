@@ -16,8 +16,7 @@ add_action( 'rest_api_init', function () {
         '/presenters_table',
         [
             'methods'             => WP_REST_Server::READABLE,
-            // 'permission_callback' => 'pd_presenters_permission', // reuse existing nonce+cap check
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission', // reuse existing nonce+cap check
             'callback'            => 'pd_get_presenters_table_view',
             'args'                => [
                 'q' => [

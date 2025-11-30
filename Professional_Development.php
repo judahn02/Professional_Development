@@ -44,6 +44,7 @@ require_once $plugin_dir . 'includes/REST/POST_presenter.php';
 require_once $plugin_dir . 'includes/REST/POST_attendee.php';
 require_once $plugin_dir . 'includes/REST/GET_presenter_sessions.php';
 require_once $plugin_dir . 'includes/REST/GET_member_admin_service.php';
+require_once $plugin_dir . 'includes/REST/GET_member_me.php';
 require_once $plugin_dir . 'includes/REST/PUT_session.php';
 require_once $plugin_dir . 'includes/REST/PUT_session_presenters.php';
 require_once $plugin_dir . 'includes/REST/PUT_member_mark_attendee.php';
@@ -253,7 +254,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.32',
+            '0.34',
             true
         );
 
@@ -435,6 +436,26 @@ function slug_specific_shortcode_js_loader() {
             )
         );
     }
+
+    if ( is_singular() && has_shortcode( get_post()->post_content, 'PD_Member_Profile_Modal' ) ) {
+        wp_enqueue_script(
+            'PD-member-profile-modal-js',
+            plugin_dir_url(__FILE__) . 'js/PD-member-profile-modal.js',
+            array('jquery'),
+            '0.2',
+            true
+        );
+
+        wp_localize_script(
+            'PD-member-profile-modal-js',
+            'PDMemberProfile',
+            array(
+                'restRoot' => esc_url_raw( rest_url( 'profdef/v2/' ) ),
+                'routeMe'  => 'member/me',
+                'nonce'    => wp_create_nonce( 'wp_rest' ),
+            )
+        );
+    }
 }
 add_action('wp_enqueue_scripts', 'slug_specific_shortcode_js_loader');
 
@@ -496,6 +517,9 @@ function PD_shortcode_init() {
     // Public test modal shortcode
     add_shortcode('PD_User_Test_Modal', 'PD_user_test_modal_shortcode');
 
+    // Public member profile modal shortcode
+    add_shortcode('PD_Member_Profile_Modal', 'PD_member_profile_modal_shortcode');
+
 }
 add_action( 'init', 'PD_shortcode_init') ;
 
@@ -515,11 +539,23 @@ register_deactivation_hook(__FILE__, function () {
 function PD_user_test_modal_shortcode($atts = [], $content = null, $tag = '') {
     ob_start();
     // Include the modal template from public path
-    $modal_path = $plugin_dir . 'public/user-modal.php';
+    $modal_path = plugin_dir_path(__FILE__) . 'public/user-modal.php';
     if (file_exists($modal_path)) {
         include $modal_path;
     } else {
         echo '<!-- PD_User_Test_Modal: template not found -->';
+    }
+    return ob_get_clean();
+}
+
+// Shortcode handler: renders the public member profile modal markup
+function PD_member_profile_modal_shortcode($atts = [], $content = null, $tag = '') {
+    ob_start();
+    $modal_path = plugin_dir_path(__FILE__) . 'public/member-profile-modal.php';
+    if (file_exists($modal_path)) {
+        include $modal_path;
+    } else {
+        echo '<!-- PD_Member_Profile_Modal: template not found -->';
     }
     return ob_get_clean();
 }

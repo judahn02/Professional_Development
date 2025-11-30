@@ -1,4 +1,3 @@
-- add "comfirm old password to overwrite new password"
 
 - Add a sync to the member page so that members are synced to the database if an issue occurs.
     - Add an initial sync to installing the plugin so that it works properly.

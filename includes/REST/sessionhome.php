@@ -15,7 +15,7 @@ add_action('rest_api_init', function () {
         '/sessionhome',
         [
             'methods'  => \WP_REST_Server::READABLE, // GET
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'callback' => 'pd_sessions_home_callback',
             'args' => [
                 'session_id' => [

@@ -42,8 +42,7 @@ add_action( 'rest_api_init', function () {
         '/sessionhome8',
         [
             'methods'             => WP_REST_Server::CREATABLE, // POST
-            // 'permission_callback' => 'pd_sessions_permission',
-            'permission_callback' => '__return_true',
+            'permission_callback' => 'pd_presenters_permission',
             'callback'            => 'pd_sessionhome8_create_session',
             'args'                => [
                 'session_date' => [ 'type' => 'string', 'required' => true ],
