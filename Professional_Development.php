@@ -40,6 +40,7 @@ require_once $plugin_dir . 'includes/REST/GET_presenter_sessions.php';
 require_once $plugin_dir . 'includes/REST/GET_member_admin_service.php';
 require_once $plugin_dir . 'includes/REST/PUT_session.php';
 require_once $plugin_dir . 'includes/REST/PUT_member_mark_attendee.php';
+require_once $plugin_dir . 'includes/REST/PUT_member_mark_presenter.php';
 require_once $plugin_dir . 'admin/main-page.php' ;
 require_once $plugin_dir . 'admin/members-table.php' ;
 require_once $plugin_dir . 'admin/member-page.php' ;
@@ -181,7 +182,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-presenters-table-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-presenter-table.css',
                 array(),
-                '0.10',
+                '0.11',
                 'all'
             ) ;
         }
@@ -344,7 +345,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            filemtime($plugin_dir . 'js/PD-presenters-table.js'),
+            31,
             true
         );
 

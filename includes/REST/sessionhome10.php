@@ -44,6 +44,11 @@ add_action( 'rest_api_init', function () {
                     'type'        => 'integer',
                     'required'    => false,
                 ],
+                'only_attendees_non_presenters' => [
+                    'description' => 'When truthy, restrict to rows where attendee=1 AND presenter=0.',
+                    'type'        => 'boolean',
+                    'required'    => false,
+                ],
             ],
         ]
     );
@@ -67,6 +72,8 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
 
     $limit_in     = (int) $request->get_param( 'limit' );
     $limit        = ( $limit_in > 0 && $limit_in <= 1000 ) ? $limit_in : 200;
+    $only_att_np  = $request->get_param( 'only_attendees_non_presenters' );
+    $only_att_np  = ! empty( $only_att_np );
 
     // 2) Build SQL against beta_2.person using CONCAT_WS(first_name, last_name) as name.
     // Use LIKE with backslash-escaped pattern; omit ESCAPE clause for broader MySQL/MariaDB compatibility.
@@ -83,15 +90,21 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Note: the members table is now beta_2.person; we derive a full name from first_name/last_name.
+    $where = '(CONCAT_WS(" ", A.first_name, A.last_name) LIKE ' . $pattern_lit
+           . ' OR CONCAT_WS(" ", A.first_name, A.last_name) IS NULL '
+           . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "")';
+
+    if ( $only_att_np ) {
+        $where .= ' AND A.attendee = 1 AND A.presenter = 0';
+    }
+
     $sql = 'SELECT '
          . 'CONCAT_WS(" ", A.first_name, A.last_name) AS name, '
          . 'A.id AS members_id, '
          . 'A.email, '
          . 'A.wp_id AS wp_id '
          . 'FROM beta_2.person AS A '
-         . 'WHERE (CONCAT_WS(" ", A.first_name, A.last_name) LIKE ' . $pattern_lit
-         . ' OR CONCAT_WS(" ", A.first_name, A.last_name) IS NULL '
-         . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "") '
+         . 'WHERE ' . $where . ' '
          . 'LIMIT ' . (int) $limit;
 
     try {

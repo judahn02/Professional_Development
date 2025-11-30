@@ -128,6 +128,14 @@ function PD_presenters_table_page() {
             </form> -->
 
             <form id="addPresenterForm" autocomplete="off" novalidate>
+                <div class="form-group">
+                    <button type="button"
+                            class="btn-save"
+                            style="width:100%;"
+                            onclick="openAttendeeCheckModal();">
+                        Are they already an Attendee?
+                    </button>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                     <label class="form-label" for="presenterFirstName">First Name</label>
@@ -167,6 +175,32 @@ function PD_presenters_table_page() {
                 </div>
                 </form>
 
+        </div>
+    </div>
+    <!-- Attendee → Presenter Modal -->
+    <div class="modal-overlay" id="attendeeCheckModal" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="attendeeCheckTitle">
+            <div class="modal-header">
+                <h2 class="modal-title" id="attendeeCheckTitle">Existing Attendee Check</h2>
+                <button type="button" class="close-btn" aria-label="Close modal" onclick="closeAttendeeCheckModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="attendeeSearchInput">Attendee Name</label>
+                    <input type="text"
+                           class="form-input"
+                           id="attendeeSearchInput"
+                           placeholder="Start typing an attendee name..."
+                           autocomplete="off">
+                </div>
+                <div id="attendeeSearchResults" style="max-height: 240px; overflow-y: auto;">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeAttendeeCheckModal()">Close</button>
+                <button type="button" class="btn-save" onclick="markAttendeeAsPresenter()">Mark as Presenter</button>
+            </div>
         </div>
     </div>
     <?php

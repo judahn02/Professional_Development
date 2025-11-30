@@ -3,6 +3,7 @@ let presenterSortAsc = true;
 let presentersCurrentPage = 1;
 let presentersPerPage = 25;
 const presenterSessionsCache = new Map(); // id -> { items, at }
+let attendeeSearchState = { timer: null, selectedId: null, results: [] };
 
 function sortPresenters(key) {
     if (presenterSortKey === key) {
@@ -40,6 +41,12 @@ document.addEventListener('DOMContentLoaded', updatePresenterSortArrows);
 const presenters = [];
 
 window.presenters = presenters;
+
+function getPresentersRestRoot() {
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const root = String(cfg.listRoot || cfg.root || '/wp-json/profdef/v2/').replace(/\/+$/, '');
+  return root;
+}
 
 async function fillPresenters({ debug = true } = {}) {
   const log = (...args) => debug && console.log('[fillPresenters]', ...args);
@@ -136,8 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
         renderPresenters();
         setupTopScrollbar();
     }).catch(console.error);
-
-   
 });
 
 // Render presenters table
@@ -180,8 +185,12 @@ function renderPresenters() {
 
   tbody.innerHTML = pageItems.map((presenter, idx) => {
     const i = start + idx;
+    const idNum = Number(presenter.id || 0);
+    const rowAttrs = Number.isFinite(idNum) && idNum > 0
+      ? `class="presenter-row" style="cursor:pointer;" onclick="goToPresenterProfile(${idNum})"`
+      : 'class="presenter-row"';
     return `
-    <tr class="presenter-row">
+    <tr ${rowAttrs}>
       <td style=\"font-weight: 600;\">${presenter.name || ''}</td>
       <td>${presenter.email || ''}</td>
       <td>${presenter.phone_number || ''}</td>
@@ -238,6 +247,216 @@ function filterPresenters() {
     presentersCurrentPage = 1;
     renderPresenters();
 }
+
+// Attendee → Presenter helper modal
+async function searchAttendeesForPresenters(term) {
+  const cleaned = String(term || '')
+    .replace(/[^a-zA-Z\s]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return [];
+
+  const root = getPresentersRestRoot();
+  const q = encodeURIComponent(cleaned);
+  const url = `${root}/sessionhome10?search_p=${q}&limit=20&only_attendees_non_presenters=1`;
+
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const headers = { 'Accept': 'application/json' };
+  if (cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.nonce;
+  }
+
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => []);
+  if (!Array.isArray(data)) return [];
+  // sessionhome10 returns [[name, members_id, email], ...]
+  return data.map(row => ({
+    id: Number(row[1]) || 0,
+    name: String(row[0] || ''),
+    email: String(row[2] || '')
+  })).filter(r => r.id > 0 && r.name);
+}
+
+function renderAttendeeSearchResults(items) {
+  const container = document.getElementById('attendeeSearchResults');
+  if (!container) return;
+  attendeeSearchState.results = Array.isArray(items) ? items.slice() : [];
+  attendeeSearchState.selectedId = null;
+
+  if (!items || !items.length) {
+    container.innerHTML = '<div style="color:#6b7280;">No attendee found matching that name who is not already a presenter.</div>';
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'presenter-results-list';
+
+  items.forEach((item, idx) => {
+    const li = document.createElement('li');
+    const label = item.email ? `${item.name} — ${item.email}` : item.name;
+    li.textContent = label;
+    li.dataset.id = String(item.id);
+    li.className = 'presenter-result-item';
+    if (idx === 0) {
+      li.classList.add('selected');
+      attendeeSearchState.selectedId = item.id;
+    }
+    li.addEventListener('click', () => {
+      const all = list.querySelectorAll('li.presenter-result-item');
+      all.forEach(el => el.classList.remove('selected'));
+      li.classList.add('selected');
+      attendeeSearchState.selectedId = item.id;
+    });
+    list.appendChild(li);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
+function bindAttendeeSearchInput() {
+  const input = document.getElementById('attendeeSearchInput');
+  if (!input || input._pdBound) return;
+  input._pdBound = true;
+
+  const container = document.getElementById('attendeeSearchResults');
+  if (container) {
+    container.innerHTML = '<div style="color:#6b7280;">Start typing an attendee name...</div>';
+  }
+
+  input.addEventListener('input', () => {
+    const term = input.value || '';
+    if (attendeeSearchState.timer) {
+      clearTimeout(attendeeSearchState.timer);
+    }
+    attendeeSearchState.timer = setTimeout(async () => {
+      const cleaned = term.replace(/[^a-zA-Z\s]+/g, '').replace(/\s+/g, ' ').trim();
+      if (!cleaned || cleaned.length < 2) {
+        if (container) {
+          container.innerHTML = '<div style="color:#6b7280;">Type at least 2 letters.</div>';
+        }
+        attendeeSearchState.results = [];
+        attendeeSearchState.selectedId = null;
+        return;
+      }
+      try {
+        const items = await searchAttendeesForPresenters(cleaned);
+        renderAttendeeSearchResults(items);
+      } catch (err) {
+        console.error('Attendee search failed', err);
+        if (container) {
+          container.innerHTML = '<div style="color:#b91c1c;">Error searching attendees.</div>';
+        }
+      }
+    }, 300);
+  });
+}
+
+function openAttendeeCheckModal() {
+  const overlay = document.getElementById('attendeeCheckModal');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  attendeeSearchState.selectedId = null;
+  attendeeSearchState.results = [];
+
+  bindAttendeeSearchInput();
+
+  const input = document.getElementById('attendeeSearchInput');
+  const container = document.getElementById('attendeeSearchResults');
+  if (input) {
+    input.value = '';
+    setTimeout(() => { try { input.focus(); } catch (_) {} }, 10);
+  }
+  if (container) {
+    container.innerHTML = '<div style="color:#6b7280;">Start typing an attendee name...</div>';
+  }
+
+  const onOverlay = (e) => { if (e.target === overlay) closeAttendeeCheckModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closeAttendeeCheckModal(); };
+  document._pdEscAttendeeCheck && document.removeEventListener('keydown', document._pdEscAttendeeCheck);
+  document._pdEscAttendeeCheck = onEsc;
+  document.addEventListener('keydown', onEsc);
+}
+
+function closeAttendeeCheckModal() {
+  const overlay = document.getElementById('attendeeCheckModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) {
+    overlay.removeEventListener('click', overlay._pdOverlayHandler);
+    overlay._pdOverlayHandler = null;
+  }
+  if (document._pdEscAttendeeCheck) {
+    document.removeEventListener('keydown', document._pdEscAttendeeCheck);
+    document._pdEscAttendeeCheck = null;
+  }
+}
+
+async function markAttendeeAsPresenter() {
+  const results = attendeeSearchState.results || [];
+  if (!attendeeSearchState.selectedId && results.length === 1) {
+    attendeeSearchState.selectedId = results[0].id;
+  }
+  const personId = attendeeSearchState.selectedId;
+  if (!personId || !Number.isFinite(Number(personId))) {
+    alert('Please select an attendee from the list first.');
+    return;
+  }
+
+  const root = getPresentersRestRoot();
+  const url = `${root}/member/mark_presenter`;
+
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  };
+  if (cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.nonce;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ person_id: Number(personId) })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Failed to mark as presenter (${res.status}): ${txt.slice(0,200)}`);
+    }
+    closeAttendeeCheckModal();
+    try {
+      await fillPresenters({ debug: false });
+      renderPresenters();
+    } catch (e) {
+      console.error('Failed to refresh presenters after marking presenter', e);
+    }
+    alert('Attendee marked as presenter. They will now appear in the presenters table.');
+  } catch (err) {
+    console.error(err);
+    alert(err && err.message ? err.message : 'Failed to mark attendee as presenter.');
+  }
+}
+
+// Expose for inline handlers
+window.openAttendeeCheckModal = openAttendeeCheckModal;
+window.closeAttendeeCheckModal = closeAttendeeCheckModal;
+window.markAttendeeAsPresenter = markAttendeeAsPresenter;
 
 function setupTopScrollbar() {
   const top = document.getElementById('presentersTopScroll');
