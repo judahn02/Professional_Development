@@ -104,6 +104,20 @@ Inline handlers exposed for legacy markup
       const route = (window.PDSessions && window.PDSessions.sessionsRoute3 || '').replace(/^\/+/, '');
       return `${root}/${route}`;
     },
+    getSessionPresentersBaseUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoutePresenters)
+        ? String(window.PDSessions.sessionsRoutePresenters).replace(/^\/+/, '')
+        : 'session/presenters';
+      return `${root}/${route}`;
+    },
+    getSessionPresentersUrl(id) {
+      const base = this.getSessionPresentersBaseUrl();
+      return `${base}?session_id=${encodeURIComponent(id)}`;
+    },
+    getUpdateSessionPresentersUrl() {
+      return this.getSessionPresentersBaseUrl();
+    },
     getPresenterSearchUrl(term) {
       const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
       const route = (window.PDSessions && window.PDSessions.sessionsRoute4 || '').replace(/^\/+/, '');
@@ -298,12 +312,39 @@ Inline handlers exposed for legacy markup
       const data = await res.json().catch(() => []);
       if (!Array.isArray(data)) return [];
       return data
-        .map(r => ({ id: Number(r.id)||0, name: String(r.name||'') }))
-        .filter(r => r.name !== '');
+        .map((r) => ({ id: Number(r.id) || 0, name: String(r.name || '') }))
+        .filter((r) => r.name !== '');
+    },
+    async fetchSessionPresenters(id) {
+      if (!id) return [];
+      const url = this.getSessionPresentersUrl(id);
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`Presenters fetch error ${res.status}: ${body.slice(0, 300)}`);
+      }
+      const data = await res.json().catch(() => []);
+      if (!Array.isArray(data)) return [];
+      return data
+        .map((row) => ({
+          id: Number(row && row.id != null ? row.id : 0) || 0,
+          name: String(row && row.name != null ? row.name : '').trim(),
+        }))
+        .filter((p) => p.id > 0 && p.name !== '');
     },
     async createPresenterAPI(name, email, number) {
       const url = this.getPresenterCreateUrl();
-      const payload = { name: String(name||'').trim(), email: String(email||'').trim(), number: String(number||'').trim() };
+      const payload = { name: String(name || '').trim(), email: String(email || '').trim(), number: String(number || '').trim() };
       const res = await fetch(url, {
         method: 'POST',
         credentials: 'same-origin',
@@ -315,11 +356,91 @@ Inline handlers exposed for legacy markup
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const text = await res.text().catch(()=>'');
-        throw new Error(`Create presenter failed (${res.status}): ${text.slice(0,200)}`);
+        const text = await res.text().catch(() => '');
+        throw new Error(`Create presenter failed (${res.status}): ${text.slice(0, 200)}`);
       }
-      const data = await res.json().catch(()=>({}));
+      const data = await res.json().catch(() => ({}));
       return data;
+    },
+    async updateSessionPresenters(id, presenterIds) {
+      const url = this.getUpdateSessionPresentersUrl();
+      const ids = Array.isArray(presenterIds)
+        ? presenterIds
+            .map((v) => Number(v) || 0)
+            .filter((v, idx, arr) => v > 0 && arr.indexOf(v) === idx)
+        : [];
+      const payload = {
+        session_id: id,
+        presenter_ids: ids,
+      };
+      const res = await fetch(url, {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        let message = `Presenter update failed (${res.status}).`;
+        if (text) {
+          try {
+            const err = JSON.parse(text);
+            if (err && err.message) {
+              message = err.message;
+            }
+          } catch (_) {
+            message = `${message} ${text.slice(0, 160)}`;
+          }
+        }
+        throw new Error(message);
+      }
+      // Response body is not currently used; return parsed JSON in case callers want it.
+      return res.json().catch(() => ({}));
+    },
+    async _parseUpdateSessionErrorMessage(res) {
+      const status = res && typeof res.status === 'number' ? res.status : 0;
+      let message = `Update failed (${status}).`;
+      let text = '';
+      try {
+        text = await res.text();
+      } catch (_) {
+        text = '';
+      }
+      if (!text) return message;
+      try {
+        const err = JSON.parse(text);
+        if (err && err.message) {
+          message = err.message;
+        }
+        const data = err && err.data;
+        const debug = data && data.debug;
+        const body = debug && debug.body;
+        let detail = null;
+        if (typeof body === 'string' && body) {
+          try {
+            const inner = JSON.parse(body);
+            if (inner && inner.detail) {
+              detail = String(inner.detail);
+            }
+          } catch (_) {
+            // ignore JSON parse issues in nested debug body
+          }
+        }
+        if (detail) {
+          if (detail.includes('Duplicate entry') && detail.includes('title_date_UNIQUE')) {
+            message = 'Another session already exists with the same title and date. Please change the title or date to make this session unique.';
+          } else if (!err.message) {
+            message = detail;
+          }
+        }
+      } catch (_) {
+        message = `${message} ${text.slice(0, 160)}`;
+      }
+      return message;
     },
     // clearAndFillSelect moved to utils
 
@@ -425,6 +546,26 @@ Inline handlers exposed for legacy markup
         this.openEditSessionModalById(id);
       }
     },
+    async prefillEditSessionPresenters(overlay, id) {
+      if (!overlay || !id) return;
+      const input = overlay.querySelector('#editPresenters');
+      if (!input) return;
+      const wrap = input.closest('.token-input');
+      if (!wrap || !wrap._pdAddPresenter) return;
+      try {
+        const presenters = await this.fetchSessionPresenters(id);
+        if (!Array.isArray(presenters) || presenters.length === 0) return;
+        // Replace any existing selection with the authoritative list from the API.
+        wrap._selected = [];
+        presenters.forEach((p) => {
+          if (p && p.id > 0 && p.name) {
+            wrap._pdAddPresenter({ id: p.id, name: p.name });
+          }
+        });
+      } catch (err) {
+        try { console.error(err); } catch (_) {}
+      }
+    },
 
     openEditSessionModalById(id) {
       const overlay = document.getElementById('editSessionModal');
@@ -447,7 +588,7 @@ Inline handlers exposed for legacy markup
       const pres = overlay.querySelector('#editPresenters');
       if (pres) pres.value = r.presenters || '';
 
-      this.bindEditSessionSave(overlay, id);
+      this.bindEditSessionSave(overlay, id, r);
 
       // Open modal
       overlay.classList.add('active');
@@ -461,11 +602,12 @@ Inline handlers exposed for legacy markup
       const first = overlay.querySelector('input, select, textarea, button');
       if (first && typeof first.focus === 'function') first.focus();
     },
-    bindEditSessionSave(overlay, id) {
+    bindEditSessionSave(overlay, id, originalSession) {
       if (!overlay || !id) return;
       const form = overlay.querySelector('#editSessionForm');
       if (!form || form._pdSubmitBound) return;
       form._pdSubmitBound = true;
+      const origSession = originalSession && typeof originalSession === 'object' ? originalSession : null;
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const btn = overlay.querySelector('#btnEditSessionSave');
@@ -497,26 +639,110 @@ Inline handlers exposed for legacy markup
           if (!payload.title || !payload.date || !payload.length || !payload.session_type || !payload.event_type) {
             throw new Error('Please complete Title, Date, Length, Session Type, and Event Type.');
           }
-          const url = this.getUpdateSessionUrl();
-          const res = await fetch(url, {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
-            },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) {
-            const txt = await res.text().catch(()=> '');
-            throw new Error(`Update failed (${res.status}): ${txt.slice(0, 300)}`);
+
+          // Collect presenter ids from token-input chips (source of truth).
+          let presenterIds = [];
+          const presInput = overlay.querySelector('#editPresenters');
+          if (presInput) {
+            const wrap = presInput.closest('.token-input');
+            if (wrap) {
+              const hidden = wrap.querySelectorAll('input.presenter-id-hidden');
+              presenterIds = Array.from(hidden)
+                .map((el) => Number(el.value) || 0)
+                .filter((n, idx, arr) => n > 0 && arr.indexOf(n) === idx);
+            }
           }
+
+          // Determine whether any core session fields (not presenters) actually changed.
+          let shouldUpdateSession = true;
+          if (origSession) {
+            const sameTitle = (origSession.title || '').trim() === payload.title;
+            const sameDate = (origSession.date || '').trim() === payload.date;
+            const sameLength = Number(origSession.lengthMin || 0) === payload.length;
+            const sameStype = (origSession.stype || '').trim() === payload.session_type;
+            const sameEventType = (origSession.eventType || '').trim() === payload.event_type;
+            const origParent = (origSession.parentEvent || '').trim() || null;
+            const newParent = payload.specific_event === null ? null : String(payload.specific_event).trim() || null;
+            const sameParent = origParent === newParent;
+            const origCeuRaw = (origSession.ceuConsiderations || '').trim();
+            const origCeuNorm = (!origCeuRaw || origCeuRaw.toLowerCase() === 'na') ? null : origCeuRaw;
+            const newCeu = payload.ceu_consideration || null;
+            const sameCeu = origCeuNorm === newCeu;
+            if (sameTitle && sameDate && sameLength && sameStype && sameEventType && sameParent && sameCeu) {
+              shouldUpdateSession = false;
+            }
+          }
+
+          let sessionError = null;
+          let presentersError = null;
+
+          if (shouldUpdateSession) {
+            try {
+              const url = this.getUpdateSessionUrl();
+              const res = await fetch(url, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                  ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+                },
+                body: JSON.stringify(payload),
+              });
+              if (!res.ok) {
+                sessionError = await this._parseUpdateSessionErrorMessage(res);
+              }
+            } catch (e) {
+              sessionError = e && e.message ? e.message : 'Failed to update session.';
+            }
+          }
+
+          // Always attempt presenter update so presenter-only edits still persist even
+          // when the core session update fails (e.g. duplicate title/date).
+          try {
+            await this.updateSessionPresenters(id, presenterIds);
+          } catch (e) {
+            presentersError = e && e.message ? e.message : 'Failed to update presenters.';
+          }
+
+          if (sessionError && shouldUpdateSession) {
+            let msg = sessionError;
+            if (!presentersError && presenterIds.length > 0) {
+              msg += '\n\nPresenter changes may still have been saved for this session.';
+            }
+            alert(msg);
+            // If presenters were updated successfully, refresh the table so the
+            // presenters column reflects the latest assignments, even though
+            // the session core fields were rejected.
+            if (!presentersError) {
+              const updatedAfterError = await this.fetchSessionById(id).catch(() => null);
+              if (updatedAfterError) {
+                if (Array.isArray(this.rawRows)) {
+                  this.rawRows = this.rawRows.map((r) => {
+                    const rid = (r && r.id != null) ? r.id : null;
+                    return (rid === id) ? updatedAfterError : r;
+                  });
+                } else {
+                  this.rawRows = [updatedAfterError];
+                }
+                this.refreshTable();
+              } else {
+                await this.reloadSessionsFromServer();
+              }
+            }
+            return;
+          }
+
+          if (presentersError) {
+            alert(presentersError);
+            return;
+          }
+
           this.closeEditSessionModal();
           const updated = await this.fetchSessionById(id).catch(() => null);
           if (updated) {
             if (Array.isArray(this.rawRows)) {
-              this.rawRows = this.rawRows.map(r => {
+              this.rawRows = this.rawRows.map((r) => {
                 const rid = (r && r.id != null) ? r.id : null;
                 return (rid === id) ? updated : r;
               });
@@ -1530,7 +1756,11 @@ Inline handlers exposed for legacy markup
         const overlay = document.getElementById('editSessionModal');
         const session = e && e.detail && e.detail.session ? e.detail.session : null;
         const sid = session && session.id != null ? session.id : null;
-        if (overlay && sid) Module.bindEditSessionSave(overlay, sid);
+        if (overlay && sid) {
+          Module.bindEditSessionSave(overlay, sid, session);
+          // Prefill presenters chips from the authoritative session presenters API.
+          Module.prefillEditSessionPresenters(overlay, sid);
+        }
       } catch(_) {}
     });
   } catch(_) {}

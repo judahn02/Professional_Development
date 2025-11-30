@@ -4,6 +4,7 @@ let presentersCurrentPage = 1;
 let presentersPerPage = 25;
 const presenterSessionsCache = new Map(); // id -> { items, at }
 let attendeeSearchState = { timer: null, selectedId: null, results: [] };
+let presenterLinkWpState = { personId: null, currentWpId: null, selectedWpId: null };
 
 function sortPresenters(key) {
     if (presenterSortKey === key) {
@@ -185,12 +186,30 @@ function renderPresenters() {
 
   tbody.innerHTML = pageItems.map((presenter, idx) => {
     const i = start + idx;
+    const personId = presenter.id != null ? Number(presenter.id) : 0;
+    const wpId = presenter.wp_id != null ? Number(presenter.wp_id) : 0;
+    const hasPersonId = Number.isFinite(personId) && personId > 0;
+    const hasWpId = Number.isFinite(wpId) && wpId > 0;
+
+    const linkButton = hasPersonId
+      ? `<button type="button"
+                 class="link-wp-btn${hasWpId ? ' linked' : ''}"
+                 data-presenter-id="${personId}"
+                 data-wp-id="${hasWpId ? wpId : ''}"
+                 onclick="openPresenterLinkWpModal(event, ${personId})">
+           ${hasWpId ? `WP #${wpId}` : 'Link account'}
+         </button>`
+      : 'not linked';
+
     return `
     <tr class="presenter-row">
       <td style=\"font-weight: 600;\">${presenter.name || ''}</td>
       <td>${presenter.email || ''}</td>
       <td>${presenter.phone_number || ''}</td>
       <td>${presenter.session_count ?? 0}</td>
+      <td>
+        ${linkButton}
+      </td>
       <td>
         <span class=\"details-dropdown\" data-index=\"${i}\" role=\"button\" tabindex=\"0\" onclick=\"togglePresenterDetails(${presenter.id}, ${i})\">
           <svg class=\"dropdown-icon\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"#e11d48\" stroke-width=\"2\" viewBox=\"0 0 24 24\" style=\"vertical-align:middle; margin-right:4px;\"><path d=\"M6 9l6 6 6-6\"/></svg>
@@ -733,6 +752,282 @@ document.getElementById('addPresenterForm').addEventListener('submit', async fun
     submitBtn.disabled = false;
   }
 });
+
+// ARMember link modal helpers (Presenters)
+async function presenterSearchWpUsers(term) {
+  const cleaned = String(term || '').trim();
+  if (!cleaned) return [];
+
+  const root = '/wp-json/wp/v2';
+  const q = encodeURIComponent(cleaned);
+  const url = `${root}/users?search=${q}&per_page=20&_fields=id,name,slug`;
+
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const headers = { 'Accept': 'application/json' };
+  if (cfg.nonce) headers['X-WP-Nonce'] = cfg.nonce;
+
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers,
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => []);
+  if (!Array.isArray(data)) return [];
+  return data.map(u => ({
+    id: Number(u.id) || 0,
+    name: String(u.name || u.slug || ''),
+  })).filter(u => u.id > 0 && u.name);
+}
+
+function renderPresenterWpUserResults(items) {
+  const container = document.getElementById('presenterLinkWpSearchResults');
+  if (!container) return;
+  presenterLinkWpState.selectedWpId = null;
+
+  if (!items || !items.length) {
+    container.innerHTML = '<div style="color:#6b7280;">No ARMember accounts found. Create the account first, then link.</div>';
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'wp-user-results-list';
+
+  items.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.name} (ID #${item.id})`;
+    li.dataset.id = String(item.id);
+    li.className = 'wp-user-result-item';
+    if (idx === 0) {
+      li.classList.add('selected');
+      presenterLinkWpState.selectedWpId = item.id;
+    }
+    li.addEventListener('click', () => {
+      const all = list.querySelectorAll('li.wp-user-result-item');
+      all.forEach(el => el.classList.remove('selected'));
+      li.classList.add('selected');
+      presenterLinkWpState.selectedWpId = item.id;
+    });
+    list.appendChild(li);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
+function bindPresenterLinkWpSearchInput() {
+  const input = document.getElementById('presenterLinkWpSearchInput');
+  if (!input || input._pdBound) return;
+  input._pdBound = true;
+
+  const container = document.getElementById('presenterLinkWpSearchResults');
+  if (container) {
+    container.innerHTML = '<div style="color:#6b7280;">Start typing an ARMember account name or email...</div>';
+  }
+
+  let timer = null;
+  input.addEventListener('input', () => {
+    const term = input.value || '';
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const cleaned = term.trim();
+      if (!cleaned || cleaned.length < 2) {
+        if (container) {
+          container.innerHTML = '<div style="color:#6b7280;">Type at least 2 characters.</div>';
+        }
+        presenterLinkWpState.selectedWpId = null;
+        return;
+      }
+      try {
+        const users = await presenterSearchWpUsers(cleaned);
+        renderPresenterWpUserResults(users);
+      } catch (err) {
+        console.error('Presenter ARMember account search failed', err);
+        if (container) {
+          container.innerHTML = '<div style="color:#b91c1c;">Error searching ARMember accounts.</div>';
+        }
+      }
+    }, 300);
+  });
+}
+
+function openPresenterLinkWpModal(event, personId) {
+  if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  const overlay = document.getElementById('presenterLinkWpModal');
+  if (!overlay) return;
+
+  const pid = Number(personId || 0);
+  if (!Number.isFinite(pid) || pid <= 0) return;
+
+  const presenter = (window.presenters || []).find(p => Number(p.id || 0) === pid);
+  const summaryEl = document.getElementById('presenterLinkWpSummary');
+  const currentEl = document.getElementById('presenterLinkWpCurrent');
+  const searchInput = document.getElementById('presenterLinkWpSearchInput');
+  const resultsEl = document.getElementById('presenterLinkWpSearchResults');
+  const unlinkBtn = document.getElementById('presenterLinkWpUnlinkBtn');
+
+  presenterLinkWpState.personId = pid;
+  presenterLinkWpState.currentWpId = presenter && Number(presenter.wp_id || 0) > 0 ? Number(presenter.wp_id) : null;
+  presenterLinkWpState.selectedWpId = null;
+
+  if (summaryEl) {
+    const name = presenter && presenter.name ? presenter.name : '';
+    const email = presenter && presenter.email ? ` <${presenter.email}>` : '';
+    summaryEl.textContent = name || presenter?.email || `Presenter #${pid}`;
+    if (email) summaryEl.textContent += email;
+  }
+
+  if (currentEl) {
+    if (presenterLinkWpState.currentWpId) {
+      currentEl.textContent = `Currently linked to ARMember account #${presenterLinkWpState.currentWpId}.`;
+    } else {
+      currentEl.textContent = 'This presenter is not linked to any ARMember account.';
+    }
+  }
+
+  if (unlinkBtn) {
+    unlinkBtn.style.display = presenterLinkWpState.currentWpId ? '' : 'none';
+  }
+
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  if (resultsEl) {
+    resultsEl.innerHTML = '<div style="color:#6b7280;">Start typing an ARMember account name or email...</div>';
+  }
+
+  bindPresenterLinkWpSearchInput();
+
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  const onOverlay = (e) => { if (e.target === overlay) closePresenterLinkWpModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closePresenterLinkWpModal(); };
+  document._pdEscPresenterLinkWp && document.removeEventListener('keydown', document._pdEscPresenterLinkWp);
+  document._pdEscPresenterLinkWp = onEsc;
+  document.addEventListener('keydown', onEsc);
+
+  if (searchInput) {
+    setTimeout(() => { try { searchInput.focus(); } catch (_) {} }, 10);
+  }
+}
+
+function closePresenterLinkWpModal() {
+  const overlay = document.getElementById('presenterLinkWpModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) {
+    overlay.removeEventListener('click', overlay._pdOverlayHandler);
+    overlay._pdOverlayHandler = null;
+  }
+  if (document._pdEscPresenterLinkWp) {
+    document.removeEventListener('keydown', document._pdEscPresenterLinkWp);
+    document._pdEscPresenterLinkWp = null;
+  }
+  presenterLinkWpState.personId = null;
+  presenterLinkWpState.currentWpId = null;
+  presenterLinkWpState.selectedWpId = null;
+}
+
+async function submitPresenterLinkWp() {
+  const personId = Number(presenterLinkWpState.personId || 0);
+  const wpId = Number(presenterLinkWpState.selectedWpId || 0);
+  if (!personId || !Number.isFinite(personId)) {
+    alert('Missing presenter.');
+    return;
+  }
+  if (!wpId || !Number.isFinite(wpId)) {
+    alert('Please select an ARMember account to link.');
+    return;
+  }
+
+  const rootApi = getPresentersRestRoot();
+  const url = `${rootApi}/member/link_wp`;
+
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    ...(cfg.nonce ? { 'X-WP-Nonce': cfg.nonce } : {}),
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ person_id: personId, wp_id: wpId })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Failed to link account (${res.status}): ${txt.slice(0,200)}`);
+    }
+    closePresenterLinkWpModal();
+    try {
+      await fillPresenters({ debug: false });
+      renderPresenters();
+    } catch (e) {
+      console.error('Failed to refresh presenters after linking ARMember account', e);
+    }
+    alert(`Linked presenter to ARMember account #${wpId}.`);
+  } catch (err) {
+    console.error(err);
+    alert(err && err.message ? err.message : 'Failed to link ARMember account.');
+  }
+}
+
+async function submitPresenterLinkWpUnlink() {
+  const personId = Number(presenterLinkWpState.personId || 0);
+  if (!personId || !Number.isFinite(personId)) {
+    alert('Missing presenter.');
+    return;
+  }
+
+  const rootApi = getPresentersRestRoot();
+  const url = `${rootApi}/member/link_wp`;
+
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    ...(cfg.nonce ? { 'X-WP-Nonce': cfg.nonce } : {}),
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ person_id: personId, wp_id: null })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Failed to unlink account (${res.status}): ${txt.slice(0,200)}`);
+    }
+    closePresenterLinkWpModal();
+    try {
+      await fillPresenters({ debug: false });
+      renderPresenters();
+    } catch (e) {
+      console.error('Failed to refresh presenters after unlinking ARMember account', e);
+    }
+    alert('ARMember account unlinked from presenter.');
+  } catch (err) {
+    console.error(err);
+    alert(err && err.message ? err.message : 'Failed to unlink ARMember account.');
+  }
+}
+
+window.openPresenterLinkWpModal = openPresenterLinkWpModal;
+window.closePresenterLinkWpModal = closePresenterLinkWpModal;
+window.submitPresenterLinkWp = submitPresenterLinkWp;
+window.submitPresenterLinkWpUnlink = submitPresenterLinkWpUnlink;
 
 
 document.getElementById('addPresenterModal').addEventListener('click', function(e) {

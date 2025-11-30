@@ -7,6 +7,7 @@ let memberSortAsc = true;
 let members = [];
 let filteredMembers = [];
 let presenterSearchState = { timer: null, selectedId: null, results: [] };
+let linkWpState = { personId: null, currentWpId: null, selectedWpId: null };
 
 const minutesToHours = m => Math.round((Number(m || 0) / 60) * 100) / 100; // 2-dec float
 
@@ -76,19 +77,27 @@ function renderMembers() {
        0)
     ) || 0;
     const hasMemberId = Number.isFinite(memberId) && memberId > 0;
-    const idDisplay = (Number.isFinite(wpId) && wpId > 0)
-      ? wpId
-      : 'not linked';
+    const hasWpId = Number.isFinite(wpId) && wpId > 0;
     const rowAttrs = hasMemberId
       ? `class="member-row" style="cursor:pointer;" onclick="goToMemberProfile(${memberId})"`
       : 'class="member-row"';
+
+    const idButton = hasMemberId
+      ? `<button type="button"
+                 class="link-wp-btn${hasWpId ? ' linked' : ''}"
+                 data-member-id="${memberId}"
+                 data-wp-id="${hasWpId ? wpId : ''}"
+                 onclick="openLinkWpModal(event, ${memberId})">
+           ${hasWpId ? `WP #${wpId}` : 'Link account'}
+         </button>`
+      : 'not linked';
 
     return `
       <tr ${rowAttrs}>
         <td style="font-weight:600;">${m.firstname ?? ''}</td>
         <td style="font-weight:600;">${m.lastname ?? ''}</td>
         <td>${m.email ?? ''}</td>
-        <td>${idDisplay}</td>
+        <td>${idButton}</td>
         <td>${getTotalHours(m)}</td>
         <td>${getTotalCEUs(m)}</td>
       </tr>
@@ -143,6 +152,287 @@ function goToMemberProfile(id) {
   const base = (typeof ajaxurl !== 'undefined' ? ajaxurl : '/wp-admin/admin-ajax.php');
   window.location.href = base.replace('admin-ajax.php', 'admin.php?page=profdef_member_page&member=' + id);
 }
+
+// Link ARMember account modal helpers
+async function searchWpUsers(term) {
+  const cleaned = String(term || '').trim();
+  if (!cleaned) return [];
+
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  const root = '/wp-json/wp/v2';
+  const q = encodeURIComponent(cleaned);
+  const url = `${root}/users?search=${q}&per_page=20&_fields=id,name,slug`;
+
+  const headers = { 'Accept': 'application/json' };
+  if (cfg.restNonce || cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.restNonce || cfg.nonce;
+  }
+
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers,
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => []);
+  if (!Array.isArray(data)) return [];
+  return data.map(u => ({
+    id: Number(u.id) || 0,
+    name: String(u.name || u.slug || ''),
+  })).filter(u => u.id > 0 && u.name);
+}
+
+function renderWpUserSearchResults(items) {
+  const container = document.getElementById('linkWpSearchResults');
+  if (!container) return;
+  linkWpState.selectedWpId = null;
+
+  if (!items || !items.length) {
+    container.innerHTML = '<div style="color:#6b7280;">No ARMember accounts found. Create the account first, then link.</div>';
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'wp-user-results-list';
+
+  items.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.name} (ID #${item.id})`;
+    li.dataset.id = String(item.id);
+    li.className = 'wp-user-result-item';
+    if (idx === 0) {
+      li.classList.add('selected');
+      linkWpState.selectedWpId = item.id;
+    }
+    li.addEventListener('click', () => {
+      const all = list.querySelectorAll('li.wp-user-result-item');
+      all.forEach(el => el.classList.remove('selected'));
+      li.classList.add('selected');
+      linkWpState.selectedWpId = item.id;
+    });
+    list.appendChild(li);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
+function bindLinkWpSearchInput() {
+  const input = document.getElementById('linkWpSearchInput');
+  if (!input || input._pdBound) return;
+  input._pdBound = true;
+
+  const container = document.getElementById('linkWpSearchResults');
+  if (container) {
+    container.innerHTML = '<div style="color:#6b7280;">Start typing an ARMember account name or email...</div>';
+  }
+
+  let timer = null;
+  input.addEventListener('input', () => {
+    const term = input.value || '';
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const cleaned = term.trim();
+      if (!cleaned || cleaned.length < 2) {
+        if (container) {
+          container.innerHTML = '<div style="color:#6b7280;">Type at least 2 characters.</div>';
+        }
+        linkWpState.selectedWpId = null;
+        return;
+      }
+      try {
+        const users = await searchWpUsers(cleaned);
+        renderWpUserSearchResults(users);
+      } catch (err) {
+        console.error('ARMember account search failed', err);
+        if (container) {
+          container.innerHTML = '<div style="color:#b91c1c;">Error searching WordPress users.</div>';
+        }
+      }
+    }, 300);
+  });
+}
+
+function openLinkWpModal(event, personId) {
+  if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  const overlay = document.getElementById('linkWpModal');
+  if (!overlay) return;
+
+  const mid = Number(personId || 0);
+  if (!Number.isFinite(mid) || mid <= 0) return;
+
+  const person = (members || []).find(m => Number(m.members_id || 0) === mid);
+  const summaryEl = document.getElementById('linkWpPersonSummary');
+  const currentEl = document.getElementById('linkWpCurrent');
+  const searchInput = document.getElementById('linkWpSearchInput');
+  const resultsEl = document.getElementById('linkWpSearchResults');
+  const unlinkBtn = document.getElementById('linkWpUnlinkBtn');
+
+  linkWpState.personId = mid;
+  linkWpState.currentWpId = person && Number(person.id || 0) > 0 ? Number(person.id) : null;
+  linkWpState.selectedWpId = null;
+
+  if (summaryEl) {
+    const name = `${person && person.firstname ? person.firstname : ''} ${person && person.lastname ? person.lastname : ''}`.trim();
+    const email = person && person.email ? ` <${person.email}>` : '';
+    summaryEl.textContent = name || person?.email || `Person #${mid}`;
+    if (email) summaryEl.textContent += email;
+  }
+
+  if (currentEl) {
+    if (linkWpState.currentWpId) {
+      currentEl.textContent = `Currently linked to ARMember account #${linkWpState.currentWpId}.`;
+    } else {
+      currentEl.textContent = 'This attendee is not linked to any ARMember account.';
+    }
+  }
+
+  if (unlinkBtn) {
+    unlinkBtn.style.display = linkWpState.currentWpId ? '' : 'none';
+  }
+
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  if (resultsEl) {
+    resultsEl.innerHTML = '<div style="color:#6b7280;">Start typing an ARMember account name or email...</div>';
+  }
+
+  bindLinkWpSearchInput();
+
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  const onOverlay = (e) => { if (e.target === overlay) closeLinkWpModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closeLinkWpModal(); };
+  document._pdEscLinkWp && document.removeEventListener('keydown', document._pdEscLinkWp);
+  document._pdEscLinkWp = onEsc;
+  document.addEventListener('keydown', onEsc);
+
+  if (searchInput) {
+    setTimeout(() => { try { searchInput.focus(); } catch (_) {} }, 10);
+  }
+}
+
+function closeLinkWpModal() {
+  const overlay = document.getElementById('linkWpModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._pdOverlayHandler) {
+    overlay.removeEventListener('click', overlay._pdOverlayHandler);
+    overlay._pdOverlayHandler = null;
+  }
+  if (document._pdEscLinkWp) {
+    document.removeEventListener('keydown', document._pdEscLinkWp);
+    document._pdEscLinkWp = null;
+  }
+  linkWpState.personId = null;
+  linkWpState.currentWpId = null;
+  linkWpState.selectedWpId = null;
+}
+
+async function submitLinkWp() {
+  const personId = Number(linkWpState.personId || 0);
+  const wpId = Number(linkWpState.selectedWpId || 0);
+  if (!personId || !Number.isFinite(personId)) {
+    alert('Missing attendee.');
+    return;
+  }
+  if (!wpId || !Number.isFinite(wpId)) {
+    alert('Please select an ARMember account to link.');
+    return;
+  }
+
+  const root = getRestRoot();
+  const url = `${root}/member/link_wp`;
+
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  };
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  if (cfg.restNonce || cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.restNonce || cfg.nonce;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ person_id: personId, wp_id: wpId })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Failed to link account (${res.status}): ${txt.slice(0,200)}`);
+    }
+    closeLinkWpModal();
+    try {
+      await loadAndRenderMembers();
+    } catch (e) {
+      console.error('Failed to refresh members after linking WP account', e);
+    }
+    alert(`Linked attendee to ARMember account #${wpId}.`);
+  } catch (err) {
+    console.error(err);
+    alert(err && err.message ? err.message : 'Failed to link ARMember account.');
+  }
+}
+
+async function submitLinkWpUnlink() {
+  const personId = Number(linkWpState.personId || 0);
+  if (!personId || !Number.isFinite(personId)) {
+    alert('Missing attendee.');
+    return;
+  }
+
+  const root = getRestRoot();
+  const url = `${root}/member/link_wp`;
+
+  const headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  };
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  if (cfg.restNonce || cfg.nonce) {
+    headers['X-WP-Nonce'] = cfg.restNonce || cfg.nonce;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ person_id: personId, wp_id: null })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Failed to unlink account (${res.status}): ${txt.slice(0,200)}`);
+    }
+    closeLinkWpModal();
+    try {
+      await loadAndRenderMembers();
+    } catch (e) {
+      console.error('Failed to refresh members after unlinking WP account', e);
+    }
+    alert('ARMember account unlinked from attendee.');
+  } catch (err) {
+    console.error(err);
+    alert(err && err.message ? err.message : 'Failed to unlink ARMember account.');
+  }
+}
+
+// Expose link modal helpers for inline handlers
+window.openLinkWpModal = openLinkWpModal;
+window.closeLinkWpModal = closeLinkWpModal;
+window.submitLinkWp = submitLinkWp;
+window.submitLinkWpUnlink = submitLinkWpUnlink;
 
 // Presenter → Attendee helper modal
 async function searchPresentersForMembers(term) {

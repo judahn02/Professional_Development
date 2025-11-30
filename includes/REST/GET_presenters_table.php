@@ -43,9 +43,11 @@ function pd_get_presenters_table_view( WP_REST_Request $request ) {
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     try {
         // Fetch full presenters table; search is applied in PHP for safety.
-        $sql = 'SELECT idPresentor AS id, name, email, phone_number, session_count
-                FROM beta_2.GET_presenters_table
-                ORDER BY name ASC;';
+        // Join beta_2.person to expose wp_id (ARMember account link) for each presenter.
+        $sql = 'SELECT t.idPresentor AS id, t.name, t.email, t.phone_number, t.session_count, p.wp_id
+                FROM beta_2.GET_presenters_table AS t
+                LEFT JOIN beta_2.person AS p ON p.id = t.idPresentor
+                ORDER BY t.name ASC;';
 
         if ( ! function_exists( 'aslta_signed_query' ) ) {
             // Fallback: try to load the helper if, for some reason, the main plugin file has not.
@@ -136,12 +138,18 @@ function pd_get_presenters_table_view( WP_REST_Request $request ) {
 
         $session_count_raw = array_key_exists( 'session_count', $row ) ? $row['session_count'] : 0;
 
+        $wp_id_raw = null;
+        if ( array_key_exists( 'wp_id', $row ) ) {
+            $wp_id_raw = $row['wp_id'];
+        }
+
         $rows[] = [
             'id'            => $id_raw === null ? 0 : (int) $id_raw,
             'name'          => (string) $name_raw,
             'email'         => $email_raw === null ? '' : (string) $email_raw,
             'phone_number'  => $phone_raw === null ? '' : (string) $phone_raw,
             'session_count' => (int) $session_count_raw,
+            'wp_id'         => $wp_id_raw === null ? null : (int) $wp_id_raw,
         ];
     }
 

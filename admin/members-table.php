@@ -55,7 +55,7 @@ function PD_members_table_admin_page() {
             <tbody id="MembersTableBody">
               <!-- Members will be populated by JavaScript -->
             </tbody>
-          </table>
+            </table>
         </div>
       </div>
     </div>
@@ -109,6 +109,42 @@ function PD_members_table_admin_page() {
             <button type="submit" class="btn-save">Save Member</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Link ARMember Account Modal -->
+    <div class="modal-overlay" id="linkWpModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="linkWpTitle">
+        <div class="modal-header">
+          <h2 class="modal-title" id="linkWpTitle">Link ARMember Account</h2>
+          <button type="button" class="close-btn" aria-label="Close modal" onclick="closeLinkWpModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <div class="form-label">Attendee</div>
+            <div id="linkWpPersonSummary" style="font-weight:600; color:#111827;"></div>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Current Link</div>
+            <div id="linkWpCurrent" style="color:#4b5563;">Loading...</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="linkWpSearchInput">Search ARMember Accounts</label>
+            <input type="text"
+                   class="form-input"
+                   id="linkWpSearchInput"
+                   placeholder="Search by name or email..."
+                   autocomplete="off">
+          </div>
+          <div id="linkWpSearchResults" style="max-height: 260px; overflow-y: auto;">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeLinkWpModal()">Cancel</button>
+          <button type="button" class="btn-cancel" id="linkWpUnlinkBtn" onclick="submitLinkWpUnlink()">Unlink</button>
+          <button type="button" class="btn-save" onclick="submitLinkWp()">Link Account</button>
+        </div>
       </div>
     </div>
 

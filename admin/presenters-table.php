@@ -63,11 +63,12 @@ function PD_presenters_table_page() {
             <div class="table-container" id="presentersTableContainer">
                 <table class="table">
                     <colgroup>
-                        <col class="col-name">
-                        <col class="col-email">
-                        <col class="col-phone">
-                        <col class="col-sessions">
-                        <col class="col-actions">
+                    <col class="col-name">
+                    <col class="col-email">
+                    <col class="col-phone">
+                    <col class="col-sessions">
+                    <col class="col-armember">
+                    <col class="col-actions">
                     </colgroup>
                     <thead>
                         <tr>
@@ -75,6 +76,7 @@ function PD_presenters_table_page() {
                             <th onclick="sortPresenters('email')" style="cursor:pointer;">Email <span id="sort-arrow-email"></span></th>
                             <th onclick="sortPresenters('phone_number')" style="cursor:pointer;">Phone <span id="sort-arrow-phone_number"></span></th>
                             <th onclick="sortPresenters('session_count')" style="cursor:pointer;">Registered Session Count <span id="sort-arrow-session_count"></span></th>
+                            <th>ARMember ID</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -175,6 +177,42 @@ function PD_presenters_table_page() {
                 </div>
                 </form>
 
+        </div>
+    </div>
+
+    <!-- Link ARMember Account Modal (Presenters) -->
+    <div class="modal-overlay" id="presenterLinkWpModal" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="presenterLinkWpTitle">
+            <div class="modal-header">
+                <h2 class="modal-title" id="presenterLinkWpTitle">Link ARMember Account</h2>
+                <button type="button" class="close-btn" aria-label="Close modal" onclick="closePresenterLinkWpModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <div class="form-label">Presenter</div>
+                    <div id="presenterLinkWpSummary" style="font-weight:600; color:#111827;"></div>
+                </div>
+                <div class="form-group">
+                    <div class="form-label">Current Link</div>
+                    <div id="presenterLinkWpCurrent" style="color:#4b5563;">Loading...</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="presenterLinkWpSearchInput">Search ARMember Accounts</label>
+                    <input type="text"
+                           class="form-input"
+                           id="presenterLinkWpSearchInput"
+                           placeholder="Search by name or email..."
+                           autocomplete="off">
+                </div>
+                <div id="presenterLinkWpSearchResults" style="max-height: 260px; overflow-y: auto;">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closePresenterLinkWpModal()">Cancel</button>
+                <button type="button" class="btn-cancel" id="presenterLinkWpUnlinkBtn" onclick="submitPresenterLinkWpUnlink()">Unlink</button>
+                <button type="button" class="btn-save" onclick="submitPresenterLinkWp()">Link Account</button>
+            </div>
         </div>
     </div>
     <!-- Attendee → Presenter Modal -->

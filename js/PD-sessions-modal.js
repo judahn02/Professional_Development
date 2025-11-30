@@ -543,9 +543,8 @@
         // CEU Weight prefill if provided
         setVal('#ceuWeight', (session && session.ceuWeight) || '0');
 
-        // Presenters (token input handled by table module on event)
-        const pres = overlay.querySelector('#editPresenters');
-        if (pres) pres.value = (session && session.presenters) || '';
+        // Presenters: token input + prefill are handled by the sessions
+        // table module via the pd:edit-session-modal-opened event.
       } catch (err) {
         console.error(err);
       }

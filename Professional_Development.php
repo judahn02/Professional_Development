@@ -39,8 +39,10 @@ require_once $plugin_dir . 'includes/REST/POST_attendee.php';
 require_once $plugin_dir . 'includes/REST/GET_presenter_sessions.php';
 require_once $plugin_dir . 'includes/REST/GET_member_admin_service.php';
 require_once $plugin_dir . 'includes/REST/PUT_session.php';
+require_once $plugin_dir . 'includes/REST/PUT_session_presenters.php';
 require_once $plugin_dir . 'includes/REST/PUT_member_mark_attendee.php';
 require_once $plugin_dir . 'includes/REST/PUT_member_mark_presenter.php';
+require_once $plugin_dir . 'includes/REST/PUT_member_link_wp.php';
 require_once $plugin_dir . 'admin/main-page.php' ;
 require_once $plugin_dir . 'admin/members-table.php' ;
 require_once $plugin_dir . 'admin/member-page.php' ;
@@ -155,7 +157,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-members-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-members-table.css',
                 array(),
-                '0.10',
+                '0.11',
                 'all'
             ) ;
         }
@@ -175,7 +177,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-presenters-table-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-presenter-table.css',
                 array(),
-                '0.11',
+                '0.12',
                 'all'
             ) ;
         }
@@ -245,7 +247,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.30',
+            '0.32',
             true
         );
 
@@ -276,7 +278,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.15',
+            '0.17',
             true
         );
 
@@ -284,7 +286,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.71',
+            '0.73',
             true
         );
 
@@ -315,6 +317,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute10' => 'sessionhome10',
                 'sessionsRoute11' => 'sessionhome11',
                 'sessionsRoutePut' => 'session',
+                'sessionsRoutePresenters' => 'session/presenters',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000
@@ -330,7 +333,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            32,
+            34,
             true
         );
 
