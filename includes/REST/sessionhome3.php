@@ -163,9 +163,11 @@ function pd_sessionhome3_get_options( WP_REST_Request $request ) {
     }
 
     $payload = [
-        'session_types'      => $session_types,
-        'event_types'        => $event_types,
-        'ceu_types' => $ceu_options,
+        'session_types'       => $session_types,
+        'event_types'         => $event_types,
+        // Front-end expects `ceu_considerations`; keep `ceu_types` as a backwards-compatible alias.
+        'ceu_considerations'  => $ceu_options,
+        'ceu_types'           => $ceu_options,
     ];
 
     return new WP_REST_Response( $payload, 200 );

@@ -154,7 +154,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-home-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-home.css',
                 array(),
-                '0.7',
+                '0.8',
                 'all'
             );
         }
@@ -164,7 +164,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-members-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-members-table.css',
                 array(),
-                '0.11',
+                '0.12',
                 'all'
             ) ;
         }
@@ -174,7 +174,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-sessions-table-css',
                 plugin_dir_url(__FILE__) . 'css/PD-admin-sessions-table.css',
                 array(),
-                '0.75',
+                '0.76',
                 'all'
             ) ;
         }
@@ -184,7 +184,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-presenters-table-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-presenter-table.css',
                 array(),
-                '0.12',
+                '0.14',
                 'all'
             ) ;
         }
@@ -194,7 +194,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-member-page-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
                 array(),
-                '0.5',
+                '0.6',
                 'all'
             ) ;
         }
@@ -204,7 +204,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-session-page-css',
                 plugin_dir_url( __FILE__) . 'css/PD-admin-session-page.css',
                 array(),
-                '0.1',
+                '0.2',
                 'all'
             ) ;
         }
@@ -221,7 +221,7 @@ function slug_specific_shortcode_css_loader() {
             'PD-member-info-css',
             plugin_dir_url(__FILE__) . 'css/PD-member-metainformation.css',
             array(),
-            '0.1',
+            '0.2',
             'all'
         );
     }
