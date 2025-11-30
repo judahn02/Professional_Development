@@ -99,8 +99,9 @@
         emailSpan.textContent = a.email || '';
         const statusSpan = document.createElement('span');
         statusSpan.className = 'attendee-status';
-        const val = (a.status || '').toString();
-        statusSpan.textContent = 'Cert. Status: ' + (val !== '' ? val : '—');
+        const rawStatus = (a.status || '').toString().trim();
+        const displayStatus = rawStatus !== '' ? rawStatus : 'Not Assigned';
+        statusSpan.textContent = 'Cert. Status: ' + displayStatus;
         li.appendChild(nameSpan);
         li.appendChild(emailSpan);
         li.appendChild(statusSpan);

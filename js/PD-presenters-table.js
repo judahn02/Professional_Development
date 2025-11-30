@@ -185,12 +185,8 @@ function renderPresenters() {
 
   tbody.innerHTML = pageItems.map((presenter, idx) => {
     const i = start + idx;
-    const idNum = Number(presenter.id || 0);
-    const rowAttrs = Number.isFinite(idNum) && idNum > 0
-      ? `class="presenter-row" style="cursor:pointer;" onclick="goToPresenterProfile(${idNum})"`
-      : 'class="presenter-row"';
     return `
-    <tr ${rowAttrs}>
+    <tr class="presenter-row">
       <td style=\"font-weight: 600;\">${presenter.name || ''}</td>
       <td>${presenter.email || ''}</td>
       <td>${presenter.phone_number || ''}</td>
@@ -217,14 +213,6 @@ function renderPresenters() {
   try { setupTopScrollbar(); } catch(_) {}
 }
 
-
-// Go to presenter profile page
-function goToPresenterProfile(id) {
-    // Store presenters in localStorage for access in presenter-profile.html
-    localStorage.setItem('presenters', JSON.stringify(window.presenters));
-    // swindow.location.href = `presenter-profile.html?presenter=${id}`;
-    window.location.href = ajaxurl.replace('admin-ajax.php', 'admin.php?page=profdef_presenter_page&presenter=' + id);
-}
 
 // Filter presenters based on search
 function filterPresenters() {

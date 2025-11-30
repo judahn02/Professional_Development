@@ -47,7 +47,7 @@ require_once $plugin_dir . 'admin/member-page.php' ;
 require_once $plugin_dir . 'admin/sessions-table.php' ;
 require_once $plugin_dir . 'admin/session-page.php' ;
 require_once $plugin_dir . 'admin/presenters-table.php' ;
-require_once $plugin_dir . 'admin/presenter-page.php' ;
+// Presenter profile page retired; loader kept in tools/admin/presenters-table.php.retired
 
 // Utility/test admin helper
 require_once $plugin_dir . 'admin/skeleton2.php' ;
@@ -131,14 +131,7 @@ function Professional_Development_admin_menu_page() {
         
     ) ;
 
-    add_submenu_page(
-        null,
-        'Presenter Page',
-        'Presenter Page',
-        'manage_options',
-        'profdef_presenter_page',
-        'PD_presenter_admin_page'
-    ) ;
+    // Presenter profile page retired; keep slug unused for now.
 }
 add_action( 'admin_menu', 'Professional_Development_admin_menu_page') ;
 
@@ -207,15 +200,7 @@ function slug_specific_admin_css_loader($hook) {
             ) ;
         }
 
-        if($_GET['page'] === 'profdef_presenter_page') {
-            wp_enqueue_style(
-                'PD-admin-presenter-page-css',
-                plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
-                array(),
-                '0.6',
-                'all'
-            ) ;
-        }
+        // Presenter profile page CSS retired.
     }
 }
 add_action('admin_enqueue_scripts', 'slug_specific_admin_css_loader');
@@ -282,7 +267,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.16',
+            '0.18',
             true
         );
 
@@ -345,7 +330,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            31,
+            32,
             true
         );
 
