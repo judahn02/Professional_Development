@@ -260,6 +260,9 @@ function pd_put_session_presenters_get( WP_REST_Request $req, array $json, $keys
 function pd_put_session_presenters( WP_REST_Request $request ) {
 	$json = (array) $request->get_json_params();
 
+	// Use the configured external schema (defaults to beta_2), same as other REST endpoints.
+	$schema = defined( 'PD_DB_SCHEMA' ) ? PD_DB_SCHEMA : 'beta_2';
+
 	$session_id_raw = pd_put_session_presenters_get( $request, $json, array( 'session_id', 'sessionId' ), 0 );
 	$session_id     = (int) $session_id_raw;
 
