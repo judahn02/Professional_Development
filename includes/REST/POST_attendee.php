@@ -217,6 +217,24 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
     }
 
     if ( $result['status'] < 200 || $result['status'] >= 300 ) {
+        $body_str = isset( $result['body'] ) ? (string) $result['body'] : '';
+
+        // Special-case duplicate name constraint (e.g. attempting to add someone who already exists
+        // as a presenter/member with the same unique name key).
+        if (
+            $body_str !== '' &&
+            strpos( $body_str, '1062' ) !== false &&
+            strpos( $body_str, 'name_UNIQUE' ) !== false
+        ) {
+            return new WP_Error(
+                'attendee_duplicate_name',
+                'This user already exists as a presenter. Please proceed using the "Are they a registered Presenter?" button.',
+                [
+                    'status' => 400,
+                ]
+            );
+        }
+
         return new WP_Error(
             'aslta_remote_http_error',
             'Remote attendee creation endpoint returned an HTTP error.',
