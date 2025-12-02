@@ -70,7 +70,7 @@ function pd_post_presenter_create( WP_REST_Request $req ) {
     $first_in = pd_post_presenter_get( $req, $json, [ 'firstname', 'first_name' ], '' );
     $last_in  = pd_post_presenter_get( $req, $json, [ 'lastname', 'last_name' ], '' );
     $email_in = pd_post_presenter_get( $req, $json, [ 'email' ], '' );
-    $phone_in = pd_post_presenter_get( $req, $json, [ 'phone' ], '' );
+    $phone_in = pd_post_presenter_get( $req, $json, [ 'phone', 'number' ], '' );
 
     $first = sanitize_text_field( wp_unslash( (string) $first_in ) );
     $last  = sanitize_text_field( wp_unslash( (string) $last_in ) );
@@ -134,18 +134,17 @@ function pd_post_presenter_create( WP_REST_Request $req ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Build CALL statement with safely quoted values, matching procedure:
-    // POST_presenter(IN p_first_name, IN p_last_name, IN p_email, IN p_phone, OUT p_idPresentor)
-    $q_first = pd_post_presenter_sql_quote( $first !== '' ? $first : null );
-    $q_last  = pd_post_presenter_sql_quote( $last !== '' ? $last : null );
+    // POST_presenter(IN p_name, IN p_email, IN p_phone, OUT p_idPresentor)
+    // The stored procedure splits p_name into first/last internally.
+    $q_name  = pd_post_presenter_sql_quote( $name );
     $q_email = pd_post_presenter_sql_quote( $email );
     $q_phone = pd_post_presenter_sql_quote( $phone );
 
     $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL %s.POST_presenter(%s, %s, %s, %s, @new_id);',
+        'CALL %s.POST_presenter(%s, %s, %s, @new_id);',
         $schema,
-        $q_first,
-        $q_last,
+        $q_name,
         $q_email,
         $q_phone
     );
@@ -172,7 +171,7 @@ function pd_post_presenter_create( WP_REST_Request $req ) {
     } catch ( \Throwable $e ) {
         // Preserve semantics for missing name if backend echoes that error.
         $msg = $e->getMessage();
-        if ( strpos( (string) $msg, 'POST_presenter: first_name or last_name is required' ) !== false ) {
+        if ( strpos( (string) $msg, 'POST_presenter: name is required' ) !== false ) {
             return new WP_Error( 'bad_request', 'Presenter name is required.', [ 'status' => 400 ] );
         }
 
