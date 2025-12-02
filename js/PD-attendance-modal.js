@@ -382,11 +382,43 @@
         const suggestions = Array.isArray(data)
           ? data.map(row => ({ name: String(row[0]||''), id: Number(row[1]||0), email: String(row[2]||'') }))
           : [];
-        // Filter out already-attending
-        const Table = window.PDSessionsTable;
-        const entry = Table && Table.attendeesCache instanceof Map ? Table.attendeesCache.get(sessionId) : null;
-        const existing = entry && Array.isArray(entry.items) ? entry.items : [];
-        const filtered = suggestions.filter(s => s.id > 0 && !existing.some(it => Number(it.memberId||0) === s.id));
+
+        // Determine existing attendees based on the current table DOM (source of truth for the modal UI),
+        // with a fallback to the shared attendees cache when needed.
+        const existingIds = new Set();
+        try {
+          const tableEl = overlay.querySelector('#attendees-table');
+          const tbodyEl = tableEl ? (tableEl.querySelector('#attendeesBody') || tableEl.querySelector('tbody')) : null;
+          if (tbodyEl) {
+            const rows = tbodyEl.querySelectorAll('tr');
+            rows.forEach((tr) => {
+              const mid = Number(tr.dataset.memberId || 0);
+              if (Number.isFinite(mid) && mid > 0) existingIds.add(mid);
+            });
+          }
+        } catch (_) {}
+
+        // Fallback to cache only if DOM didn't give us anything
+        if (existingIds.size === 0) {
+          const Table = window.PDSessionsTable;
+          const entry = Table && Table.attendeesCache instanceof Map ? Table.attendeesCache.get(sessionId) : null;
+          const existing = entry && Array.isArray(entry.items) ? entry.items : [];
+          existing.forEach((it) => {
+            const mid = Number(it && it.memberId != null ? it.memberId : 0);
+            if (Number.isFinite(mid) && mid > 0) existingIds.add(mid);
+          });
+        }
+
+        const filtered = suggestions.filter((s) => s.id > 0 && !existingIds.has(s.id));
+
+        // If there were matches but all of them are already attendees in the current UI,
+        // show a clear message instead of an empty list.
+        if (suggestions.length > 0 && filtered.length === 0) {
+          showToast('That member is already an attendee of this session.', 'error');
+          hideList();
+          return;
+        }
+
         renderSuggestions(filtered);
       } catch (err) {
         console.error('member search failed', err);
