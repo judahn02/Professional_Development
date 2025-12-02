@@ -16,6 +16,10 @@
 
 - refactor the JS of session-table if needed.
 
+- Add hook-based / email-aware logic to relax member name mismatch detection (e.g., for sessionhome10 / attendee search).
+
+- Build an admin reconciliation view for external vs WordPress name mismatches using the beta_2.logs table.
+
 
 ## Ask Jason
 
@@ -49,4 +53,3 @@ The back end is almost complete, some buggs need ironing out
 Whats left:
 - the member fasing side to allow members to view the sessions they have attended.
 - including a tool that allows data to be imported into the database.
-

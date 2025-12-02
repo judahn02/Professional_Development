@@ -3,7 +3,7 @@
 Plugin Name: Professional Development
 Plugin URI: 
 Description: Integration Plugin for Professional Development tracking and logging.
-Version: 0.8.1
+Version: 0.8.2
 Author: Parallel Solvit LLC
 Author URI: https://parallelsolvit.com/
 License: 
@@ -302,7 +302,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-attendance-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-attendance-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-table-js'),
-            '0.23',
+            '0.24',
             true
         );
 

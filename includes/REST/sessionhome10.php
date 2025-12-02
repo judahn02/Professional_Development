@@ -221,11 +221,13 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
                 'wp_name'       => $wpnm,
             ];
         }
-        // Use WordPress name to fill output (prefer WP over external when no mismatch)
-        $out[] = [ $wpnm !== '' ? $wpnm : $ext, $person, $email ];
+        // Treat the external person name as canonical for this flow.
+        // Fall back to the WordPress-computed name only when the external name is empty.
+        $canonical = $ext !== '' ? $ext : $wpnm;
+        $out[]     = [ $canonical, $person, $email ];
     }
 
-    // Final filter by search_p against filled (WP) names
+    // Final filter by search_p against the canonical (external-first) names
     $qnorm = $norm( $search_clean );
     $filtered = [];
     foreach ( $out as $row ) {
@@ -235,19 +237,57 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
         }
     }
 
-    // If no rows to return, send 201 with empty array
+    // If no rows to return, respond with an empty array (200).
     if ( empty( $rows ) || empty( $filtered ) ) {
-        return new WP_REST_Response( [], 201 );
+        return new WP_REST_Response( [], 200 );
     }
 
-    // Otherwise, if mismatches were detected, return 422 so caller can surface a toast
+    // Best-effort: log any name mismatches to the external logs table for later reconciliation.
     if ( ! empty( $mismatches ) ) {
-        return new \WP_Error(
-            'profdef_name_mismatch',
-            'One or more names do not match WordPress.',
-            [ 'status' => 422, 'details' => $mismatches ]
-        );
+        try {
+            $schema    = defined( 'PD_DB_SCHEMA' ) ? PD_DB_SCHEMA : 'beta_2';
+            $log_entry = [
+                'context'       => 'sessionhome10_name_mismatch',
+                'when'          => gmdate( 'c' ),
+                'search_raw'    => $search_raw,
+                'search_clean'  => $search_clean,
+                'mismatches'    => $mismatches,
+            ];
+            if ( function_exists( 'wp_json_encode' ) ) {
+                $log_json = wp_json_encode( $log_entry );
+            } else {
+                $log_json = json_encode( $log_entry );
+            }
+            if ( $log_json !== false ) {
+                $log_lit = pd_sessionhome10_sql_quote( $log_json );
+                $log_sql = sprintf( 'INSERT INTO %s.logs (log) VALUES (%s);', $schema, $log_lit );
+
+                if ( ! function_exists( 'aslta_signed_query' ) ) {
+                    $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
+                    $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+                    if ( is_readable( $skeleton_path ) ) {
+                        require_once $skeleton_path;
+                    }
+                }
+
+                if ( function_exists( 'aslta_signed_query' ) ) {
+                    try {
+                        // Ignore result / errors; logging is best-effort.
+                        aslta_signed_query( $log_sql );
+                    } catch ( \Throwable $e ) {
+                        // swallow
+                    }
+                }
+            }
+        } catch ( \Throwable $e ) {
+            // Swallow any logging issues; do not affect main response.
+        }
     }
 
-    return new WP_REST_Response( $filtered, 200 );
+    // Normal response with rows; include a hint header when mismatches were detected.
+    $response = new WP_REST_Response( $filtered, 200 );
+    if ( ! empty( $mismatches ) ) {
+        $response->header( 'X-PD-Name-Mismatch', '1' );
+    }
+    return $response;
 }

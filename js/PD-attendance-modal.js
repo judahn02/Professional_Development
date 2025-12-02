@@ -371,17 +371,17 @@
           headers: { 'Accept': 'application/json', ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}) },
           cache: 'no-store',
         });
-        if (res.status === 422) {
-          hideList();
-          showToast('there is a missmatch of name for member in external database and wp database that was not resolved internally, please contact your support: parallelsovit.', 'error');
-          return;
-        }
+        const hasNameMismatch = res.headers && res.headers.get('X-PD-Name-Mismatch') === '1';
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json().catch(()=>[]);
         // Expect [[name, members_id, email], ...]
         const suggestions = Array.isArray(data)
           ? data.map(row => ({ name: String(row[0]||''), id: Number(row[1]||0), email: String(row[2]||'') }))
           : [];
+
+        if (hasNameMismatch) {
+          showToast('The WordPress profile name differs from the external record; please verify you selected the correct attendee.', 'error');
+        }
 
         // Determine existing attendees based on the current table DOM (source of truth for the modal UI),
         // with a fallback to the shared attendees cache when needed.
