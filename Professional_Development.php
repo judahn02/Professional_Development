@@ -3,13 +3,13 @@
 Plugin Name: Professional Development
 Plugin URI: 
 Description: Integration Plugin for Professional Development tracking and logging.
-Version: 0.8
+Version: 0.8.1
 Author: Parallel Solvit LLC
 Author URI: https://parallelsolvit.com/
 License: 
 */
 
-defined('ABSPATH') || exit ;
+
 
 // Initialize
 $plugin_dir = plugin_dir_path(__FILE__);
@@ -293,7 +293,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.73',
+            '0.734',
             true
         );
 

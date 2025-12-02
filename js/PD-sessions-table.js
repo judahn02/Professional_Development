@@ -621,10 +621,11 @@ Inline handlers exposed for legacy markup
             const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
             return opt ? (opt.text || opt.textContent || '').trim() : (el.value || '').trim();
           };
+          const rawDate = (val('#sessionDate') || '').trim();
           const payload = {
             session_id: id,
             title: (val('#sessionTitle') || '').trim(),
-            date: (val('#sessionDate') || '').trim(),
+            date: rawDate || null,
             length: parseInt(val('#sessionLength'), 10) || 0,
             specific_event: (val('#parentEvent').trim() || null),
             session_type: selText('#sessionType'),
@@ -636,8 +637,8 @@ Inline handlers exposed for legacy markup
             const ceuName = selText('#ceuConsiderations');
             if (ceuName && ceuName.toLowerCase() !== 'na') payload.ceu_consideration = ceuName;
           }
-          if (!payload.title || !payload.date || !payload.length || !payload.session_type || !payload.event_type) {
-            throw new Error('Please complete Title, Date, Length, Session Type, and Event Type.');
+          if (!payload.title || !payload.length || !payload.session_type || !payload.event_type) {
+            throw new Error('Please complete Title, Length, Session Type, and Event Type.');
           }
 
           // Collect presenter ids from token-input chips (source of truth).

@@ -5,7 +5,7 @@
  * Endpoint: POST /wp-json/profdef/v2/sessionhome8
  * Input (JSON body preferred, falls back to form params):
  * {
- *   session_date: 'YYYY-MM-DD',
+ *   session_date: 'YYYY-MM-DD' | null,
  *   length_minutes: 90,
  *   session_title: 'Title',
  *   specific_event: 'Parent Event' | null,
@@ -45,7 +45,7 @@ add_action( 'rest_api_init', function () {
             'permission_callback' => 'pd_presenters_permission',
             'callback'            => 'pd_sessionhome8_create_session',
             'args'                => [
-                'session_date' => [ 'type' => 'string', 'required' => true ],
+                'session_date' => [ 'type' => 'string', 'required' => false ],
                 'length_minutes' => [
                     'type' => 'integer', 'required' => true,
                     'sanitize_callback' => function( $v ) { return (int) $v; },
@@ -114,14 +114,21 @@ function pd_sessionhome8_create_session( WP_REST_Request $req ) {
     $ceu_raw   = pd_sessionhome8_get_param( $req, $json, [ 'ceu_id', 'ceuId' ] );
     $pcsv_raw  = pd_sessionhome8_get_param( $req, $json, [ 'presenters_csv', 'presentersCsv' ] );
 
-    // Validate session_date (YYYY-MM-DD)
-    $session_date = is_string( $date_raw ) ? trim( $date_raw ) : '';
-    if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $session_date ) ) {
-        return new WP_Error( 'bad_param', 'session_date must be YYYY-MM-DD.', [ 'status' => 400 ] );
-    }
-    $parts = explode( '-', $session_date );
-    if ( ! checkdate( (int) $parts[1], (int) $parts[2], (int) $parts[0] ) ) {
-        return new WP_Error( 'bad_param', 'session_date is not a valid date.', [ 'status' => 400 ] );
+    // Validate session_date (YYYY-MM-DD) – now optional.
+    // If provided and non-empty, it must be a valid calendar date; otherwise we treat it as NULL.
+    $session_date = null;
+    if ( null !== $date_raw ) {
+        $date_str = is_string( $date_raw ) ? trim( $date_raw ) : '';
+        if ( $date_str !== '' ) {
+            if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_str ) ) {
+                return new WP_Error( 'bad_param', 'session_date must be YYYY-MM-DD.', [ 'status' => 400 ] );
+            }
+            $parts = explode( '-', $date_str );
+            if ( ! checkdate( (int) $parts[1], (int) $parts[2], (int) $parts[0] ) ) {
+                return new WP_Error( 'bad_param', 'session_date is not a valid date.', [ 'status' => 400 ] );
+            }
+            $session_date = $date_str;
+        }
     }
 
     // Validate length_minutes
@@ -185,7 +192,7 @@ function pd_sessionhome8_create_session( WP_REST_Request $req ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Build CALL statement with safely quoted values, matching sp_create_session signature:
-    // (session_date, length_minutes, session_title, specific_event, type_of_session_id, event_type_id, ceu_id, presenters_csv)
+    // (session_date (nullable), length_minutes, session_title, specific_event, type_of_session_id, event_type_id, ceu_id, presenters_csv)
     $q_date      = pd_sessionhome8_sql_quote( $session_date );
     $q_title     = pd_sessionhome8_sql_quote( $session_title );
     $q_event     = pd_sessionhome8_sql_quote( $specific_event );

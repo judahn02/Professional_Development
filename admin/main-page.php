@@ -95,7 +95,7 @@ function PD_main_admin_page() {
                     <ul class="tutorial-list">
                         <li>
                             <a href="https://scribehow.com/viewer/Add_a_New_Presenter_to_the_System__oqVOdsivTiOZ1WOfAw9ydA" target="_blank" rel="noopener noreferrer">
-                                How to Add A New Presentor
+                                How to Add A New Presenter
                             </a>
                         </li>
                         <li>

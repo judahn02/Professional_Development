@@ -8,7 +8,7 @@
  * {
  *   session_id: number,                 // required
  *   title: string,                      // required (<=256)
- *   date: 'YYYY-MM-DD',                 // required
+ *   date: 'YYYY-MM-DD' | null,          // optional; null/'' => no date
  *   length: number,                     // required (minutes)
  *   specific_event: string|null,        // optional, '' -> NULL
  *   session_type: string,               // required (name; proc resolves/creates)
@@ -76,14 +76,19 @@ function pd_put_session_update( WP_REST_Request $request ) {
         return new WP_Error( 'bad_param', 'session_id must be a positive integer.', [ 'status' => 400 ] );
     }
 
-    // Validate date (YYYY-MM-DD)
-    $date = is_string( $date_raw ) ? trim( $date_raw ) : '';
-    if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
-        return new WP_Error( 'bad_param', 'date must be YYYY-MM-DD.', [ 'status' => 400 ] );
-    }
-    $parts = explode( '-', $date );
-    if ( ! checkdate( (int) $parts[1], (int) $parts[2], (int) $parts[0] ) ) {
-        return new WP_Error( 'bad_param', 'date is not a valid calendar date.', [ 'status' => 400 ] );
+    // Validate date (YYYY-MM-DD) – now optional.
+    // If provided and non-empty, it must be a valid calendar date; otherwise we treat it as NULL.
+    $date     = null;
+    $date_str = is_string( $date_raw ) ? trim( $date_raw ) : '';
+    if ( $date_str !== '' ) {
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_str ) ) {
+            return new WP_Error( 'bad_param', 'date must be YYYY-MM-DD.', [ 'status' => 400 ] );
+        }
+        $parts = explode( '-', $date_str );
+        if ( ! checkdate( (int) $parts[1], (int) $parts[2], (int) $parts[0] ) ) {
+            return new WP_Error( 'bad_param', 'date is not a valid calendar date.', [ 'status' => 400 ] );
+        }
+        $date = $date_str;
     }
 
     if ( $length <= 0 ) {
@@ -135,7 +140,7 @@ function pd_put_session_update( WP_REST_Request $request ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Build CALL statement with safely quoted values, matching procedure:
-    // PUT_session(IN session_id, IN title, IN date, IN length, IN specific_event, IN session_type, IN ceu_consideration, IN event_type)
+    // PUT_session(IN session_id, IN title, IN date (nullable), IN length, IN specific_event, IN session_type, IN ceu_consideration, IN event_type)
     $q_title            = pd_put_session_sql_quote( $title );
     $q_date             = pd_put_session_sql_quote( $date );
     $q_specific_event   = pd_put_session_sql_quote( $specific_event );

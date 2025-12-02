@@ -101,7 +101,7 @@ function PD_sessions_page() {
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Date</label>
-                        <input type="date" class="form-input" id="sessionDate" required>
+                        <input type="date" class="form-input" id="sessionDate">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Length (minutes)</label>
@@ -180,7 +180,7 @@ function PD_sessions_page() {
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Date</label>
-                        <input type="date" class="form-input" id="sessionDate" required>
+                        <input type="date" class="form-input" id="sessionDate">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Length (minutes)</label>
@@ -268,7 +268,7 @@ function PD_sessions_page() {
     <div class="modal-overlay" id="addPresenterModal" aria-hidden="true">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addPresenterTitle">
             <div class="modal-header">
-                <h2 class="modal-title" id="addPresenterTitle">Add New Presentor</h2>
+                <h2 class="modal-title" id="addPresenterTitle">Add New Presenter</h2>
                 <button type="button" class="close-btn" aria-label="Close modal" onclick="closeAddPresenterModal()">&times;</button>
             </div>
 
@@ -292,7 +292,7 @@ function PD_sessions_page() {
 
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" id="btnAddPresenterCancel">Cancel</button>
-                    <button type="button" class="btn-save" id="btnAddPresenterConfirm">Add Presentor</button>
+                    <button type="button" class="btn-save" id="btnAddPresenterConfirm">Add Presenter</button>
                 </div>
             </form>
         </div>
