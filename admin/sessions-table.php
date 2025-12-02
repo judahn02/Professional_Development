@@ -23,7 +23,7 @@ function PD_sessions_page() {
 
     <div class="container">
         <div class="max-width">
-            <h1 class="main-title">Admin Sessions Table</h1>
+            <h1 class="main-title">Sessions Table</h1>
 
             <!-- Navigation Links -->
             <div class="nav-links">
