@@ -634,8 +634,14 @@ Inline handlers exposed for legacy markup
           };
           const qualify = val('#qualifyForCeus');
           if (qualify === 'Yes') {
+            const ceuSelect = overlay.querySelector('#ceuConsiderations');
+            const ceuValue = ceuSelect ? (ceuSelect.value || '').trim() : '';
             const ceuName = selText('#ceuConsiderations');
-            if (ceuName && ceuName.toLowerCase() !== 'na') payload.ceu_consideration = ceuName;
+            // Require a real CEU consideration (not placeholder, not NA) when qualifying.
+            if (!ceuValue || !ceuName || ceuName.toLowerCase() === 'na') {
+              throw new Error('Please select a CEU Consideration when qualifying for CEUs.');
+            }
+            payload.ceu_consideration = ceuName;
           }
           if (!payload.title || !payload.length || !payload.session_type || !payload.event_type) {
             throw new Error('Please complete Title, Length, Session Type, and Event Type.');
