@@ -68,7 +68,8 @@
     align-items: center;
     gap: 0.5rem;
 }
-.edit-attendees-btn {
+.edit-attendees-btn,
+.sort-attendees-btn {
     background: #e11d48;
     color: #fff;
     border: 1px solid #e11d48;
@@ -78,7 +79,8 @@
     font-weight: 600;
     cursor: pointer;
 }
-.edit-attendees-btn:hover {
+.edit-attendees-btn:hover,
+.sort-attendees-btn:hover {
     background: #be123c;
     border-color: #be123c;
 }

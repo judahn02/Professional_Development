@@ -500,7 +500,29 @@ Inline handlers exposed for legacy markup
       const actions = document.createElement('div');
       actions.className = 'attendee-actions';
 
-      // New: Edit Session button (to the left)
+      // Sort button: toggle attendee list sort between first-name ('name') and last-name ('last')
+      const sortBtn = document.createElement('button');
+      sortBtn.type = 'button';
+      sortBtn.className = 'sort-attendees-btn';
+      sortBtn.textContent = 'Sort';
+      sortBtn.addEventListener('click', () => {
+        try {
+          const Table = window.PDSessionsTable;
+          if (!Table ||
+              typeof Table.getAttendeeSort !== 'function' ||
+              typeof Table.setAttendeeSort !== 'function' ||
+              typeof Table.refreshVisibleAttendees !== 'function') {
+            return;
+          }
+          const current = Table.getAttendeeSort();
+          const next = current === 'last' ? 'name' : 'last';
+          Table.setAttendeeSort(next);
+          Table.refreshVisibleAttendees();
+        } catch (_) {}
+      });
+      actions.appendChild(sortBtn);
+
+      // Edit Session button
       const editSessionBtn = document.createElement('button');
       editSessionBtn.type = 'button';
       editSessionBtn.className = 'edit-session-btn';
