@@ -44,8 +44,18 @@ add_action( 'rest_api_init', function () {
                     'type'        => 'integer',
                     'required'    => false,
                 ],
+                'attendee' => [
+                    'description' => 'Optional filter: when provided (0 or 1), restrict to rows where attendee matches this value.',
+                    'type'        => 'integer',
+                    'required'    => false,
+                ],
+                'presenter' => [
+                    'description' => 'Optional filter: when provided (0 or 1), restrict to rows where presenter matches this value.',
+                    'type'        => 'integer',
+                    'required'    => false,
+                ],
                 'only_attendees_non_presenters' => [
-                    'description' => 'When truthy, restrict to rows where attendee=1 AND presenter=0.',
+                    'description' => 'Deprecated. When truthy (and attendee/presenter are not provided), restrict to rows where attendee=1 AND presenter=0.',
                     'type'        => 'boolean',
                     'required'    => false,
                 ],
@@ -70,10 +80,26 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
         return new \WP_Error( 'bad_param', 'search_p contained no valid characters after sanitization.', [ 'status' => 400 ] );
     }
 
-    $limit_in     = (int) $request->get_param( 'limit' );
-    $limit        = ( $limit_in > 0 && $limit_in <= 1000 ) ? $limit_in : 200;
-    $only_att_np  = $request->get_param( 'only_attendees_non_presenters' );
-    $only_att_np  = ! empty( $only_att_np );
+    $limit_in = (int) $request->get_param( 'limit' );
+    $limit    = ( $limit_in > 0 && $limit_in <= 1000 ) ? $limit_in : 200;
+
+    // Optional attendee/presenter filters: allow callers to explicitly control which
+    // person records are searched. Values should be 0 or 1 when provided.
+    $attendee_filter   = $request->get_param( 'attendee' );
+    $presenter_filter  = $request->get_param( 'presenter' );
+    $only_att_np_raw   = $request->get_param( 'only_attendees_non_presenters' );
+    $only_att_np       = ! empty( $only_att_np_raw );
+
+    $attendee_filter  = ( $attendee_filter !== null && $attendee_filter !== '' ) ? (int) $attendee_filter : null;
+    $presenter_filter = ( $presenter_filter !== null && $presenter_filter !== '' ) ? (int) $presenter_filter : null;
+
+    // Backwards compatibility: if the deprecated only_attendees_non_presenters flag is set
+    // and no explicit attendee/presenter filters were supplied, apply the original
+    // attendee=1 AND presenter=0 constraint.
+    if ( $only_att_np && $attendee_filter === null && $presenter_filter === null ) {
+        $attendee_filter  = 1;
+        $presenter_filter = 0;
+    }
 
     // 2) Build SQL against {schema}.person using CONCAT_WS(first_name, last_name) as name.
     // Use LIKE with backslash-escaped pattern; omit ESCAPE clause for broader MySQL/MariaDB compatibility.
@@ -90,14 +116,16 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Note: the members table is now beta_2.person; we derive a full name from first_name/last_name.
-    // Always restrict to attendee = 1; optionally further restrict to non-presenters.
+    // Base condition: search by name; optional attendee/presenter filters are appended below.
     $where = '(CONCAT_WS(" ", A.first_name, A.last_name) LIKE ' . $pattern_lit
            . ' OR CONCAT_WS(" ", A.first_name, A.last_name) IS NULL '
-           . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "")'
-           . ' AND A.attendee = 1';
+           . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "")';
 
-    if ( $only_att_np ) {
-        $where .= ' AND A.presenter = 0';
+    if ( $attendee_filter !== null ) {
+        $where .= ' AND A.attendee = ' . (int) $attendee_filter;
+    }
+    if ( $presenter_filter !== null ) {
+        $where .= ' AND A.presenter = ' . (int) $presenter_filter;
     }
 
     $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';

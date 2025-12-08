@@ -26,7 +26,8 @@
     const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
     const route = (window.PDSessions && window.PDSessions.sessionsRoute10 || 'sessionhome10').replace(/^\/+/, '');
     const q = encodeURIComponent(term);
-    return `${root}/${route}?search_p=${q}&limit=${encodeURIComponent(limit)}`;
+    // For the attendance modal, restrict search to attendee records (attendee = 1).
+    return `${root}/${route}?search_p=${q}&limit=${encodeURIComponent(limit)}&attendee=1`;
   }
 
   function getBatchSaveUrl() {

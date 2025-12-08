@@ -266,7 +266,8 @@ async function searchAttendeesForPresenters(term) {
 
   const root = getPresentersRestRoot();
   const q = encodeURIComponent(cleaned);
-  const url = `${root}/sessionhome10?search_p=${q}&limit=20&only_attendees_non_presenters=1`;
+  // For the presenters table helper, restrict search to presenter records (presenter = 1).
+  const url = `${root}/sessionhome10?search_p=${q}&limit=20&presenter=1`;
 
   const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || {};
   const headers = { 'Accept': 'application/json' };
