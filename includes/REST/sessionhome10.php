@@ -90,12 +90,14 @@ function aslta_get_members_names_check( WP_REST_Request $request ) {
 
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Note: the members table is now beta_2.person; we derive a full name from first_name/last_name.
+    // Always restrict to attendee = 1; optionally further restrict to non-presenters.
     $where = '(CONCAT_WS(" ", A.first_name, A.last_name) LIKE ' . $pattern_lit
            . ' OR CONCAT_WS(" ", A.first_name, A.last_name) IS NULL '
-           . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "")';
+           . ' OR TRIM(CONCAT_WS(" ", A.first_name, A.last_name)) = "")'
+           . ' AND A.attendee = 1';
 
     if ( $only_att_np ) {
-        $where .= ' AND A.attendee = 1 AND A.presenter = 0';
+        $where .= ' AND A.presenter = 0';
     }
 
     $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
