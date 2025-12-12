@@ -26,7 +26,7 @@ function PD_members_table_admin_page() {
         <!-- Controls Section -->
         <div class="controls-section">
           <div class="search-container">
-            <input type="text" class="search-input" placeholder="Search by... name/title/type" id="searchInput"
+            <input type="text" class="search-input" placeholder="Search by... name/email/phone/wp id" id="searchInput"
                    oninput="filterMembers()">
           </div>
           <button class="add-member-btn" onclick="openAddMemberModal()">
@@ -39,6 +39,9 @@ function PD_members_table_admin_page() {
           </button>
         </div>
 
+        <!-- Pager (top) -->
+        <div id="membersPagerTop" class="sessions-pager" aria-label="Pagination controls (top)"></div>
+
         <!-- Attendees Table -->
         <div class="table-container">
           <table class="table">
@@ -47,7 +50,7 @@ function PD_members_table_admin_page() {
                 <th onclick="sortMembers('firstname')" style="cursor:pointer;">First Name <span id="sort-arrow-firstname"></span></th>
                 <th onclick="sortMembers('lastname')"  style="cursor:pointer;">Last Name <span id="sort-arrow-lastname"></span></th>
                 <th onclick="sortMembers('email')"     style="cursor:pointer;">Email <span id="sort-arrow-email"></span></th>
-                <th onclick="sortMembers('id')"        style="cursor:pointer;">ARMember ID <span id="sort-arrow-id"></span></th>
+                <th>ARMember ID</th>
                 <th onclick="sortMembers('totalHours')"style="cursor:pointer;">Total Hours <span id="sort-arrow-totalHours"></span></th>
                 <th onclick="sortMembers('totalCEUs')" style="cursor:pointer;">Total CEUs  <span id="sort-arrow-totalCEUs"></span></th>
               </tr>
@@ -57,6 +60,9 @@ function PD_members_table_admin_page() {
             </tbody>
             </table>
         </div>
+
+        <!-- Pager (bottom) -->
+        <div id="membersPager" class="sessions-pager" aria-label="Pagination controls (bottom)"></div>
       </div>
     </div>
 

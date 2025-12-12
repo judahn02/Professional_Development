@@ -72,6 +72,8 @@ Inline handlers exposed for legacy markup
     currentPage: 1,
     perPage: 25,
     _lastFetchCount: 0,
+    _totalPagesAll: null, // from /sessions/ct, only used when unfiltered
+    _totalPagesSearch: null, // from /sessions/ct?q=..., used when searching
     _headersBound: false,
     // Live search state
     searchTerm: '',
@@ -92,6 +94,35 @@ Inline handlers exposed for legacy markup
       const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
       const route = (window.PDSessions && window.PDSessions.sessionsRoute || '').replace(/^\/+/, '');
       return `${root}/${route}`;
+    },
+
+    getSessionsCountUrl(q) {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsCountRoute || 'sessions/ct').replace(/^\/+/, '');
+      const per = (this.perPage > 0 ? this.perPage : 25);
+      const params = new URLSearchParams();
+      params.set('per_page', String(per));
+      const term = (q || '').toString().trim();
+      if (term) params.set('q', term);
+      return `${root}/${route}?${params.toString()}`;
+    },
+
+    async fetchSessionsTotalPages(q) {
+      const url = this.getSessionsCountUrl(q);
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => null);
+      const tp = data && data.total_pages != null ? Number(data.total_pages) : null;
+      if (!Number.isFinite(tp) || tp <= 0) return null;
+      return Math.floor(tp);
     },
 
     getAttendeesUrl(id) {
@@ -1009,6 +1040,19 @@ Inline handlers exposed for legacy markup
         this._searchTimer = null;
         // Reset to first page on new search and fetch server-side
         this.currentPage = 1;
+        const term = (this.searchTerm || '').toString().trim();
+        if (term) {
+          this.fetchSessionsTotalPages(term)
+            .then(tp => { this._totalPagesSearch = tp; })
+            .catch(() => { this._totalPagesSearch = null; });
+        } else {
+          this._totalPagesSearch = null;
+          if (!Number.isFinite(this._totalPagesAll)) {
+            this.fetchSessionsTotalPages('')
+              .then(tp => { this._totalPagesAll = tp; })
+              .catch(() => { this._totalPagesAll = null; });
+          }
+        }
         this.reloadSessionsFromServer();
       }, 500); // 0.5s debounce
     },
@@ -1123,7 +1167,13 @@ Inline handlers exposed for legacy markup
 
     // ----- Pagination UI -----
     renderPager() {
-      const canNext = this._lastFetchCount >= this.perPage && this.perPage > 0;
+      const hasSearch = (this.searchTerm || '').toString().trim() !== '';
+      const totalPages = hasSearch
+        ? (Number.isFinite(this._totalPagesSearch) ? this._totalPagesSearch : null)
+        : (Number.isFinite(this._totalPagesAll) ? this._totalPagesAll : null);
+      const canNext = totalPages !== null
+        ? this.currentPage < totalPages
+        : (this._lastFetchCount >= this.perPage && this.perPage > 0);
 
       const ensurePager = (id, insertPosition) => {
         let el = document.getElementById(id);
@@ -1172,7 +1222,9 @@ Inline handlers exposed for legacy markup
 
         const label = document.createElement('span');
         label.id = `sessionsPager${suffix}Label`;
-        label.textContent = `Page ${this.currentPage}`;
+        label.textContent = totalPages !== null
+          ? `Page ${this.currentPage} of ${totalPages}`
+          : `Page ${this.currentPage}`;
         el.appendChild(label);
 
         const next = mkBtn(`sessionsPager${suffix}Next`, 'Next');
@@ -1191,7 +1243,13 @@ Inline handlers exposed for legacy markup
     },
 
     nextPage() {
-      const canNext = this._lastFetchCount >= this.perPage && this.perPage > 0;
+      const hasSearch = (this.searchTerm || '').toString().trim() !== '';
+      const totalPages = hasSearch
+        ? (Number.isFinite(this._totalPagesSearch) ? this._totalPagesSearch : null)
+        : (Number.isFinite(this._totalPagesAll) ? this._totalPagesAll : null);
+      const canNext = totalPages !== null
+        ? this.currentPage < totalPages
+        : (this._lastFetchCount >= this.perPage && this.perPage > 0);
       if (!canNext) return;
       this.currentPage += 1;
       this.reloadSessionsFromServer();
@@ -1678,6 +1736,11 @@ Inline handlers exposed for legacy markup
 
     async init() {
       try {
+        try {
+          this._totalPagesAll = await this.fetchSessionsTotalPages('');
+        } catch (_) {
+          this._totalPagesAll = null;
+        }
         const rows = await this.fetchSessions();
         this._lastFetchCount = Array.isArray(rows) ? rows.length : 0;
         this.rawRows = Array.isArray(rows) ? rows.slice() : [];

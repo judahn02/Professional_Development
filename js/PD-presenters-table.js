@@ -2,6 +2,7 @@ let presenterSortKey = 'name';
 let presenterSortAsc = true;
 let presentersCurrentPage = 1;
 let presentersPerPage = 25;
+let presentersTotalCount = null; // from /presenters/ct
 const presenterSessionsCache = new Map(); // id -> { items, at }
 let attendeeSearchState = { timer: null, selectedId: null, results: [] };
 let presenterLinkWpState = { personId: null, currentWpId: null, selectedWpId: null };
@@ -137,13 +138,50 @@ async function fillPresenters({ debug = true } = {}) {
   }
 }
 
+async function fetchPresentersTotalCount({ debug = true } = {}) {
+  const log = (...args) => debug && console.log('[presentersCount]', ...args);
+  const warn = (...args) => debug && console.warn('[presentersCount]', ...args);
+
+  const cfg = (typeof PDPresenters !== 'undefined' && PDPresenters) || null;
+  if (!cfg) return null;
+
+  const base = String(cfg.countRoot || cfg.listRoot || cfg.root || '/wp-json/profdef/v2/').replace(/\/+$/, '');
+  const route = String(cfg.countRoute || 'presenters/ct').replace(/^\/+/, '');
+  const url = base + '/' + route;
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-WP-Nonce': cfg.nonce || '' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    const raw = await res.text();
+    let data; try { data = JSON.parse(raw); } catch { data = null; }
+    if (!res.ok) {
+      warn('Non-OK count response', res.status, data || raw);
+      return null;
+    }
+    const ct = data && typeof data.count === 'number' ? data.count : parseInt(data && data.count, 10);
+    if (!Number.isFinite(ct)) return null;
+    log('count:', ct);
+    return ct;
+  } catch (e) {
+    warn('Count fetch failed', e);
+    return null;
+  }
+}
+
 // No splitName needed; view provides full name
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
+    fetchPresentersTotalCount({ debug: false })
+      .then((ct) => { presentersTotalCount = ct; })
+      .catch(() => {});
+
     fillPresenters().then(() => {
-        renderPresenters();
-        setupTopScrollbar();
+      renderPresenters();
+      setupTopScrollbar();
     }).catch(console.error);
 });
 
@@ -599,7 +637,13 @@ function renderPresentersPager(total) {
       return b;
     };
     const prev = mkBtn('presentersPagerPrev', 'Prev', !canPrev, () => { if (presentersCurrentPage>1){ presentersCurrentPage--; renderPresenters(); }});
-    const label = document.createElement('span'); label.textContent = `Page ${presentersCurrentPage}`; label.style.minWidth = '6ch'; label.style.textAlign = 'center'; label.style.color = '#6b7280'; label.style.fontWeight = '600';
+    const labelTotal = (() => {
+      const hasFilter = Array.isArray(window.filteredPresenters) && window.filteredPresenters.length > 0;
+      if (!hasFilter && Number.isFinite(presentersTotalCount) && presentersTotalCount >= 0) return presentersTotalCount;
+      return total || 0;
+    })();
+    const totalPages = Math.max(1, Math.ceil((labelTotal || 0) / presentersPerPage));
+    const label = document.createElement('span'); label.textContent = `Page ${presentersCurrentPage} of ${totalPages}`; label.style.minWidth = '10ch'; label.style.textAlign = 'center'; label.style.color = '#6b7280'; label.style.fontWeight = '600';
     const next = mkBtn('presentersPagerNext', 'Next', !canNext, () => { if (canNext){ presentersCurrentPage++; renderPresenters(); }});
     el.appendChild(prev); el.appendChild(label); el.appendChild(next);
   };

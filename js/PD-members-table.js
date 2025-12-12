@@ -1,11 +1,18 @@
 // Simple, unified implementation for the Members table
-// - Fetches member rows (identity + totals) via REST (`/wp-json/profdef/v2/membershome`)
-// - Supports sorting, filtering, CSV export, and navigation to member profile
+// - Fetches paged member rows (identity + totals) via REST (`/wp-json/profdef/v2/attendees_table`)
+// - Server-driven sorting, searching, and pagination
+// - Navigation to member profile + WP account linking
 
-let memberSortKey = 'id';
+let memberSortKey = 'lastname';
 let memberSortAsc = true;
 let members = [];
 let filteredMembers = [];
+let membersCurrentPage = 1;
+let membersPerPage = 20;
+let membersTotalPages = 1;
+let membersTotalCount = 0;
+let membersSearchTerm = '';
+let membersSearchTimer = null;
 let presenterSearchState = { timer: null, selectedId: null, results: [] };
 let linkWpState = { personId: null, currentWpId: null, selectedWpId: null };
 
@@ -38,7 +45,7 @@ function getRestRoot() {
 }
 
 function updateMemberSortArrows() {
-  const keys = ['firstname','lastname','email','id','totalHours','totalCEUs'];
+  const keys = ['firstname','lastname','email','totalHours','totalCEUs'];
   keys.forEach(k => {
     const el = document.getElementById('sort-arrow-' + k);
     if (!el) return;
@@ -106,45 +113,20 @@ function renderMembers() {
 }
 
 function sortMembers(key) {
-  if (memberSortKey === key) {
-    memberSortAsc = !memberSortAsc;
-  } else {
-    memberSortKey = key;
-    memberSortAsc = true;
-  }
+  if (memberSortKey === key) memberSortAsc = !memberSortAsc;
+  else { memberSortKey = key; memberSortAsc = true; }
 
-  const dir = memberSortAsc ? 1 : -1;
-
-  filteredMembers.sort((a, b) => {
-    if (key === 'id') return (num(a.id) - num(b.id)) * dir;
-    if (key === 'totalHours') return (getTotalHours(a) - getTotalHours(b)) * dir;
-    if (key === 'totalCEUs') return (getTotalCEUs(a) - getTotalCEUs(b)) * dir;
-
-    const valA = String(a[key] ?? '').toLowerCase();
-    const valB = String(b[key] ?? '').toLowerCase();
-    return valA.localeCompare(valB) * dir;
-  });
-
+  membersCurrentPage = 1;
   updateMemberSortArrows();
-  renderMembers();
+  loadAndRenderMembers();
 }
 
 function filterMembers() {
   const el = document.getElementById('searchInput');
-  const term = (el ? el.value : '').toLowerCase();
-
-  filteredMembers = members.filter(m =>
-    (m.firstname && m.firstname.toLowerCase().includes(term)) ||
-    (m.lastname && m.lastname.toLowerCase().includes(term)) ||
-    (m.email && m.email.toLowerCase().includes(term)) ||
-    (m.members_id != null && String(m.members_id).toLowerCase().includes(term)) ||
-    (m.member_id  != null && String(m.member_id).toLowerCase().includes(term)) ||
-    (m.person_id  != null && String(m.person_id).toLowerCase().includes(term)) ||
-    (m.id         != null && String(m.id).toLowerCase().includes(term)) ||
-    ((m.members_id == null && m.member_id == null && m.person_id == null && !m.id) && 'not linked'.includes(term))
-  );
-
-  renderMembers();
+  membersSearchTerm = String(el ? el.value : '').trim();
+  membersCurrentPage = 1;
+  if (membersSearchTimer) clearTimeout(membersSearchTimer);
+  membersSearchTimer = setTimeout(() => loadAndRenderMembers(), 250);
 }
 
 function goToMemberProfile(id) {
@@ -885,7 +867,7 @@ function normalizeMembersFromRest(totalRows) {
 }
 
 async function fetchTotals() {
-  // Use REST API to request totals (and identity data) for all members.
+  // Backward-compat helper retained (no longer used by default).
   const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
   const root = String(cfg.restRoot || '/wp-json/profdef/v2/').replace(/\/+$/, '');
   const url = `${root}/membershome`;
@@ -897,11 +879,84 @@ async function fetchTotals() {
   return normalizeMembersFromRest(data);
 }
 
+async function fetchMembersPage() {
+  const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+  const root = String(cfg.restRoot || '/wp-json/profdef/v2/').replace(/\/+$/, '');
+  const route = String(cfg.attendeesRoute || 'attendees_table').replace(/^\/+/, '');
+  const url = new URL(root + '/' + route, window.location.origin);
+
+  url.searchParams.set('page', String(membersCurrentPage));
+  url.searchParams.set('per_page', String(membersPerPage));
+  if (membersSearchTerm) url.searchParams.set('q', membersSearchTerm);
+  url.searchParams.set('sort', memberSortKey);
+  url.searchParams.set('dir', memberSortAsc ? 'asc' : 'desc');
+
+  const headers = {};
+  if (cfg.restNonce) headers['X-WP-Nonce'] = cfg.restNonce;
+
+  const res = await fetch(url.toString(), { credentials: 'same-origin', headers, cache: 'no-store' });
+  const raw = await res.text();
+  let data; try { data = JSON.parse(raw); } catch { data = null; }
+  if (!res.ok) {
+    const msg = data && data.message ? data.message : 'Failed to load members.';
+    throw new Error(msg);
+  }
+
+  const rows = data && Array.isArray(data.rows) ? data.rows : [];
+  return {
+    rows: normalizeMembersFromRest(rows),
+    page: Number(data.page) || membersCurrentPage,
+    per_page: Number(data.per_page) || membersPerPage,
+    total_pages: Number(data.total_pages) || 1,
+    total_count: Number(data.total_count) || 0,
+  };
+}
+
+function renderMembersPager() {
+  const make = (el) => {
+    el.innerHTML = '';
+    const mkBtn = (id, label, disabled, onClick) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = id; b.textContent = label; b.className = 'pager-btn';
+      b.disabled = !!disabled; b.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      b.style.padding = '6px 10px'; b.style.border = '1px solid #e5e7eb'; b.style.background = '#ffffff'; b.style.cursor = 'pointer'; b.style.borderRadius = '4px';
+      b.addEventListener('click', onClick);
+      return b;
+    };
+
+    const canPrev = membersCurrentPage > 1;
+    const canNext = membersCurrentPage < (membersTotalPages || 1);
+    const prev = mkBtn('membersPagerPrev', 'Prev', !canPrev, () => { if (membersCurrentPage > 1) { membersCurrentPage--; loadAndRenderMembers(); }});
+    const label = document.createElement('span');
+    label.textContent = `Page ${membersCurrentPage} of ${membersTotalPages || 1}`;
+    label.style.minWidth = '10ch';
+    label.style.textAlign = 'center';
+    label.style.color = '#6b7280';
+    label.style.fontWeight = '600';
+    const next = mkBtn('membersPagerNext', 'Next', !canNext, () => { if (membersCurrentPage < membersTotalPages) { membersCurrentPage++; loadAndRenderMembers(); }});
+    el.appendChild(prev); el.appendChild(label); el.appendChild(next);
+  };
+
+  const top = document.getElementById('membersPagerTop'); if (top) make(top);
+  const bot = document.getElementById('membersPager'); if (bot) make(bot);
+}
+
 async function loadAndRenderMembers() {
   try {
-    members = await fetchTotals();
-    filteredMembers = members.slice();
-    sortMembers('id'); // sets arrows + renders
+    const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+    if (cfg && cfg.perPage && Number(cfg.perPage) > 0) membersPerPage = Number(cfg.perPage);
+
+    const result = await fetchMembersPage();
+    members = result.rows;
+    filteredMembers = members.slice(); // rendered list only (already server-filtered)
+    membersCurrentPage = result.page;
+    membersPerPage = result.per_page;
+    membersTotalPages = result.total_pages;
+    membersTotalCount = result.total_count;
+
+    updateMemberSortArrows();
+    renderMembers();
+    renderMembersPager();
   } catch (e) {
     console.error(e);
     const tbody = document.getElementById('MembersTableBody');

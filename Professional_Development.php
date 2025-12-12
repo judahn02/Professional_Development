@@ -40,6 +40,10 @@ require_once $plugin_dir . 'includes/REST/sessionhome9.php';
 require_once $plugin_dir . 'includes/REST/sessionhome11.php';
 require_once $plugin_dir . 'includes/REST/sessionhome10.php';
 require_once $plugin_dir . 'includes/REST/GET_presenters_table.php';
+require_once $plugin_dir . 'includes/REST/GET_presenter_table_count.php';
+require_once $plugin_dir . 'includes/REST/GET_attendee_table_count.php';
+require_once $plugin_dir . 'includes/REST/GET_attendees_table.php';
+require_once $plugin_dir . 'includes/REST/GET_session_table_count.php';
 require_once $plugin_dir . 'includes/REST/POST_presenter.php';
 require_once $plugin_dir . 'includes/REST/POST_attendee.php';
 require_once $plugin_dir . 'includes/REST/GET_presenter_sessions.php';
@@ -254,7 +258,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-members-table-js',
             plugin_dir_url(__FILE__) . 'js/PD-members-table.js',
             array('jquery'),
-            '0.34',
+            '0.35',
             true
         );
 
@@ -266,6 +270,9 @@ function slug_specific_admin_js_loader($hook) {
                 'nonce'     => wp_create_nonce('pd_members_nonce'),
                 'restRoot'  => esc_url_raw( rest_url( 'profdef/v2/' ) ),
                 'restNonce' => wp_create_nonce( 'wp_rest' ),
+                'attendeesCountRoute' => 'attendees/ct',
+                'attendeesRoute' => 'attendees_table',
+                'perPage' => 20,
             )
         );
     }
@@ -276,7 +283,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-utils-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-utils.js',
             array(),
-            '0.18',
+            '0.19',
             true
         );
 
@@ -285,7 +292,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-modal-js',
             plugin_dir_url(__FILE__) . 'js/PD-sessions-modal.js',
             array('jquery', 'PD-admin-sessions-utils-js'),
-            '0.17',
+            '0.18',
             true
         );
 
@@ -293,7 +300,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-sessions-table-js',
             plugin_dir_url( __FILE__) . 'js/PD-sessions-table.js',
             array('jquery', 'PD-admin-sessions-utils-js', 'PD-admin-sessions-modal-js'),
-            '0.738',
+            '0.740',
             true
         );
 
@@ -325,6 +332,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute11' => 'sessionhome11',
                 'sessionsRoutePut' => 'session',
                 'sessionsRoutePresenters' => 'session/presenters',
+                'sessionsCountRoute' => 'sessions/ct',
                 'nonce'          => wp_create_nonce( 'wp_rest' ),
                 'detailPageBase' => admin_url( 'admin.php?page=profdef_session_page' ),
                 'attendeeTTLms'  => 15000
@@ -340,7 +348,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-presenters-table-js',
             plugins_url('js/PD-presenters-table.js', __FILE__),
             [], // no jquery needed
-            36,
+            37,
             true
         );
 
@@ -359,6 +367,9 @@ function slug_specific_admin_js_loader($hook) {
                 'postRoute'=> 'presenter',
                 // v2 presenter sessions endpoint for Details
                 'presenterSessionsRoute' => 'presenter/sessions',
+                // v2 count endpoint for pagination labels
+                'countRoot' => esc_url_raw( rest_url('profdef/v2/') ),
+                'countRoute'=> 'presenters/ct',
                 'nonce' => wp_create_nonce('wp_rest'),
             ]
         );
