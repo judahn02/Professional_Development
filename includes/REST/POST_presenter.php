@@ -62,6 +62,25 @@ function pd_post_presenter_sql_quote( ?string $value ): string {
     return '\'' . $escaped . '\'';
 }
 
+/**
+ * Turn a decoded aslta response into a list of rows for inspection.
+ *
+ * @param mixed $decoded Parsed JSON from a signed query response.
+ * @return array<int, mixed> Row arrays.
+ */
+function pd_post_presenter_extract_rows( $decoded ): array {
+    if ( is_array( $decoded ) ) {
+        if ( isset( $decoded['rows'] ) && is_array( $decoded['rows'] ) ) {
+            return $decoded['rows'];
+        }
+        if ( array_keys( $decoded ) === range( 0, count( $decoded ) - 1 ) ) {
+            return $decoded;
+        }
+        return [ $decoded ];
+    }
+    return [];
+}
+
 function pd_post_presenter_create( WP_REST_Request $req ) {
     $json = (array) $req->get_json_params();
 
@@ -165,6 +184,48 @@ function pd_post_presenter_create( WP_REST_Request $req ) {
                 'Signed query helper is not available.',
                 [ 'status' => 500 ]
             );
+        }
+
+        if ( $email !== null ) {
+            $lookup_sql = sprintf(
+                'CALL %s.GET_Email_Lookup(%s);',
+                $schema,
+                pd_post_presenter_sql_quote( $email )
+            );
+
+            $lookup_result = aslta_signed_query( $lookup_sql );
+            if ( $lookup_result['status'] < 200 || $lookup_result['status'] >= 300 ) {
+                return new WP_Error(
+                    'aslta_email_lookup_http_error',
+                    'Remote email lookup endpoint returned an HTTP error.',
+                    [
+                        'status' => 500,
+                        'debug'  => ( WP_DEBUG ? [ 'http_code' => $lookup_result['status'], 'body' => $lookup_result['body'] ] : null ),
+                    ]
+                );
+            }
+
+            $decoded_lookup = json_decode( (string) ( $lookup_result['body'] ?? '' ), true );
+            if ( json_last_error() !== JSON_ERROR_NONE ) {
+                return new WP_Error(
+                    'aslta_email_lookup_json_error',
+                    'Failed to decode email lookup response.',
+                    [
+                        'status' => 500,
+                        'debug'  => ( WP_DEBUG ? json_last_error_msg() : null ),
+                    ]
+                );
+            }
+
+            foreach ( pd_post_presenter_extract_rows( $decoded_lookup ) as $row ) {
+                if ( is_array( $row ) && array_key_exists( 'id', $row ) ) {
+                    return new WP_Error(
+                        'email_already_used',
+                        'The email is already used.',
+                        [ 'status' => 400 ]
+                    );
+                }
+            }
         }
 
         $result = aslta_signed_query( $sql );
@@ -274,84 +335,4 @@ function pd_post_presenter_create( WP_REST_Request $req ) {
         ],
         201
     );
-
-    /*
-     * Previous implementation (direct MySQL connection and stored procedure call)
-     * kept for reference. This has been replaced by the signed remote API
-     * connection wired through admin/skeleton2.php (aslta_signed_query()).
-     *
-     * // 1) Decrypt external DB creds
-     * $host = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_host', '' ) );
-     * $dbname = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_name', '' ) );
-     * $user = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_user', '' ) );
-     * $pass = ProfessionalDevelopment_decrypt( get_option( 'ProfessionalDevelopment_db_pass', '' ) );
-     * if ( ! $host || ! $dbname || ! $user ) {
-     *     return new WP_Error( 'profdef_db_creds_missing', 'Database credentials are not configured.', [ 'status' => 500 ] );
-     * }
-     *
-     * // 2) Connect and call stored procedure
-     * $conn = @new mysqli( $host, $user, $pass, $dbname );
-     * if ( $conn->connect_error ) {
-     *     return new WP_Error( 'mysql_not_connect', 'Database connection failed.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->connect_error : null ) ] );
-     * }
-     * $conn->set_charset( 'utf8mb4' );
-     *
-     * $stmt = $conn->prepare( 'CALL Test_Database.POST_presenter(?, ?, ?, @new_id)' );
-     * if ( ! $stmt ) {
-     *     $conn->close();
-     *     return new WP_Error( 'profdef_prepare_failed', 'Failed to prepare stored procedure.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $conn->error : null ) ] );
-     * }
-     * // bind NULLs allowed
-     * $stmt->bind_param( 'sss', $name, $email, $phone );
-     * if ( ! $stmt->execute() ) {
-     *     $err = $stmt->error ?: $conn->error;
-     *     $stmt->close();
-     *     $conn->close();
-     *     if ( strpos( (string) $err, 'POST_presenter: name is required' ) !== false ) {
-     *         return new WP_Error( 'bad_request', 'Presenter name is required.', [ 'status' => 400 ] );
-     *     }
-     *     return new WP_Error( 'profdef_execute_failed', 'Failed to execute stored procedure.', [ 'status' => 500, 'debug' => ( WP_DEBUG ? $err : null ) ] );
-     * }
-     *
-     * // First result set should contain the selected payload
-     * $new_id = 0; $out = [ 'name' => $name, 'email' => $email, 'phone_number' => $phone ];
-     * if ( $result = $stmt->get_result() ) {
-     *     if ( $row = $result->fetch_assoc() ) {
-     *         $new_id = isset( $row['idPresentor'] ) ? (int) $row['idPresentor'] : 0;
-     *         $out['name'] = isset( $row['name'] ) ? (string) $row['name'] : $out['name'];
-     *         $out['email'] = isset( $row['email'] ) ? ( $row['email'] === '' ? null : (string) $row['email'] ) : $out['email'];
-     *         $out['phone_number'] = isset( $row['phone_number'] ) ? ( $row['phone_number'] === '' ? null : (string) $row['phone_number'] ) : $out['phone_number'];
-     *     }
-     *     $result->free();
-     * }
-     * // Drain any extra results
-     * while ( $stmt->more_results() && $stmt->next_result() ) {
-     *     if ( $extra = $stmt->get_result() ) { $extra->free(); }
-     * }
-     * $stmt->close();
-     *
-     * if ( $new_id <= 0 ) {
-     *     // Fallback to OUT var
-     *     if ( $res = $conn->query( 'SELECT @new_id AS id' ) ) {
-     *         if ( $r = $res->fetch_assoc() ) {
-     *             $new_id = isset( $r['id'] ) ? (int) $r['id'] : 0;
-     *         }
-     *         $res->free();
-     *     }
-     * }
-     *
-     * $conn->close();
-     *
-     * if ( $new_id <= 0 ) {
-     *     return new WP_Error( 'profdef_no_id', 'Did not receive a new presenter id.', [ 'status' => 500 ] );
-     * }
-     *
-     * return new WP_REST_Response( [
-     *     'success'      => true,
-     *     'id'           => (int) $new_id,
-     *     'name'         => (string) $out['name'],
-     *     'email'        => $out['email'],      // may be null
-     *     'phone_number' => $out['phone_number'] // may be null
-     * ], 201 );
-     */
 }

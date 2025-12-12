@@ -677,7 +677,12 @@ document.getElementById('addPresenterForm').addEventListener('submit', async fun
     let data; try { data = JSON.parse(raw); } catch { data = { raw }; }
 
     if (!res.ok) {
-      if (res.status === 409) throw new Error('A presenter with this email already exists.');
+      // New REST error shape (WP_Error): { code, message, data: { status } }
+      if (data && data.code === 'email_already_used') {
+        throw new Error(data.message || 'The email is already used.');
+      }
+      // Backward-compat: older endpoint used 409 for duplicates
+      if (res.status === 409) throw new Error('The email is already used.');
       const msg = data && (data.message || data.raw) || `HTTP ${res.status}`;
       throw new Error('Could not save presenter. ' + msg);
     }

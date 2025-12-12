@@ -84,6 +84,25 @@ function pd_post_attendee_sql_quote( ?string $value ): string {
 }
 
 /**
+ * Turn a decoded aslta response into a list of rows for inspection.
+ *
+ * @param mixed $decoded Parsed JSON from a signed query result.
+ * @return array<int, mixed> Row arrays.
+ */
+function pd_post_attendee_extract_rows( $decoded ): array {
+    if ( is_array( $decoded ) ) {
+        if ( isset( $decoded['rows'] ) && is_array( $decoded['rows'] ) ) {
+            return $decoded['rows'];
+        }
+        if ( array_keys( $decoded ) === range( 0, count( $decoded ) - 1 ) ) {
+            return $decoded;
+        }
+        return [ $decoded ];
+    }
+    return [];
+}
+
+/**
  * Create attendee via beta_2.POST_attendee.
  *
  * Stored procedure signature:
@@ -191,6 +210,48 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
                 'Signed query helper is not available.',
                 [ 'status' => 500 ]
             );
+        }
+
+        if ( $email !== null ) {
+            $lookup_sql = sprintf(
+                'CALL %s.GET_Email_Lookup(%s);',
+                $schema,
+                pd_post_attendee_sql_quote( $email )
+            );
+
+            $lookup_result = aslta_signed_query( $lookup_sql );
+            if ( $lookup_result['status'] < 200 || $lookup_result['status'] >= 300 ) {
+                return new WP_Error(
+                    'aslta_email_lookup_http_error',
+                    'Remote email lookup endpoint returned an HTTP error.',
+                    [
+                        'status' => 500,
+                        'debug'  => ( WP_DEBUG ? [ 'http_code' => $lookup_result['status'], 'body' => $lookup_result['body'] ] : null ),
+                    ]
+                );
+            }
+
+            $decoded_lookup = json_decode( (string) ( $lookup_result['body'] ?? '' ), true );
+            if ( json_last_error() !== JSON_ERROR_NONE ) {
+                return new WP_Error(
+                    'aslta_email_lookup_json_error',
+                    'Failed to decode email lookup response.',
+                    [
+                        'status' => 500,
+                        'debug'  => ( WP_DEBUG ? json_last_error_msg() : null ),
+                    ]
+                );
+            }
+
+            foreach ( pd_post_attendee_extract_rows( $decoded_lookup ) as $row ) {
+                if ( is_array( $row ) && array_key_exists( 'id', $row ) ) {
+                    return new WP_Error(
+                        'email_already_used',
+                        'The email is already used.',
+                        [ 'status' => 400 ]
+                    );
+                }
+            }
         }
 
         $result = aslta_signed_query( $sql );
