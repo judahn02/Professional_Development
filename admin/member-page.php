@@ -105,6 +105,7 @@ function PD_member_admin_page() {
     $first_name   = isset($person_row['first_name']) ? trim((string) $person_row['first_name']) : '';
     $last_name    = isset($person_row['last_name']) ? trim((string) $person_row['last_name']) : '';
     $member_email = isset($person_row['email']) ? trim((string) $person_row['email']) : '';
+    $phone_number = isset($person_row['phone_number']) ? trim((string) $person_row['phone_number']) : '';
 
     $wp_user = null;
     if (isset($person_row['wp_id']) && (int) $person_row['wp_id'] > 0) {
@@ -147,7 +148,10 @@ function PD_member_admin_page() {
                         <div class="profile-name" id="profileName"><?php echo esc_html($display_name); ?></div>
                         <div class="profile-email" id="profileEmail"><?php echo esc_html($member_email); ?></div>
                     </div>
-                    <button type="button" class="btn admin-service-btn" style="margin-left:auto;" onclick="openMemberAdminServiceModal()">Administrative Service</button>
+                    <div class="profile-actions">
+                        <button type="button" class="btn" onclick="openEditPersonModal()">Edit Person</button>
+                        <button type="button" class="btn admin-service-btn" onclick="openMemberAdminServiceModal()">Administrative Service</button>
+                    </div>
                 </div>
 
                 <!-- Progress Summary -->
@@ -254,6 +258,49 @@ function PD_member_admin_page() {
             <button type="button" class="btn" onclick="saveMemberAdminService()">Save</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Edit Person modal (no save functionality yet) -->
+    <div class="modal-overlay" id="editPersonModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editPersonTitle">
+        <div class="modal-header">
+          <h2 class="modal-title" id="editPersonTitle">Edit Person</h2>
+          <button type="button" class="close-btn" aria-label="Close modal" onclick="closeEditPersonModal()">&times;</button>
+        </div>
+        <form id="editPersonForm" autocomplete="off" novalidate>
+          <div class="modal-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="editPersonFirstName">First Name</label>
+                <input type="text" class="form-input" id="editPersonFirstName" maxlength="45"
+                       value="<?php echo esc_attr($first_name); ?>">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="editPersonLastName">Last Name</label>
+                <input type="text" class="form-input" id="editPersonLastName" maxlength="45"
+                       value="<?php echo esc_attr($last_name); ?>">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="editPersonEmail">Email</label>
+                <input type="email" class="form-input" id="editPersonEmail" maxlength="254" autocomplete="email" inputmode="email"
+                       value="<?php echo esc_attr($member_email); ?>">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="editPersonPhone">Phone</label>
+                <input type="tel" class="form-input" id="editPersonPhone" maxlength="20" autocomplete="tel" inputmode="tel"
+                       value="<?php echo esc_attr($phone_number); ?>">
+              </div>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeEditPersonModal()">Cancel</button>
+            <button type="submit" class="btn" id="editPersonSaveBtn">Save</button>
+          </div>
+        </form>
       </div>
     </div>
 

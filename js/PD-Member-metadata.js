@@ -286,6 +286,139 @@ function closeMemberAdminServiceModal() {
   if (document._pdEscMemberService) { document.removeEventListener('keydown', document._pdEscMemberService); document._pdEscMemberService = null; }
 }
 
+// Edit Person modal (member page) - UI only for now
+function openEditPersonModal() {
+  const overlay = document.getElementById('editPersonModal');
+  if (!overlay) return;
+  overlay.classList.add('active');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  // Bind submit handler (edit attendee via REST)
+  try {
+    const form = overlay.querySelector('#editPersonForm');
+    if (form && !form._pdBound) {
+      form._pdBound = true;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const cfg = (typeof PDMembers !== 'undefined' && PDMembers) || {};
+        const root = String(cfg.root || '/wp-json/profdef/v2/').replace(/\/+$/, '');
+        const personId = Number(cfg.id || 0) || 0;
+        if (!personId) {
+          alert('Missing person id.');
+          return;
+        }
+
+        const first = (document.getElementById('editPersonFirstName')?.value || '').trim();
+        const last  = (document.getElementById('editPersonLastName')?.value || '').trim();
+        const email = (document.getElementById('editPersonEmail')?.value || '').trim();
+        const phone = (document.getElementById('editPersonPhone')?.value || '').trim();
+
+        if (!first && !last) {
+          renderEditPersonNotice('First name or last name is required.', 'error');
+          return;
+        }
+
+        const saveBtn = document.getElementById('editPersonSaveBtn');
+        const prevText = saveBtn ? saveBtn.textContent : '';
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+        try {
+          const res = await fetch(`${root}/attendee`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              ...(cfg.nonce ? { 'X-WP-Nonce': cfg.nonce } : {}),
+            },
+            body: JSON.stringify({
+              person_id: personId,
+              first_name: first,
+              last_name: last,
+              email,
+              phone
+            })
+          });
+
+          const raw = await res.text();
+          let data; try { data = JSON.parse(raw); } catch { data = { raw }; }
+
+          if (!res.ok) {
+            const msg = (data && data.message) ? data.message : 'Failed to save changes.';
+            renderEditPersonNotice(msg, 'error');
+            return;
+          }
+
+          renderEditPersonNotice('Saved.', 'success');
+
+          // Update profile header UI
+          const nameEl = document.getElementById('profileName');
+          const emailEl = document.getElementById('profileEmail');
+          const avatarEl = document.getElementById('profileAvatar');
+          const displayName = `${first} ${last}`.trim();
+          if (nameEl && displayName) nameEl.textContent = displayName;
+          if (emailEl) emailEl.textContent = email || (data && data.email) || '';
+          if (avatarEl) {
+            const initials = (displayName || (emailEl ? emailEl.textContent : '') || '')
+              .split(/\s+/).filter(Boolean).slice(0, 3).map(w => (w[0] || '').toUpperCase()).join('');
+            if (initials) avatarEl.textContent = initials;
+          }
+
+          setTimeout(() => closeEditPersonModal(), 250);
+        } catch (err) {
+          console.error(err);
+          renderEditPersonNotice('Unexpected error while saving.', 'error');
+        } finally {
+          if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = prevText || 'Save'; }
+        }
+      });
+    }
+  } catch (_) {}
+
+  const onOverlay = (e) => { if (e.target === overlay) closeEditPersonModal(); };
+  overlay._pdOverlayHandler && overlay.removeEventListener('click', overlay._pdOverlayHandler);
+  overlay._pdOverlayHandler = onOverlay;
+  overlay.addEventListener('click', onOverlay);
+
+  const onEsc = (ev) => { if (ev.key === 'Escape' || ev.key === 'Esc') closeEditPersonModal(); };
+  document._pdEscEditPerson && document.removeEventListener('keydown', document._pdEscEditPerson);
+  document._pdEscEditPerson = onEsc;
+  document.addEventListener('keydown', onEsc);
+
+  const first = document.getElementById('editPersonFirstName');
+  if (first) { try { first.focus(); } catch (_) {} }
+}
+
+function closeEditPersonModal() {
+  const overlay = document.getElementById('editPersonModal');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  try { renderEditPersonNotice('', 'clear'); } catch (_) {}
+  if (overlay._pdOverlayHandler) { overlay.removeEventListener('click', overlay._pdOverlayHandler); overlay._pdOverlayHandler = null; }
+  if (document._pdEscEditPerson) { document.removeEventListener('keydown', document._pdEscEditPerson); document._pdEscEditPerson = null; }
+}
+
+function renderEditPersonNotice(message, kind) {
+  const overlay = document.getElementById('editPersonModal');
+  if (!overlay) return;
+  const modal = overlay.querySelector('.modal');
+  if (!modal) return;
+
+  const existing = modal.querySelector('.pd-notice');
+  if (kind === 'clear' || !message) {
+    if (existing) existing.remove();
+    return;
+  }
+
+  const div = existing || document.createElement('div');
+  div.className = `pd-notice ${kind === 'success' ? 'pd-notice-success' : 'pd-notice-error'}`;
+  div.textContent = String(message);
+  if (!existing) modal.insertBefore(div, modal.firstChild.nextSibling);
+}
+
 function getMemberAdminServiceUrl() {
   const root = (typeof PDMembers !== 'undefined' && PDMembers.root) ? String(PDMembers.root).replace(/\/+$/, '') : '/wp-json/profdef/v2';
   const id = (typeof PDMembers !== 'undefined' && PDMembers.id != null) ? PDMembers.id : 0;

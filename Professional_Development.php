@@ -198,7 +198,7 @@ function slug_specific_admin_css_loader($hook) {
                 'PD-admin-member-page-css',
                 plugin_dir_url( __FILE__ ) . 'css/PD-admin-member.css',
                 array(),
-                '0.6',
+                '0.8',
                 'all'
             ) ;
         }
@@ -381,7 +381,7 @@ function slug_specific_admin_js_loader($hook) {
             'PD-admin-member-page-js',
             plugin_dir_url(__FILE__) . 'js/PD-Member-metadata.js',
             array('jquery'),
-            '0.31',
+            '0.33',
             true
         );
 

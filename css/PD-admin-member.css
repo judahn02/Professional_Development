@@ -16,6 +16,13 @@
     margin-bottom: 2rem;
 }
 
+.profile-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
 .profile-avatar {
     width: 90px;
     height: 90px;
@@ -150,6 +157,18 @@
     background: #be123c;
 }
 
+.btn:disabled,
+.btn[disabled] {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+.btn:disabled:hover,
+.btn[disabled]:hover {
+    background: #f3f4f6;
+}
+
 /* Small button variant for compact actions */
 .btn.sm, .btn.btn-sm {
     padding: 0.35rem 0.6rem;
@@ -282,12 +301,73 @@
     padding-bottom: 0.5rem;
     border-bottom: 2px solid #fee2e2;
 }
-.modal-title { font-size: 1.25rem; font-weight: 700; color: #e11d48; }
+.modal-title { font-size: 1.5rem; font-weight: 700; color: #e11d48; }
 .close-btn {
     background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;
     padding: 0.25rem 0.5rem; border-radius: 0.5rem; transition: all 0.2s ease;
 }
 .close-btn:hover { background: #f3f4f6; color: #374151; }
+
+/* Inline notices inside modals */
+.pd-notice {
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+.pd-notice-success {
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+.pd-notice-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+}
+
+/* Form controls (match admin table modals) */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    background: #fff;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
 
 /* Reuse attendees-table styles for empty layout */
 .attendees-table-wrap { max-width: 100%; margin: 0 auto 1rem auto; overflow-x: auto; }
@@ -303,6 +383,17 @@
     .profile-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .profile-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
     }
 
     .summary-row {

@@ -2,15 +2,16 @@
 /**
  * ProfDef REST: POST_attendee
  * Endpoint: POST /wp-json/profdef/v2/attendee
- * Purpose: Create an attendee/member via stored procedure beta_2.POST_attendee (signed API).
+ * Purpose: Create or update an attendee/member via stored procedure beta_2.POST_attendee (signed API).
  *
  * Accepts JSON (or form) params:
+ * - person_id  (int, optional; if present and >0, updates that person)
  * - first_name (string, optional but at least one of first_name/last_name required)
  * - last_name  (string, optional but at least one of first_name/last_name required)
  * - email      (string, optional; NULL allowed)
  * - phone      (string, optional; NULL allowed)
  *
- * Returns (201 on success):
+ * Returns (201 on create, 200 on update):
  * {
  *   "success": true,
  *   "id":        <int>,   // new member id
@@ -36,8 +37,9 @@ add_action( 'rest_api_init', function () {
             'permission_callback' => 'pd_presenters_permission', // reuse REST nonce + admin capability
             'callback'            => 'pd_post_attendee_create',
             'args'                => [
-                'first_name' => [ 'type' => 'string', 'required' => true ],
-                'last_name'  => [ 'type' => 'string', 'required' => true ],
+                'person_id'  => [ 'type' => 'integer', 'required' => false ],
+                'first_name' => [ 'type' => 'string', 'required' => false ],
+                'last_name'  => [ 'type' => 'string', 'required' => false ],
                 'email'      => [ 'type' => 'string', 'required' => false ],
                 'phone'      => [ 'type' => 'string', 'required' => false ],
             ],
@@ -118,10 +120,17 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
     $json = (array) $req->get_json_params();
 
     // Collect + sanitize inputs
+    $person_id_in = pd_post_attendee_get( $req, $json, [ 'person_id', 'id', 'personId' ], 0 );
     $first_in = pd_post_attendee_get( $req, $json, [ 'first_name', 'firstname' ], '' );
     $last_in  = pd_post_attendee_get( $req, $json, [ 'last_name', 'lastname' ], '' );
     $email_in = pd_post_attendee_get( $req, $json, [ 'email' ], '' );
     $phone_in = pd_post_attendee_get( $req, $json, [ 'phone', 'phone_number' ], '' );
+
+    $person_id = (int) $person_id_in;
+    if ( $person_id < 0 ) {
+        $person_id = 0;
+    }
+    $is_update = $person_id > 0;
 
     $first = sanitize_text_field( wp_unslash( (string) $first_in ) );
     $last  = sanitize_text_field( wp_unslash( (string) $last_in ) );
@@ -178,7 +187,17 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
         $phone = null;
     }
 
+    // Enforce stored proc validation semantics: need at least one name.
+    if ( $first === '' && $last === '' ) {
+        return new WP_Error(
+            'bad_request',
+            'First name or last name is required.',
+            [ 'status' => 400 ]
+        );
+    }
+
     // Build CALL statement with safely quoted values, matching procedure.
+    $q_person_id = $is_update ? (string) $person_id : 'NULL';
     $q_first = pd_post_attendee_sql_quote( $first !== '' ? $first : null );
     $q_last  = pd_post_attendee_sql_quote( $last !== '' ? $last : null );
     $q_email = pd_post_attendee_sql_quote( $email );
@@ -186,8 +205,9 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
 
     $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL %s.POST_attendee(%s, %s, %s, %s, @new_member_id);',
+        'CALL %s.POST_attendee(%s, %s, %s, %s, %s, @new_member_id);',
         $schema,
+        $q_person_id,
         $q_first,
         $q_last,
         $q_email,
@@ -244,7 +264,18 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
             }
 
             foreach ( pd_post_attendee_extract_rows( $decoded_lookup ) as $row ) {
-                if ( is_array( $row ) && array_key_exists( 'id', $row ) ) {
+                if ( ! is_array( $row ) || ! array_key_exists( 'id', $row ) ) {
+                    continue;
+                }
+                $found_id = is_numeric( $row['id'] ) ? (int) $row['id'] : 0;
+                if ( $found_id <= 0 ) {
+                    continue;
+                }
+                // Allow same email when updating the same person.
+                if ( $is_update && $found_id === $person_id ) {
+                    continue;
+                }
+                if ( $found_id > 0 ) {
                     return new WP_Error(
                         'email_already_used',
                         'The email is already used.',
@@ -264,6 +295,14 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
                 'bad_request',
                 'First name or last name is required.',
                 [ 'status' => 400 ]
+            );
+        }
+
+        if ( strpos( (string) $msg, 'POST_attendee: person_id not found' ) !== false ) {
+            return new WP_Error(
+                'not_found',
+                'Person not found.',
+                [ 'status' => 404 ]
             );
         }
 
@@ -395,6 +434,6 @@ function pd_post_attendee_create( WP_REST_Request $req ) {
             'attendee'     => (int) $out['attendee'],
             'presenter'    => (int) $out['presenter'],
         ],
-        201
+        $is_update ? 200 : 201
     );
 }
