@@ -174,7 +174,7 @@ function pd_get_attendees_table( WP_REST_Request $request ) {
             }
 
             $rows_raw = pd_attendees_extract_rows( $decoded );
-            set_transient( $cache_key, $rows_raw, 60 );
+            set_transient( $cache_key, $rows_raw, 10 );
         }
     } catch ( \Throwable $e ) {
         return new WP_Error(
