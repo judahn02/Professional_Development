@@ -203,7 +203,7 @@ Inline handlers exposed for legacy markup
         }
       });
       if (!res.ok) return null;
-      const data = await res.json().catch(()=>null);
+      const data = await res.json().catch(() => null);
       if (Array.isArray(data) && data.length) return data[0];
       return null;
     },
@@ -366,8 +366,8 @@ Inline handlers exposed for legacy markup
       const url = this.getUpdateSessionPresentersUrl();
       const ids = Array.isArray(presenterIds)
         ? presenterIds
-            .map((v) => Number(v) || 0)
-            .filter((v, idx, arr) => v > 0 && arr.indexOf(v) === idx)
+          .map((v) => Number(v) || 0)
+          .filter((v, idx, arr) => v > 0 && arr.indexOf(v) === idx)
         : [];
       const payload = {
         session_id: id,
@@ -509,16 +509,16 @@ Inline handlers exposed for legacy markup
         try {
           const Table = window.PDSessionsTable;
           if (!Table ||
-              typeof Table.getAttendeeSort !== 'function' ||
-              typeof Table.setAttendeeSort !== 'function' ||
-              typeof Table.refreshVisibleAttendees !== 'function') {
+            typeof Table.getAttendeeSort !== 'function' ||
+            typeof Table.setAttendeeSort !== 'function' ||
+            typeof Table.refreshVisibleAttendees !== 'function') {
             return;
           }
           const current = Table.getAttendeeSort();
           const next = current === 'last' ? 'name' : 'last';
           Table.setAttendeeSort(next);
           Table.refreshVisibleAttendees();
-        } catch (_) {}
+        } catch (_) { }
       });
       actions.appendChild(sortBtn);
 
@@ -585,7 +585,7 @@ Inline handlers exposed for legacy markup
           }
         });
       } catch (err) {
-        try { console.error(err); } catch (_) {}
+        try { console.error(err); } catch (_) { }
       }
     },
 
@@ -805,7 +805,7 @@ Inline handlers exposed for legacy markup
       const id = this.rowIndexToId ? this.rowIndexToId.get(index) : undefined;
       try {
         console.log('PDSessionsTable: Edit Attendees clicked', { index, id });
-      } catch (_) {}
+      } catch (_) { }
       // Placeholder for future navigation or modal
       // Example: if (window.PDSessions && PDSessions.detailPageBase && id) {
       //   window.location.href = `${PDSessions.detailPageBase}&session_id=${encodeURIComponent(id)}`;
@@ -823,7 +823,7 @@ Inline handlers exposed for legacy markup
       const id = this.rowIndexToId ? this.rowIndexToId.get(index) : undefined;
       try {
         console.log('PDSessionsTable: Details clicked ->', hidden ? 'open' : 'close', { index, id });
-      } catch (_) {}
+      } catch (_) { }
       // Radio behavior: only one open at a time
       if (hidden) {
         const all = document.querySelectorAll('tr.attendee-row');
@@ -977,11 +977,11 @@ Inline handlers exposed for legacy markup
             // Briefly highlight the row for visibility
             if (row) {
               row.classList.add('row-highlight');
-              setTimeout(() => { try { row.classList.remove('row-highlight'); } catch(_) {} }, 1600);
+              setTimeout(() => { try { row.classList.remove('row-highlight'); } catch (_) { } }, 1600);
             }
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     },
 
     // Server handles sorting and search; just return current page rows
@@ -1322,7 +1322,7 @@ Inline handlers exposed for legacy markup
       input.setAttribute('role', 'combobox');
       input.setAttribute('aria-expanded', 'false');
       // Avoid native required blocking submit before we can mirror chips into value
-      try { input.removeAttribute('required'); } catch(_) {}
+      try { input.removeAttribute('required'); } catch (_) { }
 
       // Ensure state holders
       if (!wrap._selected) wrap._selected = []; // [{id,name}]
@@ -1392,7 +1392,7 @@ Inline handlers exposed for legacy markup
         if (!name) return;
         const exists = wrap._selected.some(p => (id && p.id === id) || (!id && p.name.toLowerCase() === String(name).toLowerCase()));
         if (exists) return;
-        wrap._selected.push({ id: Number(id)||0, name: String(name||'') });
+        wrap._selected.push({ id: Number(id) || 0, name: String(name || '') });
         renderChips();
         updateHiddenValue();
         // Clear any typed text left in the input
@@ -1469,7 +1469,7 @@ Inline handlers exposed for legacy markup
           input.value = '';
           return;
         }
-        wrap._selected.push({ id: Number(id)||0, name: String(name||'') });
+        wrap._selected.push({ id: Number(id) || 0, name: String(name || '') });
         renderChips();
         hideSuggestions();
         input.value = '';
@@ -1499,7 +1499,7 @@ Inline handlers exposed for legacy markup
       };
 
       // Bind input handlers
-      input.removeEventListener('input', input._pdInputHandler || (()=>{}));
+      input.removeEventListener('input', input._pdInputHandler || (() => { }));
       input._pdInputHandler = (e) => {
         // Keep only letters and spaces visually while typing; collapse spaces
         const cur = input.value;
@@ -1507,13 +1507,13 @@ Inline handlers exposed for legacy markup
         if (cur !== cleaned) {
           const pos = input.selectionStart;
           input.value = cleaned;
-          try { input.setSelectionRange(cleaned.length, cleaned.length); } catch(_) {}
+          try { input.setSelectionRange(cleaned.length, cleaned.length); } catch (_) { }
         }
         debouncedSearch(input.value);
       };
       input.addEventListener('input', input._pdInputHandler);
 
-      input.removeEventListener('keydown', input._pdKeyHandler || (()=>{}));
+      input.removeEventListener('keydown', input._pdKeyHandler || (() => { }));
       input._pdKeyHandler = (ev) => {
         const key = ev.key;
         if (key === 'Backspace' && input.value === '' && wrap._selected.length > 0) {
@@ -1541,7 +1541,7 @@ Inline handlers exposed for legacy markup
           } else if (key === 'Enter') {
             const li = all.find(li => li.getAttribute('aria-selected') === 'true') || all[0];
             if (li) {
-              addPresenter({ id: Number(li.dataset.id)||0, name: li.dataset.name });
+              addPresenter({ id: Number(li.dataset.id) || 0, name: li.dataset.name });
               ev.preventDefault();
             }
           } else if (key === 'Escape') {
@@ -1552,7 +1552,7 @@ Inline handlers exposed for legacy markup
       };
       input.addEventListener('keydown', input._pdKeyHandler);
 
-      input.removeEventListener('blur', input._pdBlurHandler || (()=>{}));
+      input.removeEventListener('blur', input._pdBlurHandler || (() => { }));
       input._pdBlurHandler = (e) => {
         setTimeout(() => hideSuggestions(), 120); // allow click selection
       };
@@ -1654,7 +1654,7 @@ Inline handlers exposed for legacy markup
         const v = (input.value || '').trim();
         if (!v) {
           // Validation error state
-          try { console.warn('PDSessionsTable: add-new empty value', { field: label }); } catch(_) {}
+          try { console.warn('PDSessionsTable: add-new empty value', { field: label }); } catch (_) { }
           input.dataset.origPh = input.placeholder;
           input.placeholder = 'please enter something';
           input.classList.add('addnew-error');
@@ -1663,7 +1663,7 @@ Inline handlers exposed for legacy markup
           return;
         }
         // For now, hold — no action; keep input visible
-        try { console.log('PDSessionsTable: add-new pending', { field: label, value: v }); } catch(_){}
+        try { console.log('PDSessionsTable: add-new pending', { field: label, value: v }); } catch (_) { }
       });
     },
     closeAddSessionModal() {
@@ -1703,15 +1703,15 @@ Inline handlers exposed for legacy markup
     refresh: Module.init.bind(Module),
     // Expose cache + helpers so other modules can manage freshness and updates
     attendeesCache: Module.attendeesCache,
-    invalidateCache: function(id) { try { Module.attendeesCache.delete(id); } catch(_) {} },
-    setCacheItems: function(id, items) { try { Module.attendeesCache.set(id, { items: Array.isArray(items) ? items.slice() : [], at: Date.now() }); } catch(_) {} },
+    invalidateCache: function (id) { try { Module.attendeesCache.delete(id); } catch (_) { } },
+    setCacheItems: function (id, items) { try { Module.attendeesCache.set(id, { items: Array.isArray(items) ? items.slice() : [], at: Date.now() }); } catch (_) { } },
     // Immediately set the search term and refresh the visible table (no debounce)
-    setSearchImmediate: function(val) {
+    setSearchImmediate: function (val) {
       Module.searchTerm = (val || '').toString();
       Module.currentPage = 1;
       Module.reloadSessionsFromServer();
     },
-    prependSessionById: async function(id) {
+    prependSessionById: async function (id) {
       const raw = await Module.fetchSessionById(id);
       if (!raw) { await Module.init(); return; }
       // remove duplicate if exists
@@ -1727,7 +1727,7 @@ Inline handlers exposed for legacy markup
       Module.rawRows.unshift(raw);
       Module.refreshTable();
       // Open the Details dropdown for the new top row to show attendees
-      try { Module.toggleAttendeeDropdown(null, 0); } catch (_) {}
+      try { Module.toggleAttendeeDropdown(null, 0); } catch (_) { }
     },
     toggleAttendeeDropdown: Module.toggleAttendeeDropdown.bind(Module),
     // Live search API
@@ -1735,14 +1735,14 @@ Inline handlers exposed for legacy markup
     queueSearchFromDom: Module.queueSearchFromDom.bind(Module),
     // UI hook: call setAttendeeSort('name'|'last'|'email') from your future buttons,
     // then call refreshVisibleAttendees() to re-render any open attendee lists.
-    setAttendeeSort: function(mode) {
+    setAttendeeSort: function (mode) {
       const allowed = ['name', 'last', 'email'];
       if (allowed.includes(mode)) {
         Module.attendeeSort = mode;
       }
     },
-    getAttendeeSort: function() { return Module.attendeeSort; },
-    refreshVisibleAttendees: function() {
+    getAttendeeSort: function () { return Module.attendeeSort; },
+    refreshVisibleAttendees: function () {
       if (!Module.rowIndexToId) return;
       Module.rowIndexToId.forEach((id, index) => {
         const row = document.getElementById(`attendee-row-${index}`);
@@ -1777,9 +1777,9 @@ Inline handlers exposed for legacy markup
 
   // When Edit modal opens, set up token input for its presenters field
   try {
-    document.addEventListener('pd:edit-session-modal-opened', function(e) {
+    document.addEventListener('pd:edit-session-modal-opened', function (e) {
       const sel = '#editSessionModal #editPresenters';
-      try { Module.setupPresenterTokenInput(sel); } catch(_) {}
+      try { Module.setupPresenterTokenInput(sel); } catch (_) { }
       // Bind save handler using the session id from event detail if available
       try {
         const overlay = document.getElementById('editSessionModal');
@@ -1790,7 +1790,7 @@ Inline handlers exposed for legacy markup
           // Prefill presenters chips from the authoritative session presenters API.
           Module.prefillEditSessionPresenters(overlay, sid);
         }
-      } catch(_) {}
+      } catch (_) { }
     });
-  } catch(_) {}
+  } catch (_) { }
 })();
