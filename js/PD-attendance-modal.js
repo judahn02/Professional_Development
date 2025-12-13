@@ -9,6 +9,9 @@
     index: null,
   };
 
+  // Cache latest cert status lookups per member id (modal UX helper)
+  const latestCertCache = new Map(); // memberId -> { status: string, at: number }
+
   function getBulkUrl() {
     const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
     const route = (window.PDSessions && window.PDSessions.sessionsRoute9 || '').replace(/^\/+/, '');
@@ -34,6 +37,36 @@
     const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
     const route = (window.PDSessions && window.PDSessions.sessionsRoute11 || 'sessionhome11').replace(/^\/+/, '');
     return `${root}/${route}`;
+  }
+
+  function getLatestCertUrl(memberId) {
+    const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+    const route = (window.PDSessions && window.PDSessions.sessionsRoute13 || 'sessionhome13').replace(/^\/+/, '');
+    return `${root}/${route}?person_id=${encodeURIComponent(memberId)}`;
+  }
+
+  async function fetchLatestCertStatus(memberId) {
+    const mid = Number(memberId || 0);
+    if (!Number.isFinite(mid) || mid <= 0) return '';
+
+    const cached = latestCertCache.get(mid);
+    if (cached && (Date.now() - cached.at) < 60_000) return String(cached.status || '');
+
+    const url = getLatestCertUrl(mid);
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) return '';
+    const data = await res.json().catch(() => null);
+    const st = data && typeof data === 'object' ? String(data.certification_status || '') : '';
+    latestCertCache.set(mid, { status: st, at: Date.now() });
+    return st;
   }
 
   function statusClassFromLabel(label) {
@@ -292,6 +325,7 @@
       // Add new row in table
       const table = overlay.querySelector('#attendees-table');
       const tbody = table ? (table.querySelector('#attendeesBody') || table.querySelector('tbody')) : null;
+      let createdSelect = null;
       if (tbody) {
         const tr = document.createElement('tr');
         tr.dataset.name = String(member.name||'').toLowerCase();
@@ -302,6 +336,7 @@
         tr.appendChild(tdName);
         const tdStatus = document.createElement('td');
         const sel = createStatusSelect(initialStatus, member.id, sessionId);
+        createdSelect = sel;
         tdStatus.appendChild(sel);
         tr.appendChild(tdStatus);
         const tdDel = document.createElement('td');
@@ -331,6 +366,37 @@
         entry2.items.unshift({ name: member.name || '', email: member.email || '', status: initialStatus || '', memberId: Number(member.id||0) });
         Table2.attendeesCache.set(sessionId, entry2);
       }
+
+      // If a status wasn't explicitly chosen for this add, backfill from latest known cert status.
+      // This keeps the UX fast (row appears immediately) while still auto-populating status.
+      try {
+        if (!initialStatus && Number(member.id || 0) > 0) {
+          fetchLatestCertStatus(member.id).then((latest) => {
+            const latestNorm = String(latest || '').trim();
+            if (!latestNorm) return;
+            if (ALLOWED.indexOf(latestNorm) === -1) return;
+
+            if (createdSelect) {
+              createdSelect.value = latestNorm;
+              try { createdSelect.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+            }
+
+            const Table3 = window.PDSessionsTable;
+            if (Table3 && Table3.attendeesCache instanceof Map) {
+              const ent3 = Table3.attendeesCache.get(sessionId);
+              if (ent3 && Array.isArray(ent3.items)) {
+                const mid = Number(member.id || 0);
+                const idx = ent3.items.findIndex(it => Number(it.memberId||0) === mid);
+                if (idx >= 0) {
+                  ent3.items[idx].status = latestNorm;
+                  Table3.attendeesCache.set(sessionId, ent3);
+                }
+              }
+            }
+          }).catch(() => {});
+        }
+      } catch (_) {}
+
       // Reset input and list; focus for next add
       hideList();
       input.value = '';

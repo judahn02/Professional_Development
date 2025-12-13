@@ -3,7 +3,7 @@
 Plugin Name: Professional Development
 Plugin URI: 
 Description: Integration Plugin for Professional Development tracking and logging.
-Version: 0.8.2
+Version: 0.8.3
 Author: Parallel Solvit LLC
 Author URI: https://parallelsolvit.com/
 License: 
@@ -36,6 +36,7 @@ require_once $plugin_dir . 'includes/REST/sessionhome5.php';
 require_once $plugin_dir . 'includes/REST/sessionhome6.php';
 require_once $plugin_dir . 'includes/REST/sessionhome7.php';
 require_once $plugin_dir . 'includes/REST/sessionhome12.php';
+require_once $plugin_dir . 'includes/REST/sessionhome13.php';
 require_once $plugin_dir . 'includes/REST/sessionhome8.php';
 require_once $plugin_dir . 'includes/REST/sessionhome9.php';
 require_once $plugin_dir . 'includes/REST/sessionhome11.php';
@@ -328,6 +329,7 @@ function slug_specific_admin_js_loader($hook) {
                 'sessionsRoute6' => 'sessionhome6',
                 'sessionsRoute7' => 'sessionhome7',
                 'sessionsRoute12' => 'sessionhome12',
+                'sessionsRoute13' => 'sessionhome13',
                 'sessionsRoute8' => 'sessionhome8',
                 'sessionsRoute9' => 'sessionhome9',
                 'sessionsRoute10' => 'sessionhome10',
