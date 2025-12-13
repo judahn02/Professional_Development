@@ -38,7 +38,7 @@ function PD_sessions_page() {
                     <input 
                         type="text" 
                         class="search-input" 
-                        placeholder="Search by... date/title/presenter/type"
+                        placeholder="Search by... date/title/presenter/organizer/parent event/type"
                         id="searchInput"
                         oninput="filterSessions()"
                     >
@@ -75,6 +75,7 @@ function PD_sessions_page() {
                             <th style="cursor:pointer;">Event Type <span id="sort-arrow-eventType"></span></th>
                             <th style="cursor:pointer;">Parent Event <span id="sort-arrow-parentEvent"></span></th>
                             <th style="cursor:pointer;">Presenter(s) <span id="sort-arrow-presenters"></span></th>
+                            <th style="cursor:pointer;">Organizer <span id="sort-arrow-organizer"></span></th>
                             <th style="cursor:pointer;">Attendees <span id="sort-arrow-attendees"></span></th>
                             <th>Actions</th>
                         </tr>
@@ -107,6 +108,11 @@ function PD_sessions_page() {
                         <label class="form-label">Length (minutes)</label>
                         <input type="number" class="form-input" id="sessionLength" min="0" step="15" required>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Organizer</label>
+                    <input type="text" class="form-input" id="organizer" maxlength="256" placeholder="Organizer (optional)">
                 </div>
 
                 <div class="form-group">
@@ -186,6 +192,11 @@ function PD_sessions_page() {
                         <label class="form-label">Length (minutes)</label>
                         <input type="number" class="form-input" id="sessionLength" min="0" step="15" required>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Organizer</label>
+                    <input type="text" class="form-input" id="organizer" maxlength="256" placeholder="Organizer (optional)">
                 </div>
 
                 <div class="form-group">

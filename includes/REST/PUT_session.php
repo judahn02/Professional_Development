@@ -11,6 +11,7 @@
  *   date: 'YYYY-MM-DD' | null,          // optional; null/'' => no date
  *   length: number,                     // required (minutes)
  *   specific_event: string|null,        // optional, '' -> NULL
+ *   organizer: string|null,            // optional, '' -> NULL (NULL clears organizer)
  *   session_type: string,               // required (name; proc resolves/creates)
  *   ceu_consideration: string|null,     // optional; 'NA' or '' -> NULL (clears)
  *   event_type: string                  // required (name; proc resolves/creates)
@@ -68,6 +69,7 @@ function pd_put_session_update( WP_REST_Request $request ) {
     $date_raw   = pd_put_session_get_param( $request, $json, [ 'date' ], '' );
     $length     = (int) pd_put_session_get_param( $request, $json, [ 'length', 'length_minutes', 'lengthMinutes' ], 0 );
     $sp_event   = pd_put_session_get_param( $request, $json, [ 'specific_event', 'specificEvent' ], null );
+    $org_in     = pd_put_session_get_param( $request, $json, [ 'organizer' ], '__PD_MISSING__' );
     $stype_raw  = pd_put_session_get_param( $request, $json, [ 'session_type', 'sessionType' ], '' );
     $ceu_raw    = pd_put_session_get_param( $request, $json, [ 'ceu_consideration', 'ceuConsideration' ], null );
     $etype_raw  = pd_put_session_get_param( $request, $json, [ 'event_type', 'eventType' ], '' );
@@ -121,6 +123,58 @@ function pd_put_session_update( WP_REST_Request $request ) {
         }
     }
 
+    $organizer_provided = ( $org_in !== '__PD_MISSING__' );
+    $organizer = null;
+    if ( $organizer_provided ) {
+        $tmp = sanitize_text_field( wp_unslash( (string) $org_in ) );
+        $tmp = trim( $tmp );
+        if ( $tmp !== '' ) {
+            if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+                if ( mb_strlen( $tmp ) > 256 ) $tmp = mb_substr( $tmp, 0, 256 );
+            } else {
+                if ( strlen( $tmp ) > 256 ) $tmp = substr( $tmp, 0, 256 );
+            }
+            $organizer = $tmp;
+        }
+    }
+
+    // If organizer isn't provided at all, preserve existing organizer value.
+    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+    if ( ! $organizer_provided ) {
+        try {
+            if ( ! function_exists( 'aslta_signed_query' ) ) {
+                $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
+                $skeleton_path = $plugin_root . '/admin/skeleton2.php';
+                if ( is_readable( $skeleton_path ) ) {
+                    require_once $skeleton_path;
+                }
+            }
+            if ( function_exists( 'aslta_signed_query' ) ) {
+                $sql_org = sprintf( 'SELECT organizer FROM %s.sessions WHERE id = %d;', $schema, $session_id );
+                $org_res = aslta_signed_query( $sql_org );
+                if ( $org_res['status'] >= 200 && $org_res['status'] < 300 ) {
+                    $org_dec = json_decode( (string) ( $org_res['body'] ?? '' ), true );
+                    if ( json_last_error() === JSON_ERROR_NONE ) {
+                        $org_rows = [];
+                        if ( is_array( $org_dec ) ) {
+                            if ( isset( $org_dec['rows'] ) && is_array( $org_dec['rows'] ) ) $org_rows = $org_dec['rows'];
+                            elseif ( array_keys( $org_dec ) === range( 0, count( $org_dec ) - 1 ) ) $org_rows = $org_dec;
+                            else $org_rows = [ $org_dec ];
+                        }
+                        foreach ( $org_rows as $r ) {
+                            if ( is_array( $r ) && array_key_exists( 'organizer', $r ) ) {
+                                $organizer = $r['organizer'] === null ? null : (string) $r['organizer'];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch ( \Throwable $e ) {
+            // ignore; default is NULL
+        }
+    }
+
     // Names (type/event/ceu) – sanitize; map NA/empty to NULL for CEU
     $session_type = sanitize_text_field( wp_unslash( (string) $stype_raw ) );
     $event_type   = sanitize_text_field( wp_unslash( (string) $etype_raw ) );
@@ -148,9 +202,9 @@ function pd_put_session_update( WP_REST_Request $request ) {
     $q_ceu_consideration = pd_put_session_sql_quote( $ceu_consideration );
     $q_event_type       = pd_put_session_sql_quote( $event_type );
 
-    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
+    $q_organizer        = pd_put_session_sql_quote( $organizer );
     $sql = sprintf(
-        'CALL %s.PUT_session(%d, %s, %s, %d, %s, %s, %s, %s);',
+        'CALL %s.PUT_session(%d, %s, %s, %d, %s, %s, %s, %s, %s);',
         $schema,
         $session_id,
         $q_title,
@@ -159,7 +213,8 @@ function pd_put_session_update( WP_REST_Request $request ) {
         $q_specific_event,
         $q_session_type,
         $q_ceu_consideration,
-        $q_event_type
+        $q_event_type,
+        $q_organizer
     );
 
     try {

@@ -179,6 +179,7 @@ Inline handlers exposed for legacy markup
         eventType: 'eventType',
         parentEvent: 'parentEvent',
         presenters: 'presenters',
+        organizer: 'organizer',
         attendeesCt: 'attendees_ct',
       };
       return map[key] || 'date';
@@ -256,6 +257,7 @@ Inline handlers exposed for legacy markup
         eventType: r['Event Type'] || '',
         parentEvent: r['Parent Event'] || '',
         presenters: r['presenters'] || '',
+        organizer: r['Organizer'] || r['organizer'] || '',
         attendeesCt: (r['attendees_ct'] !== undefined && r['attendees_ct'] !== null)
           ? Number(r['attendees_ct'])
           : null,
@@ -635,6 +637,7 @@ Inline handlers exposed for legacy markup
       const setVal = (sel, val) => { const el = overlay.querySelector(sel); if (el) el.value = val || ''; };
       // Date expects YYYY-MM-DD
       setVal('#sessionDate', r.date || '');
+      setVal('#organizer', r.organizer || '');
       setVal('#sessionTitle', r.title || '');
       setVal('#sessionLength', String(r.lengthMin || 0));
       setVal('#parentEvent', r.parentEvent || '');
@@ -681,6 +684,7 @@ Inline handlers exposed for legacy markup
             date: rawDate || null,
             length: parseInt(val('#sessionLength'), 10) || 0,
             specific_event: (val('#parentEvent').trim() || null),
+            organizer: (val('#organizer').trim() || null),
             session_type: selText('#sessionType'),
             event_type: selText('#eventType'),
             ceu_consideration: null,
@@ -724,11 +728,14 @@ Inline handlers exposed for legacy markup
             const origParent = (origSession.parentEvent || '').trim() || null;
             const newParent = payload.specific_event === null ? null : String(payload.specific_event).trim() || null;
             const sameParent = origParent === newParent;
+            const origOrg = (origSession.organizer || '').trim() || null;
+            const newOrg = payload.organizer === null ? null : String(payload.organizer).trim() || null;
+            const sameOrg = origOrg === newOrg;
             const origCeuRaw = (origSession.ceuConsiderations || '').trim();
             const origCeuNorm = (!origCeuRaw || origCeuRaw.toLowerCase() === 'na') ? null : origCeuRaw;
             const newCeu = payload.ceu_consideration || null;
             const sameCeu = origCeuNorm === newCeu;
-            if (sameTitle && sameDate && sameLength && sameStype && sameEventType && sameParent && sameCeu) {
+            if (sameTitle && sameDate && sameLength && sameStype && sameEventType && sameParent && sameOrg && sameCeu) {
               shouldUpdateSession = false;
             }
           }
@@ -971,6 +978,7 @@ Inline handlers exposed for legacy markup
         tr.appendChild(this.makeCell(r.eventType));
         tr.appendChild(this.makeCell(r.parentEvent));
         tr.appendChild(this.makeCell(r.presenters));
+        tr.appendChild(this.makeCell(r.organizer));
         tr.appendChild(this.makeAttendeeCountCell(r.attendeesCt));
         tr.appendChild(this.makeActionsCell(index, r.id));
         frag.appendChild(tr);
@@ -1073,6 +1081,7 @@ Inline handlers exposed for legacy markup
         { span: 'sort-arrow-eventType', key: 'eventType' },
         { span: 'sort-arrow-parentEvent', key: 'parentEvent' },
         { span: 'sort-arrow-presenters', key: 'presenters' },
+        { span: 'sort-arrow-organizer', key: 'organizer' },
         { span: 'sort-arrow-attendees', key: 'attendeesCt' },
       ];
       map.forEach(({ span, key }) => {
@@ -1130,6 +1139,7 @@ Inline handlers exposed for legacy markup
         'sort-arrow-eventType',
         'sort-arrow-parentEvent',
         'sort-arrow-presenters',
+        'sort-arrow-organizer',
         'sort-arrow-attendees',
       ];
       arrows.forEach(id => {
@@ -1147,6 +1157,7 @@ Inline handlers exposed for legacy markup
         eventType: 'sort-arrow-eventType',
         parentEvent: 'sort-arrow-parentEvent',
         presenters: 'sort-arrow-presenters',
+        organizer: 'sort-arrow-organizer',
         attendeesCt: 'sort-arrow-attendees',
       };
       const { key, dir } = this.currentSort || {};
@@ -1507,7 +1518,7 @@ Inline handlers exposed for legacy markup
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'add-new-presentor-btn';
-        btn.textContent = 'Add new presentor?';
+        btn.textContent = 'Add new presenter?';
         btn.addEventListener('mousedown', (e) => {
           e.preventDefault();
           this.openAddPresenterModal(term || '');

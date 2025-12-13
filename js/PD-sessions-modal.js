@@ -522,6 +522,7 @@
         // Prefill values
         const setVal = (sel, val) => { const el = overlay.querySelector(sel); if (el) el.value = val || ''; };
         setVal('#sessionDate', (session && session.date) || '');
+        setVal('#organizer', (session && session.organizer) || '');
         setVal('#sessionTitle', (session && session.title) || '');
         setVal('#sessionLength', String((session && session.lengthMin) || 0));
         setVal('#parentEvent', (session && session.parentEvent) || '');
@@ -630,6 +631,9 @@
         type_of_session_id: parseInt(v('#sessionType'), 10) || 0,
         event_type_id: parseInt(v('#eventType'), 10) || 0,
       };
+
+      const organizer = (v('#organizer') || '').trim();
+      if (organizer !== '') payload.organizer = organizer;
 
       // Optional: specific_event only if non-empty (avoid sending null to REST schema type string)
       const parentEvent = (v('#parentEvent') || '').trim();

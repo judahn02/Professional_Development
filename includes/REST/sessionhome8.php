@@ -12,6 +12,7 @@
  *   type_of_session_id: 1,
  *   event_type_id: 2,
  *   ceu_id: 3 | null,
+ *   organizer: 'Name' | null,
  *   presenters_csv: '1,2' | null
  * }
  * Returns: { success: true, id: <new session id> }
@@ -82,6 +83,7 @@ add_action( 'rest_api_init', function () {
                         return trim( $s, ',' );
                     },
                 ],
+                'organizer' => [ 'type' => 'string', 'required' => false ],
             ],
         ]
     );
@@ -111,6 +113,7 @@ function pd_sessionhome8_create_session( WP_REST_Request $req ) {
     $event_raw = pd_sessionhome8_get_param( $req, $json, [ 'specific_event', 'specificEvent' ] );
     $stype_raw = pd_sessionhome8_get_param( $req, $json, [ 'type_of_session_id', 'typeOfSessionId' ] );
     $etype_raw = pd_sessionhome8_get_param( $req, $json, [ 'event_type_id', 'eventTypeId' ] );
+    $org_raw   = pd_sessionhome8_get_param( $req, $json, [ 'organizer' ] );
     $ceu_raw   = pd_sessionhome8_get_param( $req, $json, [ 'ceu_id', 'ceuId' ] );
     $pcsv_raw  = pd_sessionhome8_get_param( $req, $json, [ 'presenters_csv', 'presentersCsv' ] );
 
@@ -190,18 +193,34 @@ function pd_sessionhome8_create_session( WP_REST_Request $req ) {
         $presenters_csv = ($s === '') ? null : $s;
     }
 
+    // Sanitize organizer (nullable)
+    $organizer = null;
+    if ( null !== $org_raw ) {
+        $tmp = sanitize_text_field( wp_unslash( (string) $org_raw ) );
+        $tmp = trim( $tmp );
+        if ( $tmp !== '' ) {
+            if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+                if ( mb_strlen( $tmp ) > 256 ) $tmp = mb_substr( $tmp, 0, 256 );
+            } else {
+                if ( strlen( $tmp ) > 256 ) $tmp = substr( $tmp, 0, 256 );
+            }
+            $organizer = $tmp;
+        }
+    }
+
     // New implementation: use the signed API connection defined in admin/skeleton2.php.
     // Build CALL statement with safely quoted values, matching sp_create_session signature:
-    // (session_date (nullable), length_minutes, session_title, specific_event, type_of_session_id, event_type_id, ceu_id, presenters_csv)
+    // (session_date (nullable), length_minutes, session_title, specific_event, type_of_session_id, event_type_id, ceu_id, organizer, presenters_csv)
     $q_date      = pd_sessionhome8_sql_quote( $session_date );
     $q_title     = pd_sessionhome8_sql_quote( $session_title );
     $q_event     = pd_sessionhome8_sql_quote( $specific_event );
     $q_ceu       = pd_sessionhome8_sql_quote( $ceu_id === null ? null : (string) (int) $ceu_id );
+    $q_organizer = pd_sessionhome8_sql_quote( $organizer );
     $q_presenter = pd_sessionhome8_sql_quote( $presenters_csv );
 
     $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
     $sql = sprintf(
-        'CALL %s.sp_create_session(%s, %d, %s, %s, %d, %d, %s, %s);',
+        'CALL %s.sp_create_session(%s, %d, %s, %s, %d, %d, %s, %s, %s);',
         $schema,
         $q_date,
         $length_minutes,
@@ -210,6 +229,7 @@ function pd_sessionhome8_create_session( WP_REST_Request $req ) {
         $type_of_session_id,
         $event_type_id,
         $q_ceu,
+        $q_organizer,
         $q_presenter
     );
 

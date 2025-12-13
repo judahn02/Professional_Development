@@ -46,7 +46,7 @@ add_action('rest_api_init', function () {
                     'required'    => false,
                 ],
                 'q' => [
-                    'description' => 'Case-insensitive substring to filter by date/title/presenters/session type/event type',
+                    'description' => 'Case-insensitive substring to filter by date/title/presenters/organizer/parent event/session type/event type',
                     'type'        => 'string',
                     'required'    => false,
                 ],
@@ -95,6 +95,7 @@ function pd_sessions_home_callback( WP_REST_Request $request ) {
         'event' => 'Event Type', 'eventtype' => 'Event Type', 'eventType' => 'Event Type', 'Event Type' => 'Event Type',
         'parentevent' => 'Parent Event', 'parentEvent' => 'Parent Event', 'Parent Event' => 'Parent Event',
         'presenters' => 'presenters',
+        'organizer' => 'Organizer', 'Organizer' => 'Organizer',
         'attendees' => 'attendees_ct', 'attendeesct' => 'attendees_ct', 'attendees_ct' => 'attendees_ct', 'attendeesCt' => 'attendees_ct',
     ];
     $norm_key = strtolower(str_replace(['_', ' ', '-'], '', $sort_in));
