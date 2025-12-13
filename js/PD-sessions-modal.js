@@ -9,6 +9,8 @@
     _ceuBindDone: false,
     _parentEvents: null,
     _parentDebounce: null,
+    _organizers: null,
+    _orgDebounce: null,
 
     getFormOptionsUrl() {
       const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
@@ -227,6 +229,135 @@
       input.removeEventListener('blur', input._pdPEBlur || (()=>{}));
       input._pdPEBlur = () => { setTimeout(hide, 120); };
       input.addEventListener('blur', input._pdPEBlur);
+    },
+
+    getOrganizersUrl() {
+      const root = (window.PDSessions && window.PDSessions.restRoot || '').replace(/\/+$/, '');
+      const route = (window.PDSessions && window.PDSessions.sessionsRoute12 || '').replace(/^\/+/, '');
+      return `${root}/${route}`;
+    },
+    async fetchOrganizers() {
+      if (Array.isArray(this._organizers)) return this._organizers.slice();
+      const url = this.getOrganizersUrl();
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          ...(window.PDSessions && window.PDSessions.nonce ? { 'X-WP-Nonce': window.PDSessions.nonce } : {}),
+        }
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(()=> '');
+        throw new Error(`Organizers fetch failed ${res.status}: ${body.slice(0,300)}`);
+      }
+      const data = await res.json().catch(()=> []);
+      const arr = Array.isArray(data) ? data.filter(v => typeof v === 'string') : [];
+      const uniq = Array.from(new Set(arr)).sort((a,b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      this._organizers = uniq;
+      return uniq.slice();
+    },
+
+    setupOrganizerAutocomplete(overlay) {
+      const input = overlay.querySelector('#organizer');
+      if (!input) return;
+
+      let wrap = input.closest('.autocomplete-wrap');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'autocomplete-wrap';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+      }
+
+      let list = wrap.querySelector('.suggestions-list');
+      if (!list) {
+        list = document.createElement('ul');
+        list.className = 'suggestions-list';
+        list.style.display = 'none';
+        wrap.appendChild(list);
+      }
+
+      const hide = () => {
+        list.style.display = 'none';
+        list.querySelectorAll('li[aria-selected="true"]').forEach(li => li.setAttribute('aria-selected','false'));
+      };
+      const show = (items) => {
+        if (!items || items.length === 0) { hide(); return; }
+        list.innerHTML = '';
+        items.forEach((name, idx) => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          li.setAttribute('role', 'option');
+          if (idx === 0) li.setAttribute('aria-selected', 'true');
+          li.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            input.value = name;
+            hide();
+          });
+          list.appendChild(li);
+        });
+        list.style.display = '';
+      };
+
+      const filter = (q, all) => {
+        const s = (q || '').toLowerCase();
+        if (!s) return all;
+        return all.filter(v => v.toLowerCase().includes(s));
+      };
+
+      const debounced = async () => {
+        if (this._orgDebounce) clearTimeout(this._orgDebounce);
+        this._orgDebounce = setTimeout(async () => {
+          try {
+            const all = await this.fetchOrganizers();
+            show(filter(input.value, all));
+          } catch (err) { console.error(err); hide(); }
+        }, 300);
+      };
+
+      input.removeEventListener('focus', input._pdOrgFocus || (()=>{}));
+      input._pdOrgFocus = () => { debounced(); };
+      input.addEventListener('focus', input._pdOrgFocus);
+
+      input.removeEventListener('input', input._pdOrgInput || (()=>{}));
+      input._pdOrgInput = () => { debounced(); };
+      input.addEventListener('input', input._pdOrgInput);
+
+      input.removeEventListener('keydown', input._pdOrgKeys || (()=>{}));
+      input._pdOrgKeys = (ev) => {
+        const key = ev.key;
+        if (list.style.display === 'none') return;
+        const items = Array.from(list.querySelectorAll('li'));
+        if (items.length === 0) return;
+        const idx = items.findIndex(li => li.getAttribute('aria-selected') === 'true');
+        if (key === 'ArrowDown') {
+          const next = Math.min(items.length - 1, idx + 1);
+          items.forEach(li => li.setAttribute('aria-selected','false'));
+          items[next].setAttribute('aria-selected','true');
+          ev.preventDefault();
+        } else if (key === 'ArrowUp') {
+          const prev = Math.max(0, idx - 1);
+          items.forEach(li => li.setAttribute('aria-selected','false'));
+          items[prev].setAttribute('aria-selected','true');
+          ev.preventDefault();
+        } else if (key === 'Enter') {
+          const li = items.find(li => li.getAttribute('aria-selected') === 'true') || items[0];
+          if (li) {
+            input.value = li.textContent || '';
+            hide();
+            ev.preventDefault();
+          }
+        } else if (key === 'Escape') {
+          hide();
+          ev.preventDefault();
+        }
+      };
+      input.addEventListener('keydown', input._pdOrgKeys);
+
+      input.removeEventListener('blur', input._pdOrgBlur || (()=>{}));
+      input._pdOrgBlur = () => { setTimeout(hide, 120); };
+      input.addEventListener('blur', input._pdOrgBlur);
     },
 
     setupAddNewForSelect(select, label) {
@@ -457,6 +588,7 @@
 
       this.applyCeuVisibility(overlay);
       this.setupParentEventAutocomplete(overlay);
+      this.setupOrganizerAutocomplete(overlay);
       this.bindCeuWeight(overlay);
 
       const onOverlayClick = (e) => { if (e.target === overlay) this.close(); };
@@ -564,6 +696,7 @@
 
       // Autocomplete for Parent Event
       Modal.setupParentEventAutocomplete(overlay);
+      Modal.setupOrganizerAutocomplete(overlay);
 
       const onOverlayClick = (e) => { if (e.target === overlay) this.close(); };
       overlay.addEventListener('click', onOverlayClick, { once: true });

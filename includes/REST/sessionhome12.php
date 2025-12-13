@@ -1,56 +1,38 @@
 <?php
 /**
- * ProfDef REST: sessionhome7
- * Purpose: Return distinct parent events from external DB.
- * Endpoint: GET /wp-json/profdef/v2/sessionhome7
- * SQL: SELECT DISTINCT specific_event FROM Test_Database.session ORDER BY specific_event;
+ * ProfDef REST: sessionhome12
+ * Purpose: Return distinct organizer values from external DB.
+ * Endpoint: GET /wp-json/profdef/v2/sessionhome12
+ * SQL: SELECT DISTINCT organizer FROM {schema}.sessions ORDER BY organizer;
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/**
- * Minimal SQL string escaper for values embedded into a query.
- * Uses simple backslash + single-quote escaping, assuming MySQL-compatible syntax.
- *
- * @param string|null $value
- * @return string SQL literal or NULL
- */
-function pd_sessionhome7_sql_quote( ?string $value ): string {
-    if ( $value === null ) {
-        return 'NULL';
-    }
-    $escaped = str_replace( ['\\', '\''], ['\\\\', '\\\''], $value );
-    return '\'' . $escaped . '\'';
-}
-
 add_action( 'rest_api_init', function () {
     register_rest_route(
         'profdef/v2',
-        '/sessionhome7',
+        '/sessionhome12',
         [
             'methods'             => WP_REST_Server::READABLE, // GET
             'permission_callback' => 'pd_presenters_permission',
-            'callback'            => 'pd_sessionhome7_get_parent_events',
+            'callback'            => 'pd_sessionhome12_get_organizers',
         ]
     );
 } );
 
 /**
- * Handler: GET /profdef/v2/sessionhome7
+ * Handler: GET /profdef/v2/sessionhome12
  */
-function pd_sessionhome7_get_parent_events( WP_REST_Request $request ) {
-    $events = [];
+function pd_sessionhome12_get_organizers( WP_REST_Request $request ) {
+    $organizers = [];
 
-    // New implementation: use the signed API connection defined in admin/skeleton2.php.
-    // Query distinct specific_event values from {schema}.sessions; keep SQL semantics the same.
-    $schema = defined('PD_DB_SCHEMA') ? PD_DB_SCHEMA : 'beta_2';
-    $sql    = 'SELECT DISTINCT parent_event FROM ' . $schema . '.sessions ORDER BY parent_event';
+    $schema = defined( 'PD_DB_SCHEMA' ) ? PD_DB_SCHEMA : 'beta_2';
+    $sql    = 'SELECT DISTINCT organizer FROM ' . $schema . '.sessions WHERE organizer IS NOT NULL AND TRIM(organizer) <> \'\' ORDER BY organizer';
 
     try {
         if ( ! function_exists( 'aslta_signed_query' ) ) {
-            // Fallback: try to load the helper if, for some reason, the main plugin file has not.
             $plugin_root   = dirname( dirname( __DIR__ ) ); // .../Professional_Development
             $skeleton_path = $plugin_root . '/admin/skeleton2.php';
             if ( is_readable( $skeleton_path ) ) {
@@ -70,7 +52,7 @@ function pd_sessionhome7_get_parent_events( WP_REST_Request $request ) {
     } catch ( \Throwable $e ) {
         return new WP_Error(
             'aslta_remote_error',
-            'Failed to load parent events via remote API.',
+            'Failed to load organizers via remote API.',
             [
                 'status' => 500,
                 'debug'  => ( WP_DEBUG ? $e->getMessage() : null ),
@@ -81,7 +63,7 @@ function pd_sessionhome7_get_parent_events( WP_REST_Request $request ) {
     if ( $result['status'] < 200 || $result['status'] >= 300 ) {
         return new WP_Error(
             'aslta_remote_http_error',
-            'Remote parent events endpoint returned an HTTP error.',
+            'Remote organizers endpoint returned an HTTP error.',
             [
                 'status' => 500,
                 'debug'  => ( WP_DEBUG ? [ 'http_code' => $result['status'], 'body' => $result['body'] ] : null ),
@@ -93,7 +75,7 @@ function pd_sessionhome7_get_parent_events( WP_REST_Request $request ) {
     if ( json_last_error() !== JSON_ERROR_NONE ) {
         return new WP_Error(
             'aslta_json_error',
-            'Failed to decode parent events JSON response.',
+            'Failed to decode organizers JSON response.',
             [
                 'status' => 500,
                 'debug'  => ( WP_DEBUG ? json_last_error_msg() : null ),
@@ -114,13 +96,14 @@ function pd_sessionhome7_get_parent_events( WP_REST_Request $request ) {
         if ( ! is_array( $row ) ) {
             continue;
         }
-        if ( array_key_exists( 'parent_event', $row ) ) {
-            $val = $row['parent_event'];
+        if ( array_key_exists( 'organizer', $row ) ) {
+            $val = $row['organizer'];
             if ( is_string( $val ) && $val !== '' ) {
-                $events[] = $val;
+                $organizers[] = $val;
             }
         }
     }
 
-    return new WP_REST_Response( $events, 200 );
+    return new WP_REST_Response( $organizers, 200 );
 }
+
